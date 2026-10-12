@@ -14,7 +14,7 @@ export function PageHeader({
   return (
     <div className={`flex items-center justify-between ${className}`}>
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
+        <h2 className="font-display text-[32px] leading-tight text-gray-900">{title}</h2>
         {subtitle && <p className="text-gray-500 text-sm">{subtitle}</p>}
       </div>
       {action}

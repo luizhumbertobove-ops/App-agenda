@@ -1,5 +1,6 @@
 /*
- * Tokens do "Bove Massoterapia Design System" (Claude Design).
+ * Tokens do design system "Humberto Bove Massoterapia" (Claude Design).
+ * Paleta: marrom Bove (#855E3E) como cor de ação (as variáveis --clay-* guardam o marrom), creme e dourado.
  * Escopado em .bove-ds para nao vazar pro resto do app (CRM interno).
  * Fonte: projeto de design c6e4b913-f3f2-4fb9-b1a5-a6465793a440.
  */
@@ -8,13 +9,13 @@
 
 :root {
   /* base — clay */
-  --clay-50:#FBF3EE;--clay-100:#F3DFD4;--clay-200:#E4BEAB;--clay-300:#D19A80;--clay-400:#BD7454;--clay-500:#A9563C;--clay-600:#8E4530;--clay-700:#6D3425;--clay-800:#4C241A;--clay-900:#2E1610;
+  --clay-50:#F8F1EA;--clay-100:#EEDDCC;--clay-200:#DCC0A3;--clay-300:#C39D7A;--clay-400:#A47B57;--clay-500:#855E3E;--clay-600:#6B4A30;--clay-700:#553A26;--clay-800:#3E2A1B;--clay-900:#281B11;
   /* base — sage */
   --sage-50:#F2F5F2;--sage-100:#DDE5DE;--sage-200:#BECBC0;--sage-300:#9AAC9E;--sage-400:#7B8F7F;--sage-500:#5F7364;--sage-600:#4A5B4E;--sage-700:#38453B;--sage-800:#252E27;--sage-900:#161B17;
   /* base — linen neutrals (warm greys) */
-  --linen-0:#FFFDFB;--linen-50:#FAF6F1;--linen-100:#F2ECE4;--linen-200:#E5DCD1;--linen-300:#CFC3B5;--linen-400:#A99C8E;--linen-500:#83776B;--linen-600:#5E544B;--linen-700:#443C35;--linen-800:#2B2320;--linen-900:#1A1513;
+  --linen-0:#FFFBF5;--linen-50:#FBF4E8;--linen-100:#F5EADA;--linen-200:#EBDCC6;--linen-300:#DCC8AE;--linen-400:#B9A68E;--linen-500:#7A6957;--linen-600:#5E4F42;--linen-700:#4A3E34;--linen-800:#33281F;--linen-900:#221A14;
   /* base — accents */
-  --ochre-400:#D9A54A;--ochre-500:#B8873F;--ochre-600:#8F692F;
+  --ochre-400:#D6A84F;--ochre-500:#C9973F;--ochre-600:#835E22;
   --rust-500:#B44A38;--rust-600:#8E3729;
   --ink:#1A1513;
 
@@ -39,7 +40,7 @@
   --status-danger:var(--rust-500);--status-danger-soft:#F8E7E3;
   --status-info:var(--linen-600);--status-info-soft:var(--linen-100);
 
-  --focus-ring:0 0 0 3px rgba(169,86,60,.28);
+  --focus-ring:0 0 0 3px rgba(133,94,62,.35);
 
   /* type */
   --font-serif-display:"Spectral",Georgia,"Times New Roman",serif;

@@ -1,11 +1,11 @@
 {
-  "name": "Bove Massoterapia",
-  "short_name": "Bove",
+  "name": "Humberto Bove — Massoterapia",
+  "short_name": "Humberto Bove",
   "id": "/vitrine",
   "start_url": "/vitrine",
   "scope": "/vitrine",
   "display": "standalone",
-  "background_color": "#855E3E",
+  "background_color": "#fbf4e8",
   "theme_color": "#855E3E",
   "icons": [
     {

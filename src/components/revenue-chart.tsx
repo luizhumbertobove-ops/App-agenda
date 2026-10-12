@@ -36,7 +36,7 @@ export function RevenueChart({
                 width={BAR_WIDTH}
                 height={barH}
                 rx={5}
-                className={isLast ? "fill-violet-600" : "fill-violet-200"}
+                className={isLast ? "fill-amber-500" : "fill-violet-400"}
               />
               {/* Value label */}
               {d.value > 0 && (

@@ -1,19 +1,143 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * Identidade "Humberto Bove Massoterapia" no admin.
+ * As escalas do Tailwind usadas nas telas são trocadas pelas da marca, então
+ * as classes existentes (violet-600, gray-500, green-100…) já saem nas cores novas:
+ *   violet/purple → marrom Bove (cor de ação)   gray → creme/café (neutros quentes)
+ *   green → sálvia (sucesso)   red → ferrugem (erro)   amber/yellow/orange → dourado
+ *   blue → bege (status neutro, como "Agendado")
+ * Design system: claude.ai artifact "Humberto Bove Massoterapia".
+ */
+@theme {
+  --color-white: #fffbf5;
+
+  --color-violet-50: #f8f1ea;
+  --color-violet-100: #eeddcc;
+  --color-violet-200: #dcc0a3;
+  --color-violet-300: #c39d7a;
+  --color-violet-400: #a47b57;
+  --color-violet-500: #94694a;
+  --color-violet-600: #855e3e;
+  --color-violet-700: #6b4a30;
+  --color-violet-800: #553a26;
+  --color-violet-900: #3e2a1b;
+  --color-violet-950: #281b11;
+
+  --color-purple-50: #f8f1ea;
+  --color-purple-100: #eeddcc;
+  --color-purple-200: #dcc0a3;
+  --color-purple-300: #c39d7a;
+  --color-purple-400: #a47b57;
+  --color-purple-500: #94694a;
+  --color-purple-600: #855e3e;
+  --color-purple-700: #6b4a30;
+  --color-purple-800: #553a26;
+  --color-purple-900: #3e2a1b;
+
+  --color-gray-50: #fbf4e8;
+  --color-gray-100: #f5eada;
+  --color-gray-200: #ebdcc6;
+  --color-gray-300: #d8c6ad;
+  --color-gray-400: #9a8670;
+  --color-gray-500: #7a6957;
+  --color-gray-600: #5e4f42;
+  --color-gray-700: #4a3e34;
+  --color-gray-800: #33281f;
+  --color-gray-900: #221a14;
+  --color-gray-950: #170f0a;
+
+  --color-green-50: #f2f5f2;
+  --color-green-100: #dde5de;
+  --color-green-200: #becbc0;
+  --color-green-300: #9aac9e;
+  --color-green-400: #7b8f7f;
+  --color-green-500: #5f7364;
+  --color-green-600: #4a5b4e;
+  --color-green-700: #38453b;
+  --color-green-800: #252e27;
+
+  --color-red-50: #f8e7e3;
+  --color-red-100: #f2d3cc;
+  --color-red-200: #e6b0a5;
+  --color-red-300: #d68979;
+  --color-red-400: #c4664f;
+  --color-red-500: #b44a38;
+  --color-red-600: #8e3729;
+  --color-red-700: #722b20;
+  --color-red-800: #551f17;
+
+  --color-amber-50: #fdf7ea;
+  --color-amber-100: #f8eacb;
+  --color-amber-200: #f0d59a;
+  --color-amber-300: #e4bc6a;
+  --color-amber-400: #d6a84f;
+  --color-amber-500: #c9973f;
+  --color-amber-600: #a87a2e;
+  --color-amber-700: #835e22;
+  --color-amber-800: #5e4318;
+
+  --color-yellow-100: #f8eacb;
+  --color-yellow-200: #f0d59a;
+  --color-yellow-800: #5e4318;
+
+  --color-orange-50: #fdf7ea;
+  --color-orange-100: #f8eacb;
+  --color-orange-600: #a87a2e;
+  --color-orange-700: #835e22;
+
+  --color-blue-50: #f6efe6;
+  --color-blue-100: #efe3d3;
+  --color-blue-200: #e0cdb5;
+  --color-blue-500: #8c7a66;
+  --color-blue-600: #6e5d4b;
+  --color-blue-700: #5a4a3b;
+
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+
+  --shadow-sm: 0 1px 2px rgba(92, 60, 30, 0.06), 0 6px 18px rgba(92, 60, 30, 0.06);
+  --shadow-md: 0 2px 6px rgba(92, 60, 30, 0.08), 0 14px 32px rgba(92, 60, 30, 0.1);
+  --shadow-lg: 0 24px 64px rgba(52, 30, 15, 0.22);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-dm-sans), "Helvetica Neue", Arial, sans-serif;
+  --font-serif: var(--font-spectral), Georgia, "Times New Roman", serif;
+}
+
+:root {
+  --background: #fbf4e8;
+  --foreground: #33281f;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Títulos de tela: Spectral itálico, como a assinatura. */
+.font-display {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+}
+
+::selection {
+  background: #f8eacb;
+  color: #3a290e;
+}
+
+:focus-visible {
+  outline: 3px solid rgba(133, 94, 62, 0.35);
+  outline-offset: 2px;
+}
+
+/* Espaço para a barra inferior do celular (só nas telas do admin, onde ela existe). */
+@media (max-width: 767px) {
+  body:has([data-mobile-nav]) main {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  }
 }

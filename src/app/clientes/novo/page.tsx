@@ -69,7 +69,7 @@ export default function NovoClientePage() {
           <UserPlus size={18} className="text-violet-600" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Novo Cliente</h2>
+          <h2 className="font-display text-[32px] leading-tight text-gray-900">Novo cliente</h2>
           <p className="text-gray-500 text-sm">Preencha os dados para cadastrar</p>
         </div>
       </div>
