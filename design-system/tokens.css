@@ -1,0 +1,292 @@
+/* Bove Massoterapia — generated from tokens.json */
+:root, [data-theme="light"] {
+  --brown-50: #f8f1ea; /* Fundo de seleção suave (surface-accent-soft) e hover secundário. */
+  --brown-100: #eeddcc; /* Seleção de texto; tint de blocos. */
+  --brown-200: #dcc0a3; /* Bordas de destaque claras. */
+  --brown-300: #c39d7a; /* border-accent: contorno do botão secundário, sublinhado de links. */
+  --brown-400: #a47b57; /* Marrom claro: blocos e ilustração, com texto linen-900 por cima. */
+  --brown-500: #855e3e; /* Marrom Bove (#855e3e): a cor de ação e da marca — botões primários, seleção, foco, faixa do cartão, ícone do app. Texto branco sobre ela: 5.5:1. */
+  --brown-600: #6b4a30; /* Hover do primário; texto de link; texto do botão secundário. */
+  --brown-700: #553a26; /* Press do primário; hover de link. */
+  --brown-800: #3e2a1b; /* Marrom café profundo: faixas escuras. */
+  --brown-900: #281b11; /* Marrom quase preto; uso raro. */
+  --bove-brown: var(--brown-500); /* Marrom Bove (#855e3e, do favicon antigo): a cor da marca. Alias de brown-500. */
+  --sage-50: #f2f5f2; /* Fundo calmo (surface-sage-soft) e fundo de sucesso. */
+  --sage-100: #dde5de; /* Fundo sage um passo mais forte. */
+  --sage-200: #becbc0; /* Bordas sobre fundos sage. */
+  --sage-300: #9aac9e; /* Bloco decorativo calmo. */
+  --sage-400: #7b8f7f; /* Tom intermediário. */
+  --sage-500: #5f7364; /* status-success: texto e ponto de status de sucesso. Nunca cor de ação. */
+  --sage-600: #4a5b4e; /* Sage profundo para blocos de identidade. */
+  --sage-700: #38453b; /* Texto sobre fundos sage. */
+  --sage-800: #252e27; /* Sage quase preto. */
+  --sage-900: #161b17; /* Sage mais profundo. */
+  --linen-0: #fffbf5; /* Branco creme: surface-card; texto sobre brown-500. */
+  --linen-50: #fbf4e8; /* Creme: surface-page, fundo de toda tela. */
+  --linen-100: #f5eada; /* Superfície rebaixada (surface-sunken / surface-muted); hover quieto. */
+  --linen-200: #ebdcc6; /* border-hairline: 1px estrutural; fundo desabilitado. */
+  --linen-300: #dcc8ae; /* border-default: contorno de campos. */
+  --linen-400: #b9a68e; /* border-strong; texto desabilitado; text-subtle (só decorativo, 2.2:1 no creme). */
+  --linen-500: #7a6957; /* text-muted: legendas e metadados no creme (4.8:1) e no card (5.1:1). */
+  --linen-600: #5e4f42; /* status-info; texto secundário forte. */
+  --linen-700: #4a3e34; /* Marrom escuro intermediário. */
+  --linen-800: #33281f; /* text-body e surface-inverse (rodapés, citações). */
+  --linen-900: #221a14; /* text-strong: títulos; tinta da marca. */
+  --gold-50: #fdf7ea; /* Fundo dourado suave: surface-gold-soft, faixas de destaque, Badge accent. */
+  --gold-100: #f8eacb; /* Seleção de texto; fundo de destaque mais quente. */
+  --gold-200: #f0d59a; /* Arcos e ondas decorativas sobre brown-500 e marrom. */
+  --gold-300: #e4bc6a; /* border-gold: contorno dourado de destaques e cards especiais. */
+  --gold-400: #d6a84f; /* Mel: blocos de cor grandes, com texto linen-900 por cima (7.8:1). */
+  --gold-500: #c9973f; /* Dourado do símbolo original (#c9973f): acento gráfico, ícones decorativos grandes, arcos. Nunca texto sobre creme (2.4:1). */
+  --gold-600: #a87a2e; /* Dourado escuro para traços finos sobre creme (3:1+). */
+  --gold-700: #835e22; /* text-gold: eyebrows e rótulos dourados sobre creme e card (5.4:1); texto do Badge accent. */
+  --gold-800: #5e4318; /* Dourado profundo para texto sobre gold-100. */
+  --gold-900: #3a290e; /* Dourado quase marrom; uso raro. */
+  --ochre-400: #d9a54a; /* Ocre claro: bloco de identidade na miniatura; nunca texto. */
+  --ochre-500: #b8873f; /* status-warning: ponto e borda de aviso (2.9:1 no fundo de aviso — o texto vai em ochre-600, 4.4:1). */
+  --ochre-600: #8f692f; /* Texto de aviso sobre status-warning-soft. */
+  --rust-500: #b44a38; /* status-danger: erro e cancelamento. */
+  --rust-600: #8e3729; /* Texto de erro sobre status-danger-soft. */
+  --ink: #1a1513; /* Tinta pura (= linen-900) para impressos. */
+  --text-strong: var(--linen-900); /* Títulos e valores em destaque sobre surface-page e surface-card. */
+  --text-body: var(--linen-800); /* Corpo de texto sobre surface-page, surface-card e surface-sunken. */
+  --text-muted: var(--linen-500); /* Legendas, metadados e helper text sobre surface-page (4.8:1) e surface-card (5.1:1). */
+  --text-subtle: var(--linen-400); /* Rótulos decorativos e placeholders; 2.2:1 no creme — nunca para informação essencial. */
+  --text-inverse: var(--linen-50); /* Texto sobre surface-inverse e sobre brown-500. */
+  --text-accent: var(--brown-500); /* Marcadores de lista e frase de assinatura em itálico sobre surface-page (5.2:1). */
+  --text-gold: var(--gold-700); /* Eyebrows (SERVIÇOS, VALORES) e rótulos dourados sobre surface-page e surface-card; 5.4:1. */
+  --text-link: var(--brown-600); /* Links no corpo sobre surface-page e surface-card. */
+  --text-link-hover: var(--brown-700); /* Link em hover. */
+  --surface-page: var(--linen-50); /* Fundo de página — o creme. */
+  --surface-card: var(--linen-0); /* Cards e campos sobre o papel. */
+  --surface-raised: #ffffff; /* Elementos flutuantes: dialog, tooltip, dropdown. */
+  --surface-sunken: var(--linen-100); /* Card tone=soft, faixas rebaixadas. */
+  --surface-muted: var(--linen-100); /* Fundos quietos (placeholder, hover). */
+  --surface-accent-soft: var(--brown-50); /* Fundo de item selecionado, junto de borda marrom. */
+  --surface-sage-soft: var(--sage-50); /* Card tone=sage, blocos informativos calmos. */
+  --surface-gold-soft: var(--gold-50); /* Faixas de destaque e seções alternadas: pacotes, depoimentos, chamada para agendar. */
+  --surface-brand: var(--brown-700); /* Faixa marrom profunda: rodapé e chamada final. Texto linen-50 por cima; botões ali usam a variante inverse. */
+  --surface-inverse: var(--linen-800); /* Rodapé, citações, card tone=inverse. */
+  --surface-overlay: rgba(26,21,19,.55); /* Scrim do Dialog (55% preto quente). */
+  --border-hairline: var(--linen-200); /* Hairline estrutural 1px: cards, divisórias, cabeçalho. */
+  --border-default: var(--linen-300); /* Contorno de Input, Select, Textarea, Checkbox. */
+  --border-strong: var(--linen-400); /* Contorno em hover de campos. */
+  --border-accent: var(--brown-300); /* Contorno do botão secundário e sublinhado de link. */
+  --border-gold: var(--gold-300); /* Contorno dourado de destaques (serviço mais procurado, pacote). */
+  --border-focus: var(--brown-500); /* Borda de campo em foco. */
+  --action-primary: var(--brown-500); /* Fundo do Button primary, Switch ligado, TimeSlot selecionado. */
+  --action-primary-hover: var(--brown-600); /* Hover do primário — escurece, nunca clareia. */
+  --action-primary-press: var(--brown-700); /* Press do primário. */
+  --action-primary-fg: #fffbf5; /* Texto sobre action-primary (5.5:1). */
+  --action-secondary: #fffbf500; /* Fundo transparente do botão secundário (transparent na origem). */
+  --action-secondary-hover: var(--brown-50); /* Hover de secondary e ghost: tinta marrom suave. */
+  --action-secondary-fg: var(--brown-600); /* Texto do botão secundário. */
+  --action-quiet-hover: var(--linen-100); /* Hover de controles quietos (ghost, IconButton quiet). */
+  --action-disabled: var(--linen-200); /* Fundo desabilitado, sem sombra. */
+  --action-disabled-fg: var(--linen-400); /* Texto desabilitado. */
+  --status-success: var(--sage-500); /* Sucesso: Badge, Toast, confirmado. */
+  --status-success-soft: var(--sage-50); /* Fundo de sucesso. */
+  --status-warning: var(--ochre-500); /* Aviso: aguardando, horário quase cheio. */
+  --status-warning-soft: #fbf1de; /* Fundo de aviso. */
+  --status-danger: var(--rust-500); /* Erro, cancelado. */
+  --status-danger-soft: #f8e7e3; /* Fundo de erro. */
+  --status-info: var(--linen-600); /* Informação neutra. */
+  --status-info-soft: var(--linen-100); /* Fundo de informação. */
+  --shadow-none: none; /* Sem sombra (card flat, desabilitado). */
+  --shadow-hairline: 0 0 0 1px #ebdcc6; /* Hairline emulada por sombra (border-hairline). */
+  --shadow-soft: 0 1px 2px rgba(92,60,30,.06),0 8px 24px rgba(92,60,30,.08); /* Cards em repouso. */
+  --shadow-lifted: 0 2px 6px rgba(92,60,30,.08),0 18px 40px rgba(92,60,30,.14); /* Hover de card interativo, dropdowns, tooltip. */
+  --shadow-sheet: 0 24px 64px rgba(52,30,15,.24); /* Dialogs, moldura do celular. */
+  --shadow-inset-hairline: inset 0 0 0 1px #ebdcc6; /* Hairline interna (chips, molduras). */
+  --shadow-inset-press: inset 0 1px 2px rgba(92,60,30,.16); /* Controle pressionado. */
+  --focus-ring: 0 0 0 3px rgba(133,94,62,.35); /* Anel de foco visível: 3px marrom a 35%. Nunca removido. */
+}
+:root {
+  --space-2: 2px; /* Ajuste ótico mínimo. */
+  --space-4: 4px; /* Gap entre ícone e texto pequeno. */
+  --space-6: 6px; /* Gap de badges. */
+  --space-8: 8px; /* Gap ícone-rótulo em botões. */
+  --space-12: 12px; /* Gap em linhas de chips e controles. */
+  --space-16: 16px; /* Padding de card compacto; stack padrão. */
+  --space-20: 20px; /* Padding horizontal de botão md. */
+  --space-24: 24px; /* Padding de card; gutter mobile. */
+  --space-32: 32px; /* Stack solto; padding de dialog. */
+  --space-40: 40px; /* Separação entre blocos. */
+  --space-56: 56px; /* section-y-compact. */
+  --space-72: 72px; /* Respiro grande. */
+  --space-96: 96px; /* section-y: padding vertical de seção. */
+  --space-128: 128px; /* Hero. */
+  --gutter-inline: 24px; /* Gutter lateral no mobile. */
+  --gutter-inline-lg: 48px; /* Gutter lateral no desktop. */
+  --section-y: 96px; /* Padding vertical de seções do site. */
+  --section-y-compact: 56px; /* Seções compactas e app. */
+  --stack-tight: 8px; /* Pilha apertada (rótulo + campo). */
+  --stack-default: 16px; /* Pilha padrão. */
+  --stack-loose: 32px; /* Pilha entre grupos. */
+  --radius-none: 0; /* Sem arredondamento. */
+  --radius-xs: 4px; /* Monograma pequeno, detalhes. */
+  --radius-sm: 8px; /* Escala: checkbox, monograma. */
+  --radius-md: 16px; /* Escala: cards. */
+  --radius-lg: 24px; /* Escala: imagens. */
+  --radius-xl: 28px; /* Escala: sheets. */
+  --radius-pill: 999px; /* Botões, badges e tags. */
+  --radius-card: 16px; /* Cards (= radius-md). */
+  --radius-control: 12px; /* Campos e TimeSlot. */
+  --radius-button: 999px; /* Botões em pílula. */
+  --radius-image: 24px; /* Blocos de imagem (= radius-lg); fotos podem ganhar arco no topo. */
+  --radius-sheet: 28px; /* Dialogs e sheets (= radius-xl). */
+  --measure-prose: 64ch; /* Largura máxima de prosa (.ds-prose). */
+  --measure-narrow: 46ch; /* Largura máxima de leads. */
+  --container-max: 1180px; /* Container de página. */
+  --container-text: 720px; /* Coluna de texto. */
+  --control-h-s: 34px; /* Altura de controle sm. */
+  --control-h-m: 42px; /* Altura de controle md. */
+  --control-h-l: 52px; /* Altura de controle lg. */
+  --tap-min: 44px; /* Alvo de toque mínimo — nada tocável abaixo disso. */
+  --wash-warm: linear-gradient(180deg,#fbf4e8,#f5eada); /* Placeholders de imagem e estados vazios. */
+  --wash-gold: linear-gradient(135deg,#fdf7ea 0%,#f8eacb 55%,#f8ddcd 100%); /* Luz de fim de tarde: fundo do herói e da faixa de agendamento. */
+  --scrim-bottom: linear-gradient(to top,rgba(26,21,19,.72),rgba(26,21,19,0)); /* Para texto sobre fotografia futura. */
+  --overlay-blur: saturate(120%) blur(10px); /* backdrop-filter do cabeçalho fixo translúcido (86% linho). */
+  --weight-light: 300; /* Display Spectral, lead. */
+  --weight-regular: 400; /* Corpo; títulos de seção Spectral. */
+  --weight-medium: 500; /* Botões, títulos de UI, eyebrow. */
+  --weight-semibold: 600; /* Uso raro. */
+  --weight-bold: 700; /* Uso raro. */
+  --size-display-xl: 60px; /* Herói. */
+  --size-display-l: 44px; /* h1, --type-display. */
+  --size-display-m: 34px; /* h2, títulos de seção. */
+  --size-heading-l: 26px; /* h3, nome de serviço. */
+  --size-heading-m: 21px; /* h4, títulos de UI. */
+  --size-heading-s: 18px; /* Subtítulos. */
+  --size-body-l: 18px; /* Lead. */
+  --size-body-m: 16px; /* Corpo. */
+  --size-body-s: 14px; /* Corpo pequeno, botão sm. */
+  --size-caption: 13px; /* Legendas. */
+  --size-micro: 11px; /* Eyebrow. */
+  --leading-tight: 1.08; /* Display. */
+  --leading-snug: 1.25; /* Títulos. */
+  --leading-normal: 1.5; /* Legendas e UI. */
+  --leading-relaxed: 1.65; /* Corpo de texto. */
+  --tracking-tight: -0.015em; /* Display e títulos Spectral. */
+  --tracking-normal: 0; /* Padrão. */
+  --tracking-wide: 0.04em; /* Legendas em caixa alta pequenas. */
+  --tracking-caps: 0.14em; /* Eyebrow em caixa alta. */
+  --font-serif-display: "Spectral", Georgia, "Times New Roman", serif;
+  --font-sans-body: "DM Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "DM Mono", "SFMono-Regular", Menlo, monospace;
+  --font-portal: "Portal", "DM Sans", sans-serif;
+  --text-display-xl: italic 300 60px/1.08 var(--font-serif-display); /* Herói do site, em itálico. */
+  --text-display: italic 300 44px/1.08 var(--font-serif-display); /* --type-display: h1 e aberturas, itálico. */
+  --text-title: italic 400 34px/1.2 var(--font-serif-display); /* --type-title: títulos de seção (h2), itálico. */
+  --text-heading-l: 400 26px/1.25 var(--font-serif-display); /* h3: nome de serviço. */
+  --text-wordmark: italic 300 52px/1 var(--font-serif-display); /* Assinatura da marca: Spectral Light itálico, com hairline dourada ou marrom e MASSOTERAPIA em caps. */
+  --text-heading: 500 21px/1.25 var(--font-sans-body); /* --type-heading: títulos de UI (h4). */
+  --text-body-lead: 300 18px/1.65 var(--font-sans-body); /* --type-body-lead: leads, até 46ch. */
+  --text-body-s: 400 14px/1.5 var(--font-sans-body); /* Corpo pequeno, botão sm. */
+  --text-caption: 400 13px/1.5 var(--font-sans-body); /* --type-caption: legendas e metadados. */
+  --text-eyebrow: 500 11px/1.4 var(--font-sans-body); /* --type-eyebrow: sempre em caixa alta (.ds-eyebrow). A única caixa alta do sistema. */
+  --text-mono: 400 11px/1.5 var(--font-mono); /* Só em especificações de token. */
+  --text-bove-mark: 400 64px/1 var(--font-portal); /* Portal Regular (subset A E M O P R S T U b e o v), extraída do favicon. Só na marca 'Bove' / MASSOTERAPEUTA, nunca em texto corrido. */
+}
+.display-xl {
+  font-family: var(--font-serif-display);
+  font-size: 60px;
+  line-height: 1.08;
+  font-weight: 300;
+  letter-spacing: -0.015em;
+  font-style: italic;
+}
+.display {
+  font-family: var(--font-serif-display);
+  font-size: 44px;
+  line-height: 1.08;
+  font-weight: 300;
+  letter-spacing: -0.015em;
+  font-style: italic;
+}
+.title {
+  font-family: var(--font-serif-display);
+  font-size: 34px;
+  line-height: 1.2;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  font-style: italic;
+}
+.heading-l {
+  font-family: var(--font-serif-display);
+  font-size: 26px;
+  line-height: 1.25;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+}
+.wordmark {
+  font-family: var(--font-serif-display);
+  font-size: 52px;
+  line-height: 1;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  font-style: italic;
+}
+.heading {
+  font-family: var(--font-sans-body);
+  font-size: 21px;
+  line-height: 1.25;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.body-lead {
+  font-family: var(--font-sans-body);
+  font-size: 18px;
+  line-height: 1.65;
+  font-weight: 300;
+  letter-spacing: 0;
+}
+.body {
+  font-family: var(--font-sans-body);
+  font-size: 16px;
+  line-height: 1.65;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.body-s {
+  font-family: var(--font-sans-body);
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.caption {
+  font-family: var(--font-sans-body);
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.eyebrow {
+  font-family: var(--font-sans-body);
+  font-size: 11px;
+  line-height: 1.4;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+}
+.mono {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.bove-mark {
+  font-family: var(--font-portal);
+  font-size: 64px;
+  line-height: 1;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+@font-face {
+  font-family: "Portal";
+  src: url("fonts/PortalRegular-subset.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
