@@ -1,16 +1,16 @@
 export const dynamic = "force-dynamic";
 
+import Link from "next/link";
+import { MessageCircle } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { Calendar, DollarSign, Users, Clock, AlertCircle } from "lucide-react";
 import { SyncButton } from "@/components/sync-button";
 import { PaymentButton } from "@/components/payment-button";
-import { startOfTodayBR, endOfTodayBR, formatLongDateBR, formatTimeBR } from "@/lib/date";
+import { startOfTodayBR, endOfTodayBR, formatLongDateBR, formatTimeBR, nowBR } from "@/lib/date";
 import { getSettings } from "@/lib/settings";
 import { formatCurrencyBR } from "@/lib/format";
-import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { APPOINTMENT_STATUS } from "@/lib/status-labels";
-import { EmptyState } from "@/components/empty-state";
+import { whatsappLink } from "@/lib/vitrine";
 
 async function getDashboardData() {
   const today = startOfTodayBR();
@@ -21,137 +21,247 @@ async function getDashboardData() {
     Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0, 23, 59, 59)
   );
 
-  const [settings, [todayAppointments, pendingPayments, monthRevenue, totalClients]] = await Promise.all([
+  const [settings, [todayAppointments, pendingPayments, monthRevenue]] = await Promise.all([
     getSettings(),
     Promise.all([
-    prisma.appointment.findMany({
-      where: { startTime: { gte: today, lte: todayEnd }, status: { not: "CANCELLED" } },
-      include: { client: true },
-      orderBy: { startTime: "asc" },
-    }),
-    prisma.payment.findMany({
-      where: { status: { in: ["PENDING", "SENT"] } },
-      include: { client: true, appointment: true },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-    }),
-    prisma.payment.aggregate({
-      where: { status: "PAID", paidAt: { gte: startOfMonth, lte: endOfMonth } },
-      _sum: { amount: true },
-    }),
-      prisma.client.count(),
+      prisma.appointment.findMany({
+        where: { startTime: { gte: today, lte: todayEnd }, status: { not: "CANCELLED" } },
+        include: { client: true },
+        orderBy: { startTime: "asc" },
+      }),
+      prisma.payment.findMany({
+        where: { status: { in: ["PENDING", "SENT"] } },
+        include: { client: true, appointment: true },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      }),
+      prisma.payment.aggregate({
+        where: { status: "PAID", paidAt: { gte: startOfMonth, lte: endOfMonth } },
+        _sum: { amount: true },
+      }),
     ]),
   ]);
+
+  const nowMs = Date.now();
+  const nextAppointment =
+    todayAppointments.find(
+      (a) =>
+        a.startTime.getTime() >= nowMs && (a.status === "SCHEDULED" || a.status === "CONFIRMED")
+    ) ?? null;
+
+  const brHour = nowBR().getUTCHours();
+  const greeting =
+    brHour >= 5 && brHour < 12 ? "Bom dia" : brHour >= 12 && brHour < 18 ? "Boa tarde" : "Boa noite";
+
+  const monthName = new Intl.DateTimeFormat("pt-BR", {
+    month: "long",
+    timeZone: "America/Sao_Paulo",
+  }).format(new Date());
 
   return {
     todayAppointments,
     pendingPayments,
+    nextAppointment,
+    greeting,
+    monthName,
     monthRevenue: monthRevenue._sum.amount ?? 0,
-    totalClients,
     monthlyGoal: settings.monthlyGoal ?? null,
   };
 }
 
-export default async function DashboardPage() {
-  const { todayAppointments, pendingPayments, monthRevenue, totalClients, monthlyGoal } =
-    await getDashboardData();
+export default async function InicioPage() {
+  const {
+    todayAppointments,
+    pendingPayments,
+    nextAppointment,
+    greeting,
+    monthName,
+    monthRevenue,
+    monthlyGoal,
+  } = await getDashboardData();
 
-  const goalPct = monthlyGoal && monthlyGoal > 0
-    ? Math.min(Math.round((monthRevenue / monthlyGoal) * 100), 100)
-    : null;
+  const goalPct =
+    monthlyGoal && monthlyGoal > 0
+      ? Math.min(Math.round((monthRevenue / monthlyGoal) * 100), 100)
+      : null;
+
+  const pendingTotal = pendingPayments.reduce((sum, p) => sum + p.amount, 0);
 
   return (
-    <div className="p-3 sm:p-6 max-w-5xl mx-auto">
-      <PageHeader
-        title="Início"
-        subtitle={<span className="capitalize">{formatLongDateBR()}</span>}
-        action={<SyncButton />}
-      />
+    <div className="mx-auto max-w-5xl px-5 pt-6 pb-24 md:px-6 md:pb-10">
+      <header className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-[0.14em] text-amber-700 capitalize">
+            {formatLongDateBR()}
+          </p>
+          <h1 className="font-display text-3xl text-gray-900">{greeting}, Beto.</h1>
+        </div>
+        <SyncButton />
+      </header>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <StatCard
-          icon={<Calendar className="text-violet-600" size={20} />}
-          label="Hoje"
-          value={String(todayAppointments.length)}
-          sub="atendimentos"
-        />
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <DollarSign className="text-green-600" size={20} />
-            <span className="text-xs text-gray-500">Receita do mês</span>
-          </div>
-          <p className="text-base sm:text-xl font-bold text-gray-900">{formatCurrencyBR(monthRevenue)}</p>
-          {goalPct !== null ? (
-            <div className="mt-2">
-              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${goalPct >= 100 ? "bg-green-500" : "bg-violet-500"}`}
-                  style={{ width: `${goalPct}%` }}
-                />
+      <div className="mt-6 flex flex-col gap-6 md:grid md:grid-cols-2 md:items-start">
+        {nextAppointment && (
+          <section className="relative overflow-hidden rounded-2xl bg-violet-800 p-5 text-gray-50 md:col-start-1 md:row-start-1">
+            <svg
+              aria-hidden
+              viewBox="0 0 180 90"
+              width="180"
+              height="90"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              fill="none"
+              className="pointer-events-none absolute -right-5 bottom-0 text-amber-300 opacity-70"
+            >
+              {[30, 54, 78].map((r) => (
+                <path key={r} d={`M${90 - r} 90 A${r} ${r} 0 0 1 ${90 + r} 90`} />
+              ))}
+            </svg>
+
+            <div className="relative flex flex-col gap-3">
+              <p className="text-xs font-medium uppercase tracking-[0.14em] text-amber-200">
+                Próximo atendimento · {formatTimeBR(nextAppointment.startTime)}
+              </p>
+              <div>
+                <h2 className="font-display text-3xl leading-tight">
+                  {nextAppointment.client?.name ?? nextAppointment.title}
+                </h2>
+                <p className="mt-1 text-gray-100/90">
+                  {nextAppointment.serviceType} · {formatTimeBR(nextAppointment.startTime)}–
+                  {formatTimeBR(nextAppointment.endTime)}
+                </p>
               </div>
-              <p className="text-xs text-gray-400 mt-1">{goalPct}% da meta</p>
+              {nextAppointment.client && (
+                <div className="flex flex-wrap gap-2">
+                  <a
+                    href={whatsappLink("", nextAppointment.client.phone)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-4 text-sm font-medium text-gray-800"
+                  >
+                    <MessageCircle size={16} strokeWidth={1.75} aria-hidden />
+                    WhatsApp
+                  </a>
+                  <Link
+                    href={`/clientes/${nextAppointment.client.id}`}
+                    className="inline-flex min-h-11 items-center rounded-full border border-white/40 px-4 text-sm font-medium text-gray-50"
+                  >
+                    Ver ficha
+                  </Link>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {goalPct !== null && monthlyGoal && (
+          <section className="rounded-xl border border-gray-200 bg-white p-5 md:col-start-2 md:row-start-1">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="text-sm text-gray-500">Meta de {monthName}</h2>
+              <span className="text-sm font-semibold text-amber-700">{goalPct}%</span>
+            </div>
+            <p className="mt-2 font-display text-2xl text-gray-900">
+              {formatCurrencyBR(monthRevenue)}{" "}
+              <span className="font-sans text-base text-gray-500">de {formatCurrencyBR(monthlyGoal)}</span>
+            </p>
+            <div
+              role="progressbar"
+              aria-label="Progresso da meta do mês"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={goalPct}
+              className="mt-3 h-2 overflow-hidden rounded bg-violet-100"
+            >
+              <div className="h-full bg-amber-500" style={{ width: `${goalPct}%` }} />
+            </div>
+          </section>
+        )}
+
+        <div className="grid grid-cols-2 gap-3 md:col-start-2 md:row-start-2">
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <p className="text-sm text-gray-500">Hoje</p>
+            <p className="mt-1 font-display text-3xl text-gray-900">{todayAppointments.length}</p>
+            <p className="text-xs text-gray-500">atendimentos</p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <p className="text-sm text-gray-500">A receber</p>
+            <p className="mt-1 font-display text-2xl text-amber-700">{formatCurrencyBR(pendingTotal)}</p>
+            <p className="text-xs text-gray-500">{pendingPayments.length} pendentes</p>
+          </div>
+        </div>
+
+        <section className="md:col-start-1 md:row-start-2">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="text-[17px] font-semibold text-gray-900">Agenda de hoje</h2>
+            <Link href="/agenda" className="text-sm text-violet-700">
+              Ver agenda
+            </Link>
+          </div>
+          {todayAppointments.length === 0 ? (
+            <div className="mt-3 flex flex-col items-start gap-3 rounded-xl border border-gray-200 bg-white p-5">
+              <p className="text-gray-500">Nenhum atendimento hoje.</p>
+              <Link
+                href="/agenda"
+                className="inline-flex min-h-11 items-center rounded-full bg-violet-600 px-5 text-sm font-medium text-white"
+              >
+                Agendar
+              </Link>
             </div>
           ) : (
-            <p className="text-xs text-gray-400">recebido</p>
-          )}
-        </div>
-        <StatCard
-          icon={<AlertCircle className="text-amber-600" size={20} />}
-          label="Pagamentos"
-          value={String(pendingPayments.length)}
-          sub="pendentes"
-        />
-        <StatCard
-          icon={<Users className="text-blue-600" size={20} />}
-          label="Clientes"
-          value={String(totalClients)}
-          sub="cadastrados"
-        />
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Clock size={16} className="text-violet-600" />
-            Agenda de hoje
-          </h3>
-          {todayAppointments.length === 0 ? (
-            <EmptyState title="Nenhum atendimento hoje." />
-          ) : (
-            <ul className="space-y-3">
-              {todayAppointments.map((appt) => (
-                <li key={appt.id} className="flex items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="font-medium text-gray-800 text-sm truncate">
-                      {appt.client?.name ?? appt.title}
-                    </p>
-                    <p className="text-gray-400 text-xs">
-                      {formatTimeBR(appt.startTime)} – {formatTimeBR(appt.endTime)}
-                    </p>
-                  </div>
-                  <StatusBadge status={appt.status} map={APPOINTMENT_STATUS} />
-                </li>
-              ))}
+            <ul className="mt-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
+              {todayAppointments.map((appt) => {
+                const content = (
+                  <>
+                    <span className="w-12 shrink-0 tabular-nums font-semibold text-gray-900">
+                      {formatTimeBR(appt.startTime)}
+                    </span>
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate text-gray-900">{appt.client?.name ?? appt.title}</span>
+                      <span className="truncate text-sm text-gray-500">{appt.serviceType}</span>
+                    </span>
+                    <StatusBadge status={appt.status} map={APPOINTMENT_STATUS} />
+                  </>
+                );
+                const rowClass =
+                  "flex min-h-16 items-center gap-3 border-b border-gray-200 px-4 py-3 last:border-b-0";
+                return (
+                  <li key={appt.id}>
+                    {appt.client ? (
+                      <Link href={`/clientes/${appt.client.id}`} className={`${rowClass} hover:bg-gray-50`}>
+                        {content}
+                      </Link>
+                    ) : (
+                      <div className={rowClass}>{content}</div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
-        </div>
+        </section>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <DollarSign size={16} className="text-amber-500" />
-            Pagamentos pendentes
-          </h3>
+        <section className="md:col-start-2 md:row-start-3">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="text-[17px] font-semibold text-gray-900">Cobranças em aberto</h2>
+            <Link href="/financeiro" className="text-sm text-violet-700">
+              Financeiro
+            </Link>
+          </div>
           {pendingPayments.length === 0 ? (
-            <p className="text-gray-400 text-sm">Tudo em dia. Nenhuma cobrança em aberto.</p>
+            <div className="mt-3 rounded-xl bg-green-50 p-4 text-sm text-green-700">
+              Tudo em dia. Nenhuma cobrança em aberto.
+            </div>
           ) : (
-            <ul className="space-y-3">
+            <ul className="mt-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
               {pendingPayments.map((p) => (
-                <li key={p.id} className="flex items-center justify-between gap-2">
+                <li
+                  key={p.id}
+                  className="flex min-h-16 items-center justify-between gap-3 border-b border-gray-200 px-4 py-3 last:border-b-0"
+                >
                   <div className="min-w-0">
-                    <p className="font-medium text-gray-800 text-sm truncate">
-                      {p.client?.name ?? <span className="text-gray-400 italic">Cliente excluído</span>}
+                    <p className="truncate text-gray-900">
+                      {p.client?.name ?? <span className="text-gray-500 italic">Cliente excluído</span>}
                     </p>
-                    <p className="text-gray-400 text-xs">{formatCurrencyBR(p.amount)}</p>
+                    <p className="text-sm text-gray-500">{formatCurrencyBR(p.amount)}</p>
                   </div>
                   {p.appointmentId && p.client && p.status === "PENDING" && (
                     <PaymentButton
@@ -164,31 +274,8 @@ export default async function DashboardPage() {
               ))}
             </ul>
           )}
-        </div>
+        </section>
       </div>
-    </div>
-  );
-}
-
-function StatCard({
-  icon,
-  label,
-  value,
-  sub,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  sub: string;
-}) {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4">
-      <div className="flex items-center gap-2 mb-2">
-        {icon}
-        <span className="text-xs text-gray-500">{label}</span>
-      </div>
-      <p className="text-xl font-bold text-gray-900">{value}</p>
-      <p className="text-xs text-gray-400">{sub}</p>
     </div>
   );
 }

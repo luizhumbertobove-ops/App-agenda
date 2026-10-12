@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { RefreshCw } from "lucide-react";
-import { Button } from "@/components/button";
 
 export function SyncButton() {
   const [loading, setLoading] = useState(false);
@@ -25,11 +24,21 @@ export function SyncButton() {
 
   return (
     <div className="flex items-center gap-3">
-      {result && <span className="text-sm text-gray-600">{result}</span>}
-      <Button onClick={handleSync} disabled={loading} className="flex items-center gap-2">
-        <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-        Sincronizar agenda
-      </Button>
+      {result && (
+        <span role="status" className="text-sm text-gray-500">
+          {result}
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={handleSync}
+        disabled={loading}
+        aria-label="Sincronizar agenda"
+        title="Sincronizar agenda"
+        className="flex size-11 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 transition-colors hover:bg-gray-100 disabled:opacity-50"
+      >
+        <RefreshCw size={18} strokeWidth={1.75} className={loading ? "animate-spin" : ""} />
+      </button>
     </div>
   );
 }
