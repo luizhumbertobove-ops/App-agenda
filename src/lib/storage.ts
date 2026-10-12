@@ -36,7 +36,9 @@ export async function uploadVitrineImage(key: string, file: File): Promise<strin
   const resposta = await fetch(`${supabaseUrl}/storage/v1/object/vitrine/${path}`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${serviceKey}`,
+      // Chaves novas (sb_secret_…) só autenticam pelo cabeçalho apikey; Bearer exige JWT (chave service_role antiga).
+      apikey: serviceKey,
+      ...(serviceKey.startsWith("eyJ") ? { Authorization: `Bearer ${serviceKey}` } : {}),
       "Content-Type": file.type,
       "x-upsert": "true",
     },
