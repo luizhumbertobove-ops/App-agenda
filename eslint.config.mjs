@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Referência visual do design system (React de exemplo, não é código do app):
+    "design-system/**",
   ]),
 ]);
 
