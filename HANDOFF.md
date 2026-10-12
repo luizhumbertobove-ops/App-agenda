@@ -8,7 +8,7 @@ Um único app Next.js com duas partes no mesmo domínio:
 
 | Parte | Rotas | Quem usa | Acesso |
 |---|---|---|---|
-| **Admin** ("App Beto") | `/`, `/agenda`, `/clientes`, `/financeiro`, `/mensagens`, `/servicos` | Só o Beto, para gerenciar agenda, clientes e cobranças | Senha única (`APP_PASSWORD`) |
+| **Admin** ("App Beto") | `/`, `/agenda`, `/clientes`, `/financeiro`, `/mensagens`, `/servicos`, `/conteudo-vitrine` | Só o Beto, para gerenciar agenda, clientes e cobranças | Senha única (`APP_PASSWORD`) |
 | **Vitrine** (Bove Massoterapia) | `/vitrine`, `/vitrine/agendar` | Clientes, para conhecer o trabalho e agendar online | Pública |
 
 Cada parte é instalável no celular como um app (PWA) separado: ícone roxo para o admin, marrom para a vitrine. Os manifests são `public/manifest.json` (admin) e `public/vitrine/manifest.webmanifest` (vitrine), cada um com `scope` próprio. Sem o `scope` explícito, o celular trata os dois como o mesmo app.
@@ -37,6 +37,8 @@ Cada parte é instalável no celular como um app (PWA) separado: ícone roxo par
 | `GOOGLE_CALENDAR_ID` | Qual agenda sincronizar | Google Calendar → configurações da agenda |
 | `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`, `EVOLUTION_INSTANCE` | Envio de mensagens por WhatsApp | Servidor Evolution API (auto-hospedado) e a instância ligada ao número do WhatsApp |
 | `MERCADOPAGO_ACCESS_TOKEN` | Geração de cobranças Pix | Mercado Pago → Suas integrações → credenciais de produção |
+| `SUPABASE_URL` | Endereço da API do Supabase, usado para guardar as fotos da vitrine (Storage) e liberar a exibição delas no `next/image` (`next.config.ts`). Precisa estar definida também no build da Vercel | Supabase → Project Settings → API → *Project URL* |
+| `SUPABASE_SERVICE_ROLE_KEY` | Chave de serviço para enviar as fotos ao bucket `vitrine`. **Segredo**: só o servidor usa, nunca cole em código ou em componente do navegador | Supabase → Project Settings → API → *service_role* (secret) |
 
 `NEXTAUTH_SECRET` e `NEXTAUTH_URL` aparecem no `.env` antigo, mas **não são usadas** pelo código (o pacote `next-auth` está instalado sem uso).
 
@@ -72,6 +74,12 @@ O domínio de produção atual é `https://appbeto-puce.vercel.app`. Se ele muda
   - `/api/calendar/sync`, todo dia às 11h: sincroniza com o Google Calendar
 - **Banco:** schema em `prisma/schema.prisma`. As migrações em `prisma/migrations/` são arquivos SQL manuais (`manual_*.sql`), aplicados direto no banco. Não rode `prisma migrate reset` nem `prisma db push` contra produção sem backup.
 - **Mensagens:** os modelos de texto do WhatsApp são editáveis pela tela Mensagens (tabela `Settings`); os padrões estão em `src/lib/evolution.ts`.
+- **Vitrine editável:** a tela **Vitrine** (`/conteudo-vitrine`, dentro do login) troca textos, contato e as três fotos de `/vitrine`. Os valores ficam na tabela `VitrineContent` (chave/valor); quando uma chave não existe, vale o padrão de `src/lib/vitrine-content.ts`. Para colocar no ar:
+  1. Aplicar `prisma/migrations/manual_vitrine_content.sql` no Supabase SQL Editor.
+  2. No Supabase Storage, criar o bucket **`vitrine` com acesso público** (as fotos são lidas direto por URL).
+  3. Definir `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` nas variáveis (ver tabela acima).
+  
+  Fotos enviadas são guardadas com nome novo a cada troca (`<campo>-<data>.<ext>`); as antigas não são apagadas automaticamente.
 - **Componentes compartilhados do admin:** `src/components/` tem `Modal`, `Button`, `Input`, `PageHeader`, `EmptyState`, `StatusBadge` e `ClientCombobox`; `src/lib/format.ts` tem `formatCurrencyBR`. Use-os em vez de repetir classes do Tailwind.
 
 ## Pendências e riscos conhecidos

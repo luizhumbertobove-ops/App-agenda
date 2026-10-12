@@ -13,6 +13,7 @@ import {
   Package,
   List,
   Globe,
+  Store,
   X,
 } from "lucide-react";
 
@@ -23,6 +24,7 @@ const links = [
   { href: "/financeiro", label: "Financeiro", icon: DollarSign },
   { href: "/mensagens", label: "Mensagens", icon: MessageSquare },
   { href: "/servicos", label: "Serviços", icon: Package },
+  { href: "/conteudo-vitrine", label: "Vitrine", icon: Store },
 ];
 
 /** No celular, a barra de baixo mostra só as quatro telas do dia a dia; o resto fica em "Mais". */
