@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/confirmations",
+      "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/cron/reengagement",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/calendar/sync",
+      "schedule": "0 11 * * *"
+    }
+  ]
+}

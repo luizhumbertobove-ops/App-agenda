@@ -1,0 +1,155 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Client {
+  id          String   @id @default(cuid())
+  name        String
+  phone       String   @unique
+  email       String?
+  notes       String?
+  birthday    String?
+  tags        String[] @default([])
+  createdAt   DateTime @default(now())
+
+  planSubscriptions PlanSubscription[]
+  appointments      Appointment[]
+  payments          Payment[]
+  whatsappLogs      WhatsappLog[]
+}
+
+model Plan {
+  id           String @id @default(cuid())
+  name         String
+  sessions     Int
+  price        Float
+  validityDays Int
+
+  subscriptions PlanSubscription[]
+}
+
+model PlanSubscription {
+  id           String    @id @default(cuid())
+  clientId     String
+  planId       String
+  sessionsUsed Int       @default(0)
+  purchasedAt  DateTime  @default(now())
+  expiresAt    DateTime?
+  active       Boolean   @default(true)
+
+  client Client @relation(fields: [clientId], references: [id])
+  plan   Plan   @relation(fields: [planId], references: [id])
+}
+
+model Appointment {
+  id                 String            @id @default(cuid())
+  clientId           String?
+  googleEventId      String?           @unique
+  serviceType        String            @default("Massagem")
+  title              String
+  startTime          DateTime
+  endTime            DateTime
+  status             AppointmentStatus @default(SCHEDULED)
+  notes              String?
+  sessionNotes       String?
+  cancelReason       String?
+  confirmedAt        DateTime?
+  confirmationSentAt DateTime?
+  recurrenceId       String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  client   Client?   @relation(fields: [clientId], references: [id])
+  payments Payment[]
+}
+
+model BlockedSlot {
+  id        String   @id @default(cuid())
+  startTime DateTime
+  endTime   DateTime
+  reason    String?
+  createdAt DateTime @default(now())
+}
+
+model Service {
+  id           String  @id @default(cuid())
+  name         String
+  durationMins Int
+  price        Float
+  active       Boolean @default(true)
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  clientId      String?
+  appointmentId String?
+  amount        Float
+  status        PaymentStatus @default(PENDING)
+  pixCode       String?
+  pixQrCode     String?
+  mpPaymentId   String?       @unique
+  linkSentAt    DateTime?
+  paidAt        DateTime?
+  createdAt     DateTime      @default(now())
+
+  client      Client?      @relation(fields: [clientId], references: [id])
+  appointment Appointment? @relation(fields: [appointmentId], references: [id])
+}
+
+model WhatsappLog {
+  id       String      @id @default(cuid())
+  clientId String
+  type     MessageType
+  message  String
+  status   String      @default("sent")
+  sentAt   DateTime    @default(now())
+
+  client Client @relation(fields: [clientId], references: [id])
+}
+
+model SyncLog {
+  id              String   @id @default(cuid())
+  syncedAt        DateTime @default(now())
+  eventsProcessed Int      @default(0)
+  errors          String?
+}
+
+model Settings {
+  id                          String   @id @default("singleton")
+  confirmationTemplate        String?
+  paymentTemplate             String?
+  reengagementTemplate        String?
+  noShowTemplate              String?
+  confirmationDaysBefore      Int      @default(1)
+  confirmationSendHour        Int      @default(9)
+  reengagementInactivityDays  Int      @default(15)
+  reengagementCooldownDays    Int      @default(15)
+  monthlyGoal                 Float?
+  updatedAt                   DateTime @updatedAt
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  DONE
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  SENT
+  PAID
+  OVERDUE
+}
+
+enum MessageType {
+  CONFIRMATION
+  PAYMENT_LINK
+  REENGAGEMENT
+  NO_SHOW
+}
