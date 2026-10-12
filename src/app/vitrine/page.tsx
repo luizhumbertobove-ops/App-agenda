@@ -20,14 +20,8 @@ import {
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { formatCurrencyBR } from "@/lib/format";
-import {
-  BETO_PHONE_DISPLAY,
-  INSTAGRAM_HANDLE,
-  INSTAGRAM_URL,
-  ADDRESS,
-  MAPS_URL,
-  whatsappLink,
-} from "@/lib/vitrine";
+import { whatsappLink } from "@/lib/vitrine";
+import { getVitrineContent } from "@/lib/vitrine-content";
 import { Button } from "@/components/vitrine/ds/Button";
 import { SectionHeading } from "@/components/vitrine/ds/SectionHeading";
 import { ServiceCard } from "@/components/vitrine/ds/ServiceCard";
@@ -39,23 +33,6 @@ export const metadata: Metadata = {
     "Massoterapia em Serrana/SP. Agende seu horário com Humberto Bove (Spaço Lhum) pelo WhatsApp.",
 };
 
-const BENEFITS = [
-  { icon: HandHeart, label: "Alivia tensões e dores musculares" },
-  { icon: Sparkles, label: "Reduz o estresse e a ansiedade" },
-  { icon: Droplets, label: "Melhora a circulação sanguínea" },
-  { icon: Zap, label: "Aumenta a disposição e o bem-estar" },
-  { icon: Wind, label: "Promove relaxamento profundo" },
-  { icon: Moon, label: "Contribui para uma melhor qualidade do sono" },
-];
-
-const GALLERY_IMAGE = { src: "/vitrine/sessao.jpg", alt: "Humberto Bove aplicando massoterapia" };
-
-const NAV_LINKS = [
-  { href: "#servicos", label: "Serviços" },
-  { href: "#sobre", label: "Sobre" },
-  { href: "#contato", label: "Contato" },
-];
-
 async function getServices() {
   return prisma.service.findMany({
     where: { active: true },
@@ -63,19 +40,29 @@ async function getServices() {
   });
 }
 
-function Wordmark({ tone = "default", size = 22 }: { tone?: "default" | "inverse"; size?: number }) {
+function Wordmark({
+  tone = "default",
+  size = 22,
+  nome,
+  espaco,
+}: {
+  tone?: "default" | "inverse";
+  size?: number;
+  nome: string;
+  espaco: string;
+}) {
   const color = tone === "inverse" ? "var(--linen-0)" : "var(--text-strong)";
   const sub = tone === "inverse" ? "rgba(255,253,251,.7)" : "var(--text-muted)";
   const rule = tone === "inverse" ? "rgba(255,253,251,.55)" : "var(--action-primary)";
   return (
     <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 5 }}>
       <span style={{ fontFamily: "var(--font-serif-display)", fontWeight: 300, fontStyle: "italic", fontSize: size, lineHeight: 1, letterSpacing: "-.02em", color }}>
-        Humberto Bove
+        {nome}
       </span>
       <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span style={{ width: size * 1.6, height: 1, background: rule, flex: "none" }} />
         <span style={{ font: "var(--type-eyebrow)", letterSpacing: "var(--tracking-caps)", textTransform: "uppercase", color: sub }}>
-          Spaço Lhum
+          {espaco}
         </span>
       </span>
     </span>
@@ -83,7 +70,24 @@ function Wordmark({ tone = "default", size = 22 }: { tone?: "default" | "inverse
 }
 
 export default async function VitrinePage() {
-  const services = await getServices();
+  const [services, c] = await Promise.all([getServices(), getVitrineContent()]);
+
+  const navLinks = [
+    { href: "#servicos", label: c.menuServicos },
+    { href: "#sobre", label: c.menuSobre },
+    { href: "#contato", label: c.menuContato },
+  ];
+
+  const benefits = [
+    { icon: HandHeart, label: c.beneficio1 },
+    { icon: Sparkles, label: c.beneficio2 },
+    { icon: Droplets, label: c.beneficio3 },
+    { icon: Zap, label: c.beneficio4 },
+    { icon: Wind, label: c.beneficio5 },
+    { icon: Moon, label: c.beneficio6 },
+  ];
+
+  const whatsappMessage = "Olá Humberto, vim pelo site e quero agendar um horário.";
 
   return (
     <div className="bove-ds" style={{ background: "var(--surface-page)", minHeight: "100vh" }}>
@@ -93,9 +97,9 @@ export default async function VitrinePage() {
         style={{ background: "rgba(250,246,241,.86)", backdropFilter: "var(--overlay-blur)", borderColor: "var(--border-hairline)" }}
       >
         <div className="max-w-[var(--container-max)] mx-auto flex items-center gap-6 lg:gap-10 px-[var(--gutter-inline)] lg:px-[var(--gutter-inline-lg)] py-4">
-          <Wordmark />
+          <Wordmark nome={c.nomeProfissional} espaco={c.nomeEspaco} />
           <nav className="hidden md:flex gap-8 ml-auto">
-            {NAV_LINKS.map((l) => (
+            {navLinks.map((l) => (
               <a key={l.href} href={l.href} style={{ font: "var(--type-body)", fontSize: "var(--size-body-s)", color: "var(--text-body)" }} className="no-underline">
                 {l.label}
               </a>
@@ -103,7 +107,7 @@ export default async function VitrinePage() {
           </nav>
           <div className="ml-auto md:ml-0">
             <Button variant="primary" size="sm" href="/vitrine/agendar" iconLeft={<Icon icon={CalendarDays} size={16} />}>
-              Agendar
+              {c.headerBotaoAgendar}
             </Button>
           </div>
         </div>
@@ -112,33 +116,32 @@ export default async function VitrinePage() {
       {/* Hero */}
       <section className="max-w-[var(--container-max)] mx-auto px-[var(--gutter-inline)] lg:px-[var(--gutter-inline-lg)] py-16 lg:py-[var(--section-y)] grid grid-cols-1 lg:grid-cols-[1.05fr_.95fr] gap-10 lg:gap-[var(--space-72)] items-center">
         <div className="flex flex-col gap-6">
-          <span className="ds-eyebrow">Massoterapia em Serrana, SP</span>
-          <h1 style={{ fontSize: "clamp(36px, 6vw, 60px)", maxWidth: "16ch" }}>Massoterapia que cuida de verdade.</h1>
+          <span className="ds-eyebrow">{c.heroEyebrow}</span>
+          <h1 style={{ fontSize: "clamp(36px, 6vw, 60px)", maxWidth: "16ch" }}>{c.heroTitulo}</h1>
           <p style={{ font: "var(--type-body-lead)", color: "var(--text-body)", maxWidth: "var(--measure-narrow)" }}>
-            Sessões de uma hora, sempre em horário cheio, conduzidas com atenção ao que o seu corpo precisa naquele
-            dia. Escolha o serviço e reserve o horário direto por aqui.
+            {c.heroTexto}
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <Button variant="primary" size="lg" href="/vitrine/agendar" iconLeft={<Icon icon={CalendarDays} size={18} />}>
-              Agendar horário online
+              {c.heroBotaoAgendar}
             </Button>
             <Button
               variant="secondary"
               size="lg"
-              href={whatsappLink("Olá Humberto, vim pelo site e quero agendar um horário.")}
+              href={whatsappLink(whatsappMessage, c.telefoneWhatsapp)}
               target="_blank"
               rel="noopener noreferrer"
               iconLeft={<Icon icon={MessageCircle} size={18} />}
             >
-              Falar no WhatsApp
+              {c.heroBotaoWhatsapp}
             </Button>
           </div>
           <div className="flex flex-col gap-2 pt-4 border-t" style={{ borderColor: "var(--border-hairline)" }}>
             {(
               [
-                { icon: MapPin, text: "Serrana, SP" },
-                { icon: Clock, text: "Segunda a sexta, 7h às 19h" },
-                { icon: AtSign, text: "spalhum" },
+                { icon: MapPin, text: c.heroCidade },
+                { icon: Clock, text: c.horarioAtendimento },
+                { icon: AtSign, text: c.heroInstagram },
               ] satisfies { icon: typeof MapPin; text: string }[]
             ).map(({ icon, text }) => (
               <span key={text} className="flex items-center gap-2" style={{ font: "var(--type-caption)", color: "var(--text-muted)" }}>
@@ -149,7 +152,7 @@ export default async function VitrinePage() {
           </div>
         </div>
         <div className="relative rounded-[var(--radius-image)] overflow-hidden aspect-[4/5] lg:aspect-auto lg:h-[520px]" style={{ boxShadow: "var(--shadow-inset-hairline)" }}>
-          <Image src="/vitrine/massoterapia.jpg" alt="Sessão de massoterapia no Spaço Lhum" fill className="object-cover" priority />
+          <Image src={c.imagemTopo} alt="Sessão de massoterapia no Spaço Lhum" fill className="object-cover" priority />
         </div>
       </section>
 
@@ -157,16 +160,16 @@ export default async function VitrinePage() {
       <section id="sobre" style={{ background: "var(--surface-card)", borderTop: "1px solid var(--border-hairline)", borderBottom: "1px solid var(--border-hairline)" }}>
         <div className="max-w-[var(--container-max)] mx-auto px-[var(--gutter-inline)] lg:px-[var(--gutter-inline-lg)] py-14 lg:py-[var(--section-y)] grid grid-cols-1 lg:grid-cols-[.9fr_1.1fr] gap-10 lg:gap-[var(--space-72)] items-center">
           <div className="relative rounded-[var(--radius-image)] overflow-hidden aspect-[4/5] lg:aspect-auto lg:h-[440px] order-2 lg:order-1" style={{ boxShadow: "var(--shadow-inset-hairline)" }}>
-            <Image src="/vitrine/missao.jpg" alt="Humberto Bove, massoterapeuta do Spaço Lhum" fill className="object-cover" />
+            <Image src={c.imagemMissao} alt="Humberto Bove, massoterapeuta do Spaço Lhum" fill className="object-cover" />
           </div>
           <div className="flex flex-col gap-6 order-1 lg:order-2">
             <SectionHeading
-              eyebrow="Sobre"
-              title="Minha missão"
-              description="Levar autocuidado e alívio de dores físicas e emocionais através das minhas mãos."
+              eyebrow={c.sobreEyebrow}
+              title={c.sobreTitulo}
+              description={c.sobreTexto}
             />
             <div className="grid grid-cols-2 gap-4">
-              {BENEFITS.map(({ icon, label }) => (
+              {benefits.map(({ icon, label }) => (
                 <span key={label} className="flex items-start gap-3" style={{ font: "var(--type-body)", fontSize: "var(--size-body-s)", color: "var(--text-body)" }}>
                   <Icon icon={icon} size={18} style={{ color: "var(--text-accent)", marginTop: 2 }} />
                   {label}
@@ -181,18 +184,18 @@ export default async function VitrinePage() {
       <section id="servicos" style={{ background: "var(--surface-sage-soft)" }}>
         <div className="max-w-[var(--container-max)] mx-auto px-[var(--gutter-inline)] lg:px-[var(--gutter-inline-lg)] py-14 lg:py-[var(--section-y)] flex flex-col gap-10">
           <SectionHeading
-            eyebrow="Serviços"
-            title="O que trabalhamos na sessão"
-            description="Sessões de 1 hora, sempre em horário cheio. Valores podem variar em datas especiais ou fora do horário comercial."
+            eyebrow={c.servicosEyebrow}
+            title={c.servicosTitulo}
+            description={c.servicosTexto}
             action={
               <Button variant="secondary" href="/vitrine/agendar" style={{ marginTop: "var(--space-8)" }}>
-                Agendar sessão
+                {c.servicosBotao}
               </Button>
             }
           />
           {services.length === 0 ? (
             <p style={{ font: "var(--type-body)", color: "var(--text-muted)" }}>
-              Fale pelo WhatsApp para conhecer os serviços disponíveis.
+              {c.servicosVazio}
             </p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[var(--space-24)]">
@@ -213,14 +216,14 @@ export default async function VitrinePage() {
       {/* Galeria */}
       <section style={{ background: "var(--surface-page)" }}>
         <div className="max-w-[var(--container-max)] mx-auto px-[var(--gutter-inline)] lg:px-[var(--gutter-inline-lg)] py-14 lg:py-[var(--section-y)] flex flex-col gap-10">
-          <SectionHeading eyebrow="Galeria" title="No dia a dia do consultório" align="center" />
+          <SectionHeading eyebrow={c.galeriaEyebrow} title={c.galeriaTitulo} align="center" />
           <div className="relative aspect-[4/5] rounded-[var(--radius-image)] overflow-hidden max-w-[360px] mx-auto w-full" style={{ boxShadow: "var(--shadow-inset-hairline)" }}>
-            <Image src={GALLERY_IMAGE.src} alt={GALLERY_IMAGE.alt} fill className="object-cover" />
+            <Image src={c.imagemGaleria} alt="Humberto Bove aplicando massoterapia" fill className="object-cover" />
           </div>
           <p style={{ font: "var(--type-caption)", color: "var(--text-muted)", textAlign: "center" }}>
-            Mais fotos no Instagram{" "}
-            <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer">
-              {INSTAGRAM_HANDLE}
+            {c.galeriaLegenda}{" "}
+            <a href={c.instagramUrl} target="_blank" rel="noopener noreferrer">
+              {c.instagramHandle}
             </a>
           </p>
         </div>
@@ -229,25 +232,25 @@ export default async function VitrinePage() {
       {/* Footer */}
       <footer id="contato" style={{ background: "var(--surface-inverse)", color: "var(--text-inverse)" }}>
         <div className="max-w-[var(--container-max)] mx-auto px-[var(--gutter-inline)] lg:px-[var(--gutter-inline-lg)] py-12 lg:py-[var(--section-y-compact)] grid grid-cols-1 sm:grid-cols-3 gap-8 lg:gap-[var(--space-40)]">
-          <Wordmark tone="inverse" />
+          <Wordmark tone="inverse" nome={c.nomeProfissional} espaco={c.nomeEspaco} />
           <div className="flex flex-col gap-2" style={{ font: "var(--type-caption)", color: "rgba(255,253,251,.72)" }}>
-            <span style={{ color: "var(--linen-0)" }}>Consultório</span>
-            <span>{ADDRESS}</span>
-            <span>Segunda a sexta, 7h às 19h</span>
+            <span style={{ color: "var(--linen-0)" }}>{c.rodapeConsultorio}</span>
+            <span>{c.endereco}</span>
+            <span>{c.horarioAtendimento}</span>
           </div>
           <div className="flex flex-col gap-2" style={{ font: "var(--type-caption)", color: "rgba(255,253,251,.72)" }}>
-            <span style={{ color: "var(--linen-0)" }}>Contato</span>
-            <a href={whatsappLink("Olá Humberto, vim pelo site e quero agendar um horário.")} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2" style={{ color: "inherit" }}>
+            <span style={{ color: "var(--linen-0)" }}>{c.rodapeContato}</span>
+            <a href={whatsappLink(whatsappMessage, c.telefoneWhatsapp)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2" style={{ color: "inherit" }}>
               <Icon icon={MessageCircle} size={14} />
-              {BETO_PHONE_DISPLAY}
+              {c.telefoneExibicao}
             </a>
-            <a href={MAPS_URL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2" style={{ color: "inherit" }}>
+            <a href={c.mapaUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2" style={{ color: "inherit" }}>
               <Icon icon={MapPin} size={14} />
-              Como chegar
+              {c.rodapeComoChegar}
             </a>
-            <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2" style={{ color: "inherit" }}>
+            <a href={c.instagramUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2" style={{ color: "inherit" }}>
               <Icon icon={AtSign} size={14} />
-              {INSTAGRAM_HANDLE}
+              {c.instagramHandle}
             </a>
           </div>
         </div>
@@ -255,7 +258,7 @@ export default async function VitrinePage() {
           className="max-w-[var(--container-max)] mx-auto px-[var(--gutter-inline)] lg:px-[var(--gutter-inline-lg)] py-5"
           style={{ borderTop: "1px solid rgba(255,253,251,.12)", font: "var(--type-caption)", color: "rgba(255,253,251,.5)" }}
         >
-          Spaço Lhum · Humberto Bove Massoterapia
+          {c.rodapeTexto}
         </div>
       </footer>
     </div>

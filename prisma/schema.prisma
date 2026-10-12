@@ -133,6 +133,12 @@ model Settings {
   updatedAt                   DateTime @updatedAt
 }
 
+model VitrineContent {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 enum AppointmentStatus {
   SCHEDULED
   CONFIRMED
