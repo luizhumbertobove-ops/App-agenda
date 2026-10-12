@@ -21,7 +21,7 @@ async function getDashboardData() {
     Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0, 23, 59, 59)
   );
 
-  const [settings, [todayAppointments, pendingPayments, monthRevenue]] = await Promise.all([
+  const [settings, [todayAppointments, pendingPayments, monthRevenue, pendingAgg]] = await Promise.all([
     getSettings(),
     Promise.all([
       prisma.appointment.findMany({
@@ -38,6 +38,12 @@ async function getDashboardData() {
       prisma.payment.aggregate({
         where: { status: "PAID", paidAt: { gte: startOfMonth, lte: endOfMonth } },
         _sum: { amount: true },
+      }),
+      // A lista acima mostra só as 10 mais recentes; o total "A receber" precisa de todas.
+      prisma.payment.aggregate({
+        where: { status: { in: ["PENDING", "SENT"] } },
+        _sum: { amount: true },
+        _count: true,
       }),
     ]),
   ]);
@@ -66,6 +72,8 @@ async function getDashboardData() {
     monthName,
     monthRevenue: monthRevenue._sum.amount ?? 0,
     monthlyGoal: settings.monthlyGoal ?? null,
+    pendingTotal: pendingAgg._sum.amount ?? 0,
+    pendingCount: pendingAgg._count,
   };
 }
 
@@ -78,6 +86,8 @@ export default async function InicioPage() {
     monthName,
     monthRevenue,
     monthlyGoal,
+    pendingTotal,
+    pendingCount,
   } = await getDashboardData();
 
   const goalPct =
@@ -85,7 +95,6 @@ export default async function InicioPage() {
       ? Math.min(Math.round((monthRevenue / monthlyGoal) * 100), 100)
       : null;
 
-  const pendingTotal = pendingPayments.reduce((sum, p) => sum + p.amount, 0);
 
   return (
     <div className="mx-auto max-w-5xl px-5 pt-6 pb-24 md:px-6 md:pb-10">
@@ -185,7 +194,7 @@ export default async function InicioPage() {
           <div className="rounded-xl border border-gray-200 bg-white p-4">
             <p className="text-sm text-gray-500">A receber</p>
             <p className="mt-1 font-display text-2xl text-amber-700">{formatCurrencyBR(pendingTotal)}</p>
-            <p className="text-xs text-gray-500">{pendingPayments.length} pendentes</p>
+            <p className="text-xs text-gray-500">{pendingCount} {pendingCount === 1 ? "pendente" : "pendentes"}</p>
           </div>
         </div>
 
