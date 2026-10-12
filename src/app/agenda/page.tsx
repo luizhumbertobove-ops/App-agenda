@@ -121,7 +121,7 @@ export default async function AgendaPage({
       <div className="p-3 sm:p-6 max-w-3xl mx-auto">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Agenda</h2>
+            <h2 className="font-display text-[32px] leading-tight text-gray-900">Agenda</h2>
             <p className="text-gray-500 text-sm capitalize">
               {format(currentDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
               {isToday && " · hoje"}
@@ -279,7 +279,7 @@ export default async function AgendaPage({
     <div className="p-3 sm:p-6 max-w-4xl mx-auto">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Agenda</h2>
+          <h2 className="font-display text-[32px] leading-tight text-gray-900">Agenda</h2>
           <p className="text-gray-500 text-sm">
             {format(weekStart, "dd/MM", { locale: ptBR })} a{" "}
             {format(

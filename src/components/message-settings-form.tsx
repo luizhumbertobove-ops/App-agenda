@@ -6,6 +6,7 @@ import {
   DEFAULT_CONFIRMATION_TEMPLATE,
   DEFAULT_PAYMENT_TEMPLATE,
   DEFAULT_REENGAGEMENT_TEMPLATE,
+  DEFAULT_NO_SHOW_TEMPLATE,
 } from "@/lib/evolution";
 import { Button } from "@/components/button";
 import { Input, Textarea } from "@/components/input";
@@ -92,7 +93,7 @@ export function MessageSettingsForm({ settings }: { settings: Settings }) {
         label="Não compareceu"
         hint="Variáveis: {{nome}}"
         value={form.noShowTemplate}
-        placeholder={`Olá {{nome}}! Notei que você não pôde comparecer hoje. Quando quiser remarcar, é só chamar! 😊`}
+        placeholder={DEFAULT_NO_SHOW_TEMPLATE}
         onChange={(v) => setForm((f) => ({ ...f, noShowTemplate: v }))}
       />
 
@@ -120,7 +121,7 @@ export function MessageSettingsForm({ settings }: { settings: Settings }) {
       </div>
 
       <div className="pt-2 border-t border-gray-100">
-        <label className="text-xs text-gray-500 block mb-1">Meta de faturamento mensal (R$) — aparece no Dashboard</label>
+        <label className="text-xs text-gray-500 block mb-1">Meta de faturamento mensal (R$) — aparece no Início</label>
         <Input
           type="number"
           min={0}

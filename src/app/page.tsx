@@ -63,7 +63,7 @@ export default async function DashboardPage() {
   return (
     <div className="p-3 sm:p-6 max-w-5xl mx-auto">
       <PageHeader
-        title="Dashboard"
+        title="Início"
         subtitle={<span className="capitalize">{formatLongDateBR()}</span>}
         action={<SyncButton />}
       />
@@ -142,7 +142,7 @@ export default async function DashboardPage() {
             Pagamentos pendentes
           </h3>
           {pendingPayments.length === 0 ? (
-            <p className="text-gray-400 text-sm">Tudo em dia! 🎉</p>
+            <p className="text-gray-400 text-sm">Tudo em dia. Nenhuma cobrança em aberto.</p>
           ) : (
             <ul className="space-y-3">
               {pendingPayments.map((p) => (

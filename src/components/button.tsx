@@ -1,14 +1,14 @@
 import { ButtonHTMLAttributes } from "react";
 
 const VARIANTS = {
-  primary: "bg-violet-600 text-white hover:bg-violet-700",
-  secondary: "border border-gray-200 text-gray-700 hover:bg-gray-50",
+  primary: "bg-violet-600 text-white hover:bg-violet-700 active:bg-violet-800",
+  secondary: "border border-violet-300 bg-white text-violet-700 hover:bg-violet-50",
   danger: "bg-red-600 text-white hover:bg-red-700",
 } as const;
 
 const SIZES = {
-  sm: "text-xs px-2 py-1 rounded",
-  md: "px-4 py-2 rounded-lg text-sm font-medium",
+  sm: "text-sm px-3 min-h-9 rounded-full",
+  md: "px-5 min-h-11 rounded-full text-[15px] font-medium",
 } as const;
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {

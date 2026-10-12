@@ -28,21 +28,20 @@ export async function sendText(phone: string, message: string) {
 }
 
 export const DEFAULT_CONFIRMATION_TEMPLATE =
-  `Olá {{nome}}! 👋\n\n` +
-  `Confirmando seu atendimento *amanhã* às *{{hora}}*.\n\n` +
-  `Responda *SIM* para confirmar ou *NÃO* para cancelar.\n\n` +
-  `Qualquer dúvida, pode chamar! 😊`;
+  `Oi, {{nome}}! Passando para confirmar seu horário *amanhã* às *{{hora}}*.\n\n` +
+  `Responda *SIM* para confirmar ou *NÃO* se precisar remarcar.\n\n` +
+  `Até lá, Humberto.`;
 
 export const DEFAULT_PAYMENT_TEMPLATE =
-  `Olá {{nome}}! Obrigado pela visita! 🙏\n\n` +
-  `Segue o Pix para o pagamento de *R$ {{valor}}*:\n\n` +
+  `Oi, {{nome}}, obrigado pela visita.\n\n` +
+  `Segue o Pix de *R$ {{valor}}*:\n\n` +
   `\`{{pix}}\`\n\n` +
-  `Qualquer dúvida, estou à disposição!`;
+  `Qualquer dúvida, é só me chamar.`;
 
 export const DEFAULT_REENGAGEMENT_TEMPLATE =
-  `Oii {{nome}}! Tudo bem? 😊\n\n` +
-  `Faz um tempinho que você não aparece por aqui... que tal agendar uma sessão?\n\n` +
-  `Me chama e a gente marca! 💆‍♀️`;
+  `Oi, {{nome}}, tudo bem?\n\n` +
+  `Faz um tempinho que você não vem. Que tal reservar uma sessão esta semana?\n\n` +
+  `Atendo de segunda a sexta, das 7h às 19h.`;
 
 export function buildConfirmationMessage(clientName: string, date: Date, template?: string | null): string {
   const hora = date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
@@ -62,8 +61,8 @@ export function buildReengagementMessage(clientName: string, template?: string |
 }
 
 export const DEFAULT_NO_SHOW_TEMPLATE =
-  `Olá {{nome}}! Notei que você não pôde comparecer hoje. 😊\n\n` +
-  `Quando quiser remarcar, é só chamar! Estou à disposição.`;
+  `Oi, {{nome}}, senti sua falta hoje.\n\n` +
+  `Quando quiser remarcar, é só me chamar.`;
 
 export function buildNoShowMessage(clientName: string, template?: string | null): string {
   return interpolate(template || DEFAULT_NO_SHOW_TEMPLATE, { nome: clientName });

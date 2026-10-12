@@ -3,7 +3,7 @@ type StatusInfo = { label: string; className: string };
 export const APPOINTMENT_STATUS: Record<string, StatusInfo> = {
   SCHEDULED: { label: "Agendado", className: "bg-blue-100 text-blue-700" },
   CONFIRMED: { label: "Confirmado", className: "bg-green-100 text-green-700" },
-  DONE: { label: "Concluído", className: "bg-gray-100 text-gray-600" },
+  DONE: { label: "Concluído", className: "bg-amber-50 text-amber-700" },
   CANCELLED: { label: "Cancelado", className: "bg-red-100 text-red-600" },
 };
 

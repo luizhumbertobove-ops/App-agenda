@@ -60,7 +60,7 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
           {client.name.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-2xl font-bold text-gray-900 truncate">{client.name}</h2>
+          <h2 className="font-display text-[30px] leading-tight text-gray-900 truncate">{client.name}</h2>
           {client.phone !== "00000000000" && (
             <p className="text-gray-500 text-sm flex items-center gap-1 mt-1">
               <Phone size={12} />

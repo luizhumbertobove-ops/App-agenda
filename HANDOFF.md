@@ -102,7 +102,15 @@ Decidido em outubro de 2026: o admin vai ser redesenhado com **layouts próprios
 - **Celular:** barra inferior (Hoje · Agenda · + · Clientes · Mais), agendamento em folha que sobe de baixo, gestos para confirmar ou concluir.
 - **PC:** barra lateral neutra e recolhível com busca rápida (Ctrl+K), agenda semanal em grade de 7 colunas, clientes em lista com o detalhe ao lado.
 
-**Próximo passo:** gerar os mockups antes de mexer no código. O pedido completo, pronto para colar no `/design` do Claude Code, está no fim deste documento.
+**Primeira etapa aplicada (branch `redesign-visual`, out/2026):** identidade "Humberto Bove Massoterapia" no admin e na vitrine, sem mexer nas regras de negócio.
+- Paleta trocada em `src/app/globals.css` (`@theme`): as escalas do Tailwind usadas nas telas passam a ser as da marca — `violet`/`purple` = marrom Bove `#855e3e` (ação), `gray` = creme/café, `green` = sálvia, `red` = ferrugem, `amber`/`yellow`/`orange` = dourado, `blue` = bege. Por isso as classes antigas (`bg-violet-600` etc.) já saem nas cores novas; em código novo, prefira essas mesmas escalas.
+- Fontes: DM Sans no texto e Spectral itálico nos títulos (classe `.font-display`), via `next/font` em `src/app/layout.tsx`.
+- Navegação: barra lateral clara no PC; no celular, barra inferior (Início · Agenda · Clientes · Financeiro · Mais) com "Mais" abrindo Mensagens, Serviços, vitrine e Sair (`src/components/sidebar.tsx`).
+- Botões em pílula com 44 px de altura; ícones e manifests novos com a assinatura "Humberto Bove"; vitrine em marrom no lugar da terracota (`bove-ds.css`).
+- Modelos padrão de WhatsApp reescritos sem emoji (`src/lib/evolution.ts`). Modelos já salvos na tela Mensagens continuam valendo.
+- Referência visual completa (telas do celular): design system "Humberto Bove Massoterapia", página AppKit.
+
+**Próximo passo:** levar as telas uma a uma para o layout do AppKit (Início com próximo atendimento em destaque, agenda em linha do tempo com ações por toque, folhas que sobem de baixo). O pedido completo, pronto para colar no `/design` do Claude Code, está no fim deste documento.
 
 ### Pedido de mockups
 

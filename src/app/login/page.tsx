@@ -2,7 +2,6 @@
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Lock } from "lucide-react";
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 
@@ -43,11 +42,13 @@ function LoginForm() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 w-full max-w-sm">
-        <div className="w-12 h-12 bg-violet-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Lock size={20} className="text-violet-600" />
+        <p className="font-display text-[34px] leading-none text-gray-900 text-center">Humberto Bove</p>
+        <div className="mt-3 mb-6 flex items-center justify-center gap-2">
+          <span className="h-px w-8 bg-amber-500" />
+          <span className="text-[10px] font-medium uppercase tracking-[0.22em] text-gray-500">App Beto</span>
+          <span className="h-px w-8 bg-amber-500" />
         </div>
-        <h1 className="text-lg font-semibold text-gray-900 text-center mb-1">App Beto</h1>
-        <p className="text-gray-500 text-sm text-center mb-6">Digite a senha para continuar</p>
+        <p className="text-gray-500 text-[15px] text-center mb-5">Digite a senha para continuar.</p>
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <Input
