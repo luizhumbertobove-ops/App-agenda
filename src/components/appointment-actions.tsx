@@ -15,22 +15,30 @@ export function AppointmentActions({
   appointmentId,
   status,
   startTime,
+  serverNow,
 }: {
   appointmentId: string;
   status: Status;
   startTime: string;
+  /** Horário do render no servidor: o primeiro render do navegador usa o mesmo valor, sem erro de hidratação. */
+  serverNow: number;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(serverNow);
 
   // Relógio atualizado a cada minuto: troca "Confirmar" por "Concluiu/Faltou" quando o horário chega.
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60_000);
-    return () => clearInterval(id);
+    const tick = () => setNow(Date.now());
+    const first = setTimeout(tick, 0);
+    const id = setInterval(tick, 60_000);
+    return () => {
+      clearTimeout(first);
+      clearInterval(id);
+    };
   }, []);
 
   if (status === "DONE" || status === "CANCELLED") return null;

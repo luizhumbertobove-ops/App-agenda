@@ -31,6 +31,10 @@ export default async function AgendaPage({
 }) {
   const { week, view: viewParam, date: dateParam } = await searchParams;
   const today = nowBR();
+  // Server component dinâmico (render por requisição): ler o relógio aqui é intencional,
+  // é o ponto de partida do relógio do AppointmentActions no navegador.
+  // eslint-disable-next-line react-hooks/purity
+  const renderedAt = Date.now();
   const view = viewParam === "week" ? "week" : "day";
 
   const [appointments, clients, blockedSlots] = await Promise.all([
@@ -238,6 +242,7 @@ export default async function AgendaPage({
                               appt.status as "SCHEDULED" | "CONFIRMED" | "DONE" | "CANCELLED"
                             }
                             startTime={appt.startTime.toISOString()}
+                            serverNow={renderedAt}
                           />
                         </div>
                       </article>

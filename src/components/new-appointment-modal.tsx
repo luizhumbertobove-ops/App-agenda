@@ -109,7 +109,7 @@ export function NewAppointmentModal({ clients }: { clients: Client[] }) {
 
   if (!open) {
     return (
-      <Button onClick={() => setOpen(true)} className="flex items-center gap-2">
+      <Button onClick={() => setOpen(true)} aria-label="Novo agendamento" className="flex items-center gap-2">
         <Plus size={16} />
         <span className="hidden sm:inline">Novo Agendamento</span>
       </Button>
