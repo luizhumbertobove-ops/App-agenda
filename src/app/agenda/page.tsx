@@ -11,7 +11,7 @@ import {
   parseISO,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Calendar, List } from "lucide-react";
+import { ChevronLeft, ChevronRight, Lock } from "lucide-react";
 import Link from "next/link";
 import { nowBR, formatTimeBR } from "@/lib/date";
 import { NewAppointmentModal } from "@/components/new-appointment-modal";
@@ -21,7 +21,8 @@ import { BlockSlotModal } from "@/components/block-slot-modal";
 import { StatusBadge } from "@/components/status-badge";
 import { APPOINTMENT_STATUS } from "@/lib/status-labels";
 
-const WORK_HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 7h–20h
+const DAY_START_HOUR = 7;
+const DAY_END_HOUR = 19;
 
 export default async function AgendaPage({
   searchParams,
@@ -111,148 +112,146 @@ export default async function AgendaPage({
       blockedByHour[h].push(slot);
     }
 
+    // 7h–19h, mais qualquer hora fora dessa faixa que tenha atendimento ou bloqueio.
+    const baseHours = Array.from(
+      { length: DAY_END_HOUR - DAY_START_HOUR + 1 },
+      (_, i) => DAY_START_HOUR + i
+    );
+    const hourList = Array.from(
+      new Set([
+        ...baseHours,
+        ...Object.keys(apptsByHour).map(Number),
+        ...Object.keys(blockedByHour).map(Number),
+      ])
+    ).sort((a, b) => a - b);
+
     const blockedSlotsForModal = blockedSlots.map((s) => ({
       ...s,
       startTime: s.startTime.toISOString(),
       endTime: s.endTime.toISOString(),
     }));
 
+    const dayWeekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+    const weekDays = Array.from({ length: 5 }, (_, i) => addDays(dayWeekStart, i));
+
     return (
-      <div className="p-3 sm:p-6 max-w-3xl mx-auto">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
-          <div>
-            <h2 className="font-display text-[32px] leading-tight text-gray-900">Agenda</h2>
-            <p className="text-gray-500 text-sm capitalize">
-              {format(currentDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
-              {isToday && " · hoje"}
-            </p>
-          </div>
+      <div className="mx-auto max-w-7xl px-5 pb-24 pt-6 md:px-8">
+        <div className="flex flex-col gap-6 md:mx-auto md:max-w-3xl">
+          <AgendaHeader
+            view="day"
+            anchor={currentDate}
+            subtitle={`${format(currentDate, "EEEE, d 'de' MMMM", { locale: ptBR })}${isToday ? " · hoje" : ""}`}
+            showToday={!isToday}
+            todayHref="/agenda"
+            prevHref={`/agenda?date=${prevDate}`}
+            nextHref={`/agenda?date=${nextDate}`}
+            clients={clients}
+          />
 
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* View toggle */}
-            <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden text-xs font-medium">
-              <Link
-                href="/agenda"
-                className="flex items-center gap-1.5 px-3 py-2 bg-violet-600 text-white"
-              >
-                <Calendar size={13} />
-                <span className="hidden sm:inline">Dia</span>
-              </Link>
-              <Link
-                href={`/agenda?view=week`}
-                className="flex items-center gap-1.5 px-3 py-2 text-gray-600 hover:bg-gray-50"
-              >
-                <List size={13} />
-                <span className="hidden sm:inline">Semana</span>
-              </Link>
-            </div>
-
-            {/* Day navigation */}
-            <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-1">
-              <Link
-                href={`/agenda?date=${prevDate}`}
-                className="p-1.5 rounded hover:bg-gray-100 text-gray-500"
-              >
-                <ChevronLeft size={16} />
-              </Link>
-              {!isToday && (
+          <nav aria-label="Dias da semana" className="grid grid-cols-5 gap-2">
+            {weekDays.map((d) => {
+              const key = format(d, "yyyy-MM-dd");
+              const on = key === currentDateStr;
+              return (
                 <Link
-                  href="/agenda"
-                  className="text-xs text-violet-600 hover:text-violet-700 px-2 font-medium"
+                  key={key}
+                  href={`/agenda?date=${key}`}
+                  aria-current={on ? "date" : undefined}
+                  className={`flex h-14 flex-col items-center justify-center rounded-xl border transition-colors ${
+                    on
+                      ? "border-violet-600 bg-violet-600 text-white"
+                      : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
                 >
-                  Hoje
+                  <span className={`text-xs capitalize ${on ? "text-white/80" : "text-gray-500"}`}>
+                    {format(d, "EEE", { locale: ptBR })}
+                  </span>
+                  <span className="text-lg font-medium leading-none tabular-nums">
+                    {format(d, "d")}
+                  </span>
                 </Link>
-              )}
-              <Link
-                href={`/agenda?date=${nextDate}`}
-                className="p-1.5 rounded hover:bg-gray-100 text-gray-500"
-              >
-                <ChevronRight size={16} />
-              </Link>
-            </div>
+              );
+            })}
+          </nav>
 
-            <NewAppointmentModal clients={clients} />
-          </div>
-        </div>
+          <ol className="flex flex-col">
+            {hourList.map((hour) => {
+              const hourAppts = apptsByHour[hour] ?? [];
+              const hourBlocked = blockedByHour[hour] ?? [];
+              const isEmpty = hourAppts.length === 0 && hourBlocked.length === 0;
 
-        <div className="flex justify-end gap-2 mb-2">
-          <BlockSlotModal currentDate={currentDateStr} blockedSlots={blockedSlotsForModal} />
-          <ClearAgendaButton />
-        </div>
-
-        {/* Time grid */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          {WORK_HOURS.map((hour) => {
-            const hourAppts = apptsByHour[hour] ?? [];
-            const hourBlocked = blockedByHour[hour] ?? [];
-            const isEmpty = hourAppts.length === 0 && hourBlocked.length === 0;
-
-            return (
-              <div
-                key={hour}
-                className={`flex min-h-[56px] border-b border-gray-50 last:border-0 ${
-                  hourBlocked.length > 0 ? "bg-red-50/40" : hourAppts.length > 0 ? "bg-violet-50/30" : ""
-                }`}
-              >
-                {/* Hour label */}
-                <div className="w-16 shrink-0 flex items-start justify-end pr-3 pt-3">
-                  <span className="text-xs font-medium text-gray-400 tabular-nums">
+              return (
+                <li key={hour} className="flex gap-3">
+                  <span className="w-12 shrink-0 pt-3 text-sm tabular-nums text-gray-500">
                     {String(hour).padStart(2, "0")}:00
                   </span>
-                </div>
-
-                {/* Appointments or free slot */}
-                <div className="flex-1 py-2 px-3 flex flex-col gap-2">
-                  {hourBlocked.map((slot) => (
-                    <div key={slot.id} className="flex items-center gap-2 bg-red-100 rounded-lg px-3 py-1.5 border border-red-200">
-                      <div className="w-1 h-5 rounded-full bg-red-400 shrink-0" />
-                      <span className="text-xs font-medium text-red-700">
-                        Bloqueado {formatTimeBR(slot.startTime)}–{formatTimeBR(slot.endTime)}
-                        {slot.reason && ` · ${slot.reason}`}
-                      </span>
-                    </div>
-                  ))}
-                  {isEmpty ? (
-                    <span className="text-xs text-gray-200 pt-1">Livre</span>
-                  ) : (
-                    hourAppts.map((appt) => (
+                  <div className="flex min-w-0 flex-1 flex-col gap-2 pb-3">
+                    {hourBlocked.map((slot) => (
                       <div
-                        key={appt.id}
-                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-white rounded-lg border border-violet-200 px-3 py-2 shadow-sm"
+                        key={slot.id}
+                        className="flex min-h-12 items-center gap-2 rounded-xl bg-gray-100 px-3 py-2 text-sm text-gray-600"
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-1 h-8 rounded-full bg-violet-500 shrink-0" />
+                        <Lock size={16} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />
+                        <span>
+                          Bloqueado {formatTimeBR(slot.startTime)}–{formatTimeBR(slot.endTime)}
+                          {slot.reason ? ` · ${slot.reason}` : ""}
+                        </span>
+                      </div>
+                    ))}
+
+                    {isEmpty && (
+                      <div className="flex min-h-12 items-center rounded-xl border border-dashed border-gray-300 px-3 text-sm text-gray-400">
+                        Livre
+                      </div>
+                    )}
+
+                    {hourAppts.map((appt) => (
+                      <article
+                        key={appt.id}
+                        className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm"
+                      >
+                        <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="text-sm font-semibold text-gray-800 truncate">
-                              {appt.client?.name ?? appt.title}
-                            </p>
-                            <p className="text-xs text-gray-400">
-                              {formatTimeBR(appt.startTime)} –{" "}
-                              {formatTimeBR(appt.endTime)}
-                              {appt.serviceType && ` · ${appt.serviceType}`}
+                            {appt.client ? (
+                              <Link
+                                href={`/clientes/${appt.client.id}`}
+                                className="block truncate text-sm font-medium text-gray-900 hover:underline"
+                              >
+                                {appt.client.name}
+                              </Link>
+                            ) : (
+                              <p className="truncate text-sm font-medium text-gray-900">
+                                {appt.title}
+                              </p>
+                            )}
+                            <p className="text-xs text-gray-500">
+                              {formatTimeBR(appt.startTime)}–{formatTimeBR(appt.endTime)}
+                              {appt.serviceType ? ` · ${appt.serviceType}` : ""}
                             </p>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap ml-4 sm:ml-0 sm:shrink-0">
                           <StatusBadge status={appt.status} map={APPOINTMENT_STATUS} />
+                        </div>
+                        <div className="mt-3">
                           <AppointmentActions
                             appointmentId={appt.id}
                             status={
-                              appt.status as
-                                | "SCHEDULED"
-                                | "CONFIRMED"
-                                | "DONE"
-                                | "CANCELLED"
+                              appt.status as "SCHEDULED" | "CONFIRMED" | "DONE" | "CANCELLED"
                             }
+                            startTime={appt.startTime.toISOString()}
                           />
                         </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                      </article>
+                    ))}
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+
+          <div className="flex items-center justify-between gap-3 border-t border-gray-200 pt-4">
+            <BlockSlotModal currentDate={currentDateStr} blockedSlots={blockedSlotsForModal} />
+            <ClearAgendaButton />
+          </div>
         </div>
       </div>
     );
@@ -274,157 +273,223 @@ export default async function AgendaPage({
 
   const currentWeekKey = format(startOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd");
   const isCurrentWeek = format(weekStart, "yyyy-MM-dd") === currentWeekKey;
+  const weekEndDate = addDays(weekStart, 6);
 
   return (
-    <div className="p-3 sm:p-6 max-w-4xl mx-auto">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <div>
-          <h2 className="font-display text-[32px] leading-tight text-gray-900">Agenda</h2>
-          <p className="text-gray-500 text-sm">
-            {format(weekStart, "dd/MM", { locale: ptBR })} a{" "}
-            {format(
-              new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000),
-              "dd/MM/yyyy",
-              { locale: ptBR }
-            )}
-          </p>
-        </div>
+    <div className="mx-auto max-w-7xl px-5 pb-24 pt-6 md:px-8">
+      <div className="flex flex-col gap-6">
+        <AgendaHeader
+          view="week"
+          anchor={baseDate}
+          subtitle={`${format(weekStart, "dd/MM")} a ${format(weekEndDate, "dd/MM/yyyy")}`}
+          showToday={!isCurrentWeek}
+          todayHref="/agenda?view=week"
+          prevHref={`/agenda?view=week&week=${prevWeek}`}
+          nextHref={`/agenda?view=week&week=${nextWeek}`}
+          clients={clients}
+        />
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* View toggle */}
-          <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden text-xs font-medium">
-            <Link
-              href="/agenda"
-              className="flex items-center gap-1.5 px-3 py-2 text-gray-600 hover:bg-gray-50"
-            >
-              <Calendar size={13} />
-              <span className="hidden sm:inline">Dia</span>
-            </Link>
-            <Link
-              href="/agenda?view=week"
-              className="flex items-center gap-1.5 px-3 py-2 bg-violet-600 text-white"
-            >
-              <List size={13} />
-              <span className="hidden sm:inline">Semana</span>
-            </Link>
-          </div>
+        {/* Celular: um cartão por dia, leva à visão Dia */}
+        <ul className="flex flex-col gap-3 md:hidden">
+          {days.map((day) => {
+            const key = format(day, "yyyy-MM-dd");
+            const dayAppts = byDay[key] ?? [];
+            const isDayToday = key === todayStr;
+            const weekend = day.getDay() === 0 || day.getDay() === 6;
+            const count = dayAppts.length;
 
-          {/* Week navigation */}
-          <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-1">
-            <Link
-              href={`/agenda?view=week&week=${prevWeek}`}
-              className="p-1.5 rounded hover:bg-gray-100 text-gray-500"
-            >
-              <ChevronLeft size={16} />
-            </Link>
-            {!isCurrentWeek && (
-              <Link
-                href="/agenda?view=week"
-                className="text-xs text-violet-600 hover:text-violet-700 px-2 font-medium"
-              >
-                Hoje
-              </Link>
-            )}
-            <Link
-              href={`/agenda?view=week&week=${nextWeek}`}
-              className="p-1.5 rounded hover:bg-gray-100 text-gray-500"
-            >
-              <ChevronRight size={16} />
-            </Link>
-          </div>
-
-          <NewAppointmentModal clients={clients} />
-        </div>
-      </div>
-
-      <div className="flex justify-end mb-2">
-        <ClearAgendaButton />
-      </div>
-
-      <div className="space-y-3">
-        {days.map((day) => {
-          const key = format(day, "yyyy-MM-dd");
-          const dayAppts = byDay[key] ?? [];
-          const isDayToday = key === todayStr;
-
-          return (
-            <div
-              key={key}
-              className={`bg-white rounded-xl border p-4 ${
-                isDayToday
-                  ? "border-violet-300 ring-1 ring-violet-200"
-                  : "border-gray-200"
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                    isDayToday
-                      ? "bg-violet-600 text-white"
-                      : "bg-gray-100 text-gray-600"
+            return (
+              <li key={key}>
+                <Link
+                  href={`/agenda?date=${key}`}
+                  className={`flex min-h-14 items-center gap-4 rounded-xl border border-gray-200 p-4 transition-colors hover:bg-gray-50 ${
+                    isDayToday ? "bg-amber-50" : "bg-white"
                   }`}
                 >
-                  {format(day, "d")}
-                </div>
-                <p
-                  className={`text-sm font-medium capitalize ${
-                    isDayToday ? "text-violet-700" : "text-gray-700"
-                  }`}
-                >
-                  {format(day, "EEEE", { locale: ptBR })}
-                  {isDayToday && " (hoje)"}
-                </p>
-                {dayAppts.length > 0 && (
-                  <span className="ml-auto text-xs text-gray-400">
-                    {dayAppts.length} atendimento{dayAppts.length > 1 ? "s" : ""}
+                  <div className="flex w-16 shrink-0 flex-col items-center gap-1">
+                    <span className="text-xs capitalize text-gray-500">
+                      {format(day, "EEEE", { locale: ptBR })}
+                    </span>
+                    <span className="font-display text-2xl leading-none text-gray-900">
+                      {format(day, "d")}
+                    </span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    {isDayToday && (
+                      <p className="text-xs font-medium uppercase tracking-[0.14em] text-amber-700">
+                        Hoje
+                      </p>
+                    )}
+                    <p className="text-sm text-gray-700">
+                      {count > 0
+                        ? `${count} atendimento${count > 1 ? "s" : ""}`
+                        : weekend
+                          ? "Combinado pelo WhatsApp"
+                          : "Sem atendimentos"}
+                    </p>
+                  </div>
+                  <ChevronRight
+                    size={18}
+                    strokeWidth={1.75}
+                    className="shrink-0 text-gray-400"
+                    aria-hidden="true"
+                  />
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+
+        {/* PC: uma coluna por dia */}
+        <div className="hidden gap-3 md:grid md:grid-cols-7">
+          {days.map((day) => {
+            const key = format(day, "yyyy-MM-dd");
+            const dayAppts = byDay[key] ?? [];
+            const isDayToday = key === todayStr;
+            const weekend = day.getDay() === 0 || day.getDay() === 6;
+
+            return (
+              <section key={key} className="flex min-w-0 flex-col gap-2">
+                <div className="flex flex-col items-center gap-1 pb-1 text-center">
+                  <span
+                    className={`text-xs capitalize ${isDayToday ? "text-violet-700" : "text-gray-500"}`}
+                  >
+                    {format(day, "EEE", { locale: ptBR })}
                   </span>
-                )}
-              </div>
+                  <Link
+                    href={`/agenda?date=${key}`}
+                    className={`text-xl font-medium tabular-nums hover:underline ${
+                      isDayToday ? "text-violet-700" : "text-gray-900"
+                    }`}
+                  >
+                    {format(day, "d")}
+                  </Link>
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${isDayToday ? "bg-violet-600" : "bg-transparent"}`}
+                    aria-hidden="true"
+                  />
+                </div>
 
-              {dayAppts.length === 0 ? (
-                <p className="text-gray-300 text-xs sm:ml-10">Sem atendimentos</p>
-              ) : (
-                <ul className="space-y-2.5 sm:ml-10">
-                  {dayAppts.map((appt) => (
-                    <li
+                {dayAppts.length === 0 ? (
+                  <p className="text-center text-xs text-gray-400">
+                    {weekend ? "Combinado pelo WhatsApp" : "Livre"}
+                  </p>
+                ) : (
+                  dayAppts.map((appt) => (
+                    <div
                       key={appt.id}
-                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-3 py-1"
+                      className="flex flex-col gap-1 rounded-lg border border-gray-200 bg-white p-2"
                     >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-xs text-gray-400 shrink-0 w-14 sm:w-24">
-                          {formatTimeBR(appt.startTime)} –{" "}
-                          {formatTimeBR(appt.endTime)}
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-xs tabular-nums text-gray-500">
+                          {formatTimeBR(appt.startTime)}
                         </span>
-                        <div className="min-w-0">
-                          <span className="text-sm font-medium text-gray-800 block truncate">
-                            {appt.client?.name ?? appt.title}
-                          </span>
-                          <span className="text-xs text-gray-400">
-                            {appt.serviceType}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap sm:shrink-0 pl-16 sm:pl-0">
                         <StatusBadge status={appt.status} map={APPOINTMENT_STATUS} />
-                        <AppointmentActions
-                          appointmentId={appt.id}
-                          status={
-                            appt.status as
-                              | "SCHEDULED"
-                              | "CONFIRMED"
-                              | "DONE"
-                              | "CANCELLED"
-                          }
-                        />
                       </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          );
-        })}
+                      <p className="truncate text-sm font-medium text-gray-900">
+                        {appt.client?.name ?? appt.title}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </section>
+            );
+          })}
+        </div>
+
+        <div className="flex justify-end border-t border-gray-200 pt-4">
+          <ClearAgendaButton />
+        </div>
       </div>
     </div>
+  );
+}
+
+function AgendaHeader({
+  view,
+  anchor,
+  subtitle,
+  showToday,
+  todayHref,
+  prevHref,
+  nextHref,
+  clients,
+}: {
+  view: "day" | "week";
+  anchor: Date;
+  subtitle: string;
+  showToday: boolean;
+  todayHref: string;
+  prevHref: string;
+  nextHref: string;
+  clients: { id: string; name: string; phone: string }[];
+}) {
+  const tab = (active: boolean) =>
+    `inline-flex min-h-11 items-center rounded-full px-4 text-sm font-medium transition-colors ${
+      active ? "bg-violet-600 text-white" : "text-gray-600 hover:text-gray-900"
+    }`;
+  const navBtn =
+    "inline-flex size-11 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50";
+
+  return (
+    <header className="flex flex-col gap-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-[0.14em] text-amber-700">
+            {format(anchor, "MMMM yyyy", { locale: ptBR })}
+          </p>
+          <h1 className="font-display text-3xl text-gray-900">Agenda</h1>
+          <p className="mt-1 text-sm capitalize text-gray-500">{subtitle}</p>
+        </div>
+        <NewAppointmentModal clients={clients} />
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <nav
+          aria-label="Visão da agenda"
+          className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white p-1"
+        >
+          <Link
+            href="/agenda"
+            aria-current={view === "day" ? "page" : undefined}
+            className={tab(view === "day")}
+          >
+            Dia
+          </Link>
+          <Link
+            href="/agenda?view=week"
+            aria-current={view === "week" ? "page" : undefined}
+            className={tab(view === "week")}
+          >
+            Semana
+          </Link>
+        </nav>
+
+        <div className="flex items-center gap-2">
+          {showToday && (
+            <Link
+              href={todayHref}
+              className="inline-flex min-h-11 items-center rounded-full px-3 text-sm font-medium text-violet-700 hover:bg-gray-100"
+            >
+              Hoje
+            </Link>
+          )}
+          <Link
+            href={prevHref}
+            aria-label={view === "day" ? "Dia anterior" : "Semana anterior"}
+            className={navBtn}
+          >
+            <ChevronLeft size={20} strokeWidth={1.75} aria-hidden="true" />
+          </Link>
+          <Link
+            href={nextHref}
+            aria-label={view === "day" ? "Próximo dia" : "Próxima semana"}
+            className={navBtn}
+          >
+            <ChevronRight size={20} strokeWidth={1.75} aria-hidden="true" />
+          </Link>
+        </div>
+      </div>
+    </header>
   );
 }
