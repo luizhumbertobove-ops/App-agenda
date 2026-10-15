@@ -12,7 +12,7 @@ const spectral = Spectral({
 });
 
 export const metadata: Metadata = {
-  title: "App Beto — Humberto Bove Massoterapia",
+  title: "App Beto — Humberto Bove Massoterapeuta",
   description: "Agenda, clientes e pagamentos do consultório",
   manifest: "/manifest.json",
   appleWebApp: { capable: true, statusBarStyle: "default", title: "App Beto" },

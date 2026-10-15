@@ -57,7 +57,7 @@ export function Sidebar() {
           <p className="font-display text-[26px] leading-none text-gray-900">Humberto Bove</p>
           <div className="mt-2 flex items-center gap-2">
             <span className="h-px w-8 bg-amber-500" />
-            <span className="text-[10px] font-medium uppercase tracking-[0.22em] text-gray-500">Massoterapia</span>
+            <span className="text-[10px] font-medium uppercase tracking-[0.22em] text-gray-500">Massoterapeuta</span>
           </div>
         </div>
 

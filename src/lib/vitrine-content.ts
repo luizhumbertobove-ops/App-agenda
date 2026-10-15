@@ -32,7 +32,7 @@ const CAMPOS = [
   { key: "menuContato", label: "Link Contato", section: "Menu", type: "text", default: "Contato" },
 
   // Topo (hero)
-  { key: "heroEyebrow", label: "Selo acima do título", section: "Topo", type: "text", default: "Massoterapia em Serrana, SP" },
+  { key: "heroEyebrow", label: "Selo acima do título", section: "Topo", type: "text", default: "Massoterapeuta em Serrana, SP" },
   { key: "heroTitulo", label: "Título principal", section: "Topo", type: "text", default: "Massoterapia que cuida de verdade." },
   {
     key: "heroTexto",
@@ -107,7 +107,7 @@ const CAMPOS = [
   { key: "rodapeConsultorio", label: "Título da coluna do endereço", section: "Rodapé", type: "text", default: "Consultório" },
   { key: "rodapeContato", label: "Título da coluna de contato", section: "Rodapé", type: "text", default: "Contato" },
   { key: "rodapeComoChegar", label: "Link do mapa", section: "Rodapé", type: "text", default: "Como chegar" },
-  { key: "rodapeTexto", label: "Linha final", section: "Rodapé", type: "text", default: "Spaço Lhum · Humberto Bove Massoterapia" },
+  { key: "rodapeTexto", label: "Linha final", section: "Rodapé", type: "text", default: "Spaço Lhum · Humberto Bove Massoterapeuta" },
 
   // Imagens
   { key: "imagemTopo", label: "Foto do topo", section: "Imagens", type: "image", default: "/vitrine/massoterapia.jpg" },

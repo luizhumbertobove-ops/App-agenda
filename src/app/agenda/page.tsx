@@ -64,11 +64,11 @@ function bucketByHour<A extends Range, B extends Range>(dateStr: string, appts: 
 
 const hh = (hour: number) => `${String(hour).padStart(2, "0")}:00`;
 
-/** Cor da borda do cartão na grade semanal, pelo status do atendimento. */
-const WEEK_CARD_STATUS: Record<string, string> = {
-  SCHEDULED: "border-l-blue-400",
-  CONFIRMED: "border-l-green-500",
-  DONE: "border-l-amber-400 opacity-70",
+/** Ponto de cor do cartão na grade semanal, pelo status (o design system não usa borda de um lado só). */
+const WEEK_STATUS_DOT: Record<string, string> = {
+  SCHEDULED: "bg-blue-400",
+  CONFIRMED: "bg-green-500",
+  DONE: "bg-amber-400",
 };
 
 export default async function AgendaPage({
@@ -417,11 +417,15 @@ export default async function AgendaPage({
                         <Link
                           key={appt.id}
                           href={`/agenda?date=${key}`}
-                          className={`flex min-h-11 flex-col justify-center rounded-lg border border-l-4 border-gray-200 bg-white px-2 py-1 hover:bg-gray-50 ${
-                            WEEK_CARD_STATUS[appt.status] ?? ""
+                          className={`flex min-h-11 flex-col justify-center rounded-lg border border-gray-200 bg-white px-2 py-1 hover:bg-gray-50 ${
+                            appt.status === "DONE" ? "opacity-70" : ""
                           }`}
                         >
-                          <span className="text-[11px] tabular-nums text-gray-500">
+                          <span className="flex items-center gap-1 text-[11px] tabular-nums text-gray-500">
+                            <span
+                              aria-hidden
+                              className={`size-1.5 shrink-0 rounded-full ${WEEK_STATUS_DOT[appt.status] ?? "bg-gray-400"}`}
+                            />
                             {formatTimeBR(appt.startTime)}
                             <span className="sr-only"> · {APPOINTMENT_STATUS[appt.status]?.label}</span>
                           </span>
@@ -449,13 +453,13 @@ export default async function AgendaPage({
 
         <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500" aria-label="Legenda">
           <span className="flex items-center gap-1.5">
-            <span className="h-3 w-1 rounded-full bg-blue-400" aria-hidden /> Agendado
+            <span className="size-2 rounded-full bg-blue-400" aria-hidden /> Agendado
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-3 w-1 rounded-full bg-green-500" aria-hidden /> Confirmado
+            <span className="size-2 rounded-full bg-green-500" aria-hidden /> Confirmado
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-3 w-1 rounded-full bg-amber-400" aria-hidden /> Concluído
+            <span className="size-2 rounded-full bg-amber-400" aria-hidden /> Concluído
           </span>
         </div>
 

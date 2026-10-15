@@ -5,8 +5,23 @@ import { useRouter } from "next/navigation";
 import { Pencil, Plus } from "lucide-react";
 import { Modal } from "@/components/modal";
 
-type Service = { id: string; name: string; durationMins: number; price: number; active: boolean };
-type ServiceData = { name: string; durationMins: number; price: number; active: boolean };
+type Service = {
+  id: string;
+  name: string;
+  durationMins: number;
+  price: number;
+  active: boolean;
+  description?: string | null;
+  sessionDetails?: string | null;
+};
+type ServiceData = {
+  name: string;
+  durationMins: number;
+  price: number;
+  active: boolean;
+  description: string | null;
+  sessionDetails: string | null;
+};
 
 const labelClass = "mb-1.5 block text-sm font-medium text-gray-700";
 const inputClass =
@@ -34,6 +49,8 @@ function ServiceForm({
     duration: useId(),
     price: useId(),
     switch: useId(),
+    description: useId(),
+    sessionDetails: useId(),
   };
   const [name, setName] = useState(initial?.name ?? "");
   const [duration, setDuration] = useState(String(initial?.durationMins ?? 60));
@@ -41,6 +58,8 @@ function ServiceForm({
     initial?.price != null ? initial.price.toFixed(2).replace(".", ",") : "",
   );
   const [active, setActive] = useState(initial?.active ?? true);
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [sessionDetails, setSessionDetails] = useState(initial?.sessionDetails ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -55,7 +74,14 @@ function ServiceForm({
     setLoading(true);
     setError("");
     try {
-      await onSave({ name: name.trim(), durationMins: d, price: p, active });
+      await onSave({
+        name: name.trim(),
+        durationMins: d,
+        price: p,
+        active,
+        description: description.trim() || null,
+        sessionDetails: sessionDetails.trim() || null,
+      });
       onClose();
     } catch {
       setError("Erro ao salvar serviço.");
@@ -113,6 +139,37 @@ function ServiceForm({
             className={inputClass}
           />
         </div>
+      </div>
+
+      <div>
+        <label htmlFor={ids.description} className={labelClass}>
+          O que é <span className="font-normal text-gray-400">(opcional)</span>
+        </label>
+        <textarea
+          id={ids.description}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={3}
+          placeholder="Um resumo do serviço para quem ainda não conhece."
+          className={`${inputClass} py-2.5`}
+        />
+      </div>
+
+      <div>
+        <label htmlFor={ids.sessionDetails} className={labelClass}>
+          Como é a sessão <span className="font-normal text-gray-400">(opcional)</span>
+        </label>
+        <textarea
+          id={ids.sessionDetails}
+          value={sessionDetails}
+          onChange={(e) => setSessionDetails(e.target.value)}
+          rows={4}
+          placeholder="O passo a passo do atendimento: como começa, o que você faz, como termina."
+          className={`${inputClass} py-2.5`}
+        />
+        <p className="mt-1.5 text-xs text-gray-500">
+          Os dois textos aparecem na vitrine quando o cliente toca no serviço.
+        </p>
       </div>
 
       <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3">

@@ -178,7 +178,7 @@ export function AgendarForm({
       <div className="flex flex-col items-center text-center gap-3">
         <Icon icon={CalendarDays} size={26} style={{ color: "var(--text-accent)" }} />
         <h1>Agendar horário</h1>
-        <p style={{ font: "var(--type-caption)", color: "var(--text-muted)" }}>Spaço Lhum · Humberto Bove Massoterapia</p>
+        <p style={{ font: "var(--type-caption)", color: "var(--text-muted)" }}>Spaço Lhum · Humberto Bove Massoterapeuta</p>
       </div>
 
       <div className="flex flex-col gap-2">

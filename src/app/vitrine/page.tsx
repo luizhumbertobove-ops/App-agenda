@@ -4,7 +4,6 @@ export const revalidate = 300;
 
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import {
   CalendarDays,
   MessageCircle,
@@ -24,13 +23,13 @@ import { whatsappLink } from "@/lib/vitrine";
 import { getVitrineContent } from "@/lib/vitrine-content";
 import { Button } from "@/components/vitrine/ds/Button";
 import { SectionHeading } from "@/components/vitrine/ds/SectionHeading";
-import { ServiceCard } from "@/components/vitrine/ds/ServiceCard";
+import { ServiceList } from "@/components/vitrine/service-list";
 import { Icon } from "@/components/vitrine/ds/Icon";
 
 export const metadata: Metadata = {
   title: "Humberto Bove — Massoterapeuta | Spaço Lhum",
   description:
-    "Massoterapia em Serrana/SP. Agende seu horário com Humberto Bove (Spaço Lhum) pelo WhatsApp.",
+    "Massoterapeuta em Serrana/SP. Agende seu horário com Humberto Bove (Spaço Lhum) pelo WhatsApp.",
 };
 
 async function getServices() {
@@ -198,17 +197,16 @@ export default async function VitrinePage() {
               {c.servicosVazio}
             </p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[var(--space-24)]">
-              {services.map((service) => (
-                <Link key={service.id} href={`/vitrine/agendar?servico=${service.id}`} className="block h-full">
-                  <ServiceCard
-                    name={service.name}
-                    duration={`${service.durationMins} min`}
-                    price={`a partir de ${formatCurrencyBR(service.price)}`}
-                  />
-                </Link>
-              ))}
-            </div>
+            <ServiceList
+              services={services.map((service) => ({
+                id: service.id,
+                name: service.name,
+                duration: `${service.durationMins} min`,
+                price: `a partir de ${formatCurrencyBR(service.price)}`,
+                description: service.description,
+                sessionDetails: service.sessionDetails,
+              }))}
+            />
           )}
         </div>
       </section>

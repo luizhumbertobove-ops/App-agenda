@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
@@ -16,6 +17,8 @@ const createSchema = z.object({
   durationMins: z.number().int().min(5),
   price: z.number().min(0),
   active: z.boolean().optional(),
+  description: z.string().max(2000).nullable().optional(),
+  sessionDetails: z.string().max(4000).nullable().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -24,5 +27,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: body.error.flatten() }, { status: 400 });
   }
   const service = await prisma.service.create({ data: { ...body.data, active: body.data.active ?? true } });
+  revalidatePath("/vitrine");
   return NextResponse.json(service, { status: 201 });
 }

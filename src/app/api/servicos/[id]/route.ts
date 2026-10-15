@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
@@ -7,6 +8,8 @@ const updateSchema = z.object({
   durationMins: z.number().int().min(5).optional(),
   price: z.number().min(0).optional(),
   active: z.boolean().optional(),
+  description: z.string().max(2000).nullable().optional(),
+  sessionDetails: z.string().max(4000).nullable().optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -16,11 +19,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: body.error.flatten() }, { status: 400 });
   }
   const service = await prisma.service.update({ where: { id }, data: body.data });
+  revalidatePath("/vitrine");
   return NextResponse.json(service);
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   await prisma.service.delete({ where: { id } });
+  revalidatePath("/vitrine");
   return NextResponse.json({ ok: true });
 }
