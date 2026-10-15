@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { SESSION_COOKIE, computeSessionToken } from "@/lib/auth";
+import { SESSION_COOKIE, computeSessionToken, safeEqual } from "@/lib/auth";
 
 const PUBLIC_PATHS = [
   "/login",
@@ -22,7 +22,7 @@ export default async function proxy(req: NextRequest) {
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   const expected = await computeSessionToken();
 
-  if (token === expected) {
+  if (token && safeEqual(token, expected)) {
     return NextResponse.next();
   }
 

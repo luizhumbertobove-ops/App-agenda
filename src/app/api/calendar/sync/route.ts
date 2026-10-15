@@ -2,17 +2,27 @@ export const maxDuration = 60;
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isCronRequest, hasValidSession } from "@/lib/auth";
 import {
   listUpcomingEvents,
   parseEventTitle,
   createCalendarEvent,
 } from "@/lib/google-calendar";
 
-export async function GET() {
-  return POST();
+// Fica em PUBLIC_PATHS (proxy.ts) por causa do cron, então a autorização é feita aqui:
+// o Vercel Cron chama com CRON_SECRET; o botão "Sincronizar agenda" chama logado.
+export async function GET(req: Request) {
+  return POST(req);
 }
 
-export async function POST() {
+export async function POST(req: Request) {
+  if (!isCronRequest(req) && !(await hasValidSession(req))) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+  return sync();
+}
+
+async function sync() {
   try {
     // ── Fase 1: Importar eventos do Google Calendar ──────────────
     const events = await listUpcomingEvents(60);
