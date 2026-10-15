@@ -2,67 +2,112 @@ export const dynamic = "force-dynamic";
 
 import { prisma } from "@/lib/prisma";
 import { formatDateBR } from "@/lib/date";
-import { Users, Phone, Calendar, AlertCircle, UserPlus, Globe } from "lucide-react";
+import { Users, Download, UserPlus, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ClientSearch } from "@/components/client-search";
-import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
+
+const PAGE_SIZE = 60;
+
+/** Iniciais das duas primeiras palavras que começam com letra; ignora emoji. */
+function iniciais(nome: string): string {
+  const palavras = nome
+    .trim()
+    .split(/\s+/)
+    .filter((p) => /^\p{L}/u.test(p))
+    .slice(0, 2);
+  if (palavras.length > 0) {
+    return palavras.map((p) => (Array.from(p)[0] ?? "").toUpperCase()).join("");
+  }
+  return (Array.from(nome.trim())[0] ?? "?").toUpperCase();
+}
+
+/** Letra do grupo: primeira letra do nome, sem acento. Sem letra inicial vai para "#". */
+function letraDoGrupo(nome: string): string {
+  const primeira = Array.from(nome.trim())[0] ?? "";
+  const base = primeira.normalize("NFD").replace(/\p{M}/gu, "").toUpperCase();
+  return /^\p{L}$/u.test(base) ? base : "#";
+}
 
 export default async function ClientesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  const { q } = await searchParams;
+  const { q, page } = await searchParams;
+
+  const where = q
+    ? {
+        OR: [
+          { name: { contains: q, mode: "insensitive" as const } },
+          { phone: { contains: q } },
+        ],
+      }
+    : undefined;
+
+  const total = await prisma.client.count({ where });
+  const totalPaginas = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const paginaAtual = q
+    ? 1
+    : Math.min(Math.max(1, Number.parseInt(page ?? "1", 10) || 1), totalPaginas);
 
   const clients = await prisma.client.findMany({
-    where: q
-      ? {
-          OR: [
-            { name: { contains: q, mode: "insensitive" } },
-            { phone: { contains: q } },
-          ],
-        }
-      : undefined,
+    where,
     include: {
       appointments: { orderBy: { startTime: "desc" }, take: 1 },
       payments: { where: { status: { in: ["PENDING", "SENT"] } } },
       planSubscriptions: { where: { active: true }, include: { plan: true } },
     },
     orderBy: { name: "asc" },
+    ...(q ? {} : { skip: (paginaAtual - 1) * PAGE_SIZE, take: PAGE_SIZE }),
   });
 
+  // Agrupa por letra inicial, mantendo a ordem por nome; "#" fica no fim.
+  const grupos = new Map<string, typeof clients>();
+  for (const client of clients) {
+    const letra = letraDoGrupo(client.name);
+    const lista = grupos.get(letra);
+    if (lista) lista.push(client);
+    else grupos.set(letra, [client]);
+  }
+  const letras = [...grupos.entries()].sort(([a], [b]) => {
+    if (a === "#") return 1;
+    if (b === "#") return -1;
+    return a.localeCompare(b, "pt-BR");
+  });
+
+  const eyebrow = q
+    ? `${total} resultado${total !== 1 ? "s" : ""} para "${q}"`
+    : `${total} cadastrado${total !== 1 ? "s" : ""}`;
+
   return (
-    <div className="p-3 sm:p-6 max-w-5xl mx-auto">
-      <div className="mb-6">
-        <PageHeader
-          title="Clientes"
-          subtitle={
-            q
-              ? `${clients.length} resultado${clients.length !== 1 ? "s" : ""} para "${q}"`
-              : `${clients.length} cadastrado${clients.length !== 1 ? "s" : ""}`
-          }
-          className="mb-3"
-          action={
-            <div className="flex items-center gap-2">
-              <Link
-                href="/clientes/importar"
-                className="flex items-center gap-2 border border-gray-200 text-gray-600 px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
-              >
-                <Globe size={15} className="text-blue-500" />
-                <span className="hidden sm:inline">Importar do Google</span>
-              </Link>
-              <Link
-                href="/clientes/novo"
-                className="flex items-center gap-2 bg-violet-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-violet-700 transition-colors"
-              >
-                <UserPlus size={16} />
-                <span className="hidden sm:inline">Novo Cliente</span>
-              </Link>
-            </div>
-          }
-        />
+    <div className="mx-auto max-w-5xl px-4 pb-24 pt-6 md:px-6 md:pt-8">
+      <header className="mb-5 flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-[0.14em] text-amber-700">{eyebrow}</p>
+          <h1 className="font-display text-3xl leading-tight text-gray-900">Clientes</h1>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <Link
+            href="/clientes/importar"
+            aria-label="Importar do Google"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-gray-200 bg-white px-3.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 md:px-4"
+          >
+            <Download size={16} aria-hidden />
+            <span className="hidden sm:inline">Importar do Google</span>
+          </Link>
+          <Link
+            href="/clientes/novo"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-violet-600 px-4 text-sm font-medium text-white transition-colors hover:bg-violet-700"
+          >
+            <UserPlus size={16} aria-hidden />
+            Novo cliente
+          </Link>
+        </div>
+      </header>
+
+      <div className="mb-4">
         <Suspense fallback={null}>
           <ClientSearch defaultValue={q} />
         </Suspense>
@@ -70,77 +115,104 @@ export default async function ClientesPage({
 
       {clients.length === 0 ? (
         <EmptyState
-          icon={<Users size={40} className="text-gray-300 mx-auto mb-3" />}
+          icon={<Users size={40} className="mx-auto mb-3 text-gray-300" aria-hidden />}
           title={q ? `Nenhum cliente encontrado para "${q}".` : "Nenhum cliente cadastrado ainda."}
-          subtitle={
-            q ? (
-              "Tente outro nome ou telefone."
-            ) : (
-              <span className="mb-5 block">Cadastre o primeiro cliente para começar a agendar.</span>
-            )
-          }
+          subtitle={q ? "Tente outro nome ou telefone." : "Cadastre o primeiro cliente para começar a agendar."}
           action={
             !q && (
               <Link
                 href="/clientes/novo"
-                className="inline-flex items-center gap-2 bg-violet-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-violet-700 transition-colors"
+                className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-violet-600 px-5 text-sm font-medium text-white transition-colors hover:bg-violet-700"
               >
-                <UserPlus size={15} />
+                <UserPlus size={16} aria-hidden />
                 Cadastrar primeiro cliente
               </Link>
             )
           }
         />
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-          {clients.map((client) => {
-            const lastAppt = client.appointments[0];
-            const pendingCount = client.payments.length;
-            const activePlan = client.planSubscriptions[0];
+        <div className="space-y-4">
+          {letras.map(([letra, lista]) => (
+            <section key={letra} aria-label={`Clientes com a letra ${letra}`}>
+              <h2 className="sticky top-0 z-10 bg-gray-50 px-1 py-1.5 text-xs font-semibold text-gray-500">
+                {letra}
+              </h2>
+              <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white md:grid md:grid-cols-2 md:gap-3 md:divide-y-0 md:overflow-visible md:border-0 md:bg-transparent">
+                {lista.map((client) => {
+                  const lastAppt = client.appointments[0];
+                  const pendingCount = client.payments.length;
+                  const activePlan = client.planSubscriptions[0];
+                  const temTelefone = client.phone !== "00000000000";
 
-            return (
-              <Link
-                key={client.id}
-                href={`/clientes/${client.id}`}
-                className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-semibold text-sm shrink-0">
-                    {client.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-medium text-gray-900 truncate">{client.name}</p>
-                    <div className="flex items-center gap-3 mt-0.5">
-                      <span className="text-xs text-gray-400 flex items-center gap-1">
-                        <Phone size={10} />
-                        {client.phone}
-                      </span>
-                      {lastAppt && (
-                        <span className="hidden sm:flex text-xs text-gray-400 items-center gap-1">
-                          <Calendar size={10} />
-                          {formatDateBR(lastAppt.startTime)}
+                  return (
+                    <li key={client.id}>
+                      <Link
+                        href={`/clientes/${client.id}`}
+                        className="flex min-h-16 items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-50 md:rounded-xl md:border md:border-gray-200 md:bg-white md:hover:border-violet-300"
+                      >
+                        <span
+                          aria-hidden
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-violet-100 text-sm font-semibold text-violet-700"
+                        >
+                          {iniciais(client.name)}
                         </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {activePlan && (
-                    <span className="hidden sm:inline text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">
-                      {activePlan.plan.name}
-                    </span>
-                  )}
-                  {pendingCount > 0 && (
-                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <AlertCircle size={10} />
-                      {pendingCount}
-                    </span>
-                  )}
-                  <span className="text-gray-300 text-lg">›</span>
-                </div>
-              </Link>
-            );
-          })}
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-medium text-gray-900">{client.name}</span>
+                          <span className="block truncate text-xs text-gray-500">
+                            {temTelefone && `${client.phone} · `}
+                            {lastAppt ? `última visita ${formatDateBR(lastAppt.startTime)}` : "sem atendimentos ainda"}
+                          </span>
+                        </span>
+                        <span className="flex shrink-0 flex-col items-end gap-1">
+                          {activePlan && (
+                            <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700">
+                              {activePlan.plan.name}
+                            </span>
+                          )}
+                          {pendingCount > 0 && (
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                              {pendingCount} {pendingCount === 1 ? "cobrança pendente" : "cobranças pendentes"}
+                            </span>
+                          )}
+                        </span>
+                        <ChevronRight size={16} className="shrink-0 text-gray-300" aria-hidden />
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
+
+          {!q && totalPaginas > 1 && (
+            <nav aria-label="Paginação" className="flex items-center justify-between gap-3 pt-2 text-sm">
+              {paginaAtual > 1 ? (
+                <Link
+                  href={`/clientes?page=${paginaAtual - 1}`}
+                  className="inline-flex min-h-11 items-center gap-1 rounded-full border border-gray-200 bg-white px-4 font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                  <ChevronLeft size={16} aria-hidden />
+                  Anteriores
+                </Link>
+              ) : (
+                <span />
+              )}
+              <span className="text-gray-500">
+                Página {paginaAtual} de {totalPaginas}
+              </span>
+              {paginaAtual < totalPaginas ? (
+                <Link
+                  href={`/clientes?page=${paginaAtual + 1}`}
+                  className="inline-flex min-h-11 items-center gap-1 rounded-full border border-gray-200 bg-white px-4 font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                  Mais clientes
+                  <ChevronRight size={16} aria-hidden />
+                </Link>
+              ) : (
+                <span />
+              )}
+            </nav>
+          )}
         </div>
       )}
     </div>

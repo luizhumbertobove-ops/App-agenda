@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Phone, Calendar, DollarSign, MessageSquare, ArrowLeft } from "lucide-react";
+import { Phone, Calendar, DollarSign, MessageSquare, ChevronLeft, CalendarPlus, QrCode } from "lucide-react";
 import Link from "next/link";
 import { EditClientForm } from "@/components/edit-client-form";
 import { PaymentButton } from "@/components/payment-button";
@@ -17,6 +17,19 @@ import { formatCurrencyBR } from "@/lib/format";
 import { StatusBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { APPOINTMENT_STATUS, PAYMENT_STATUS, MESSAGE_TYPE } from "@/lib/status-labels";
+
+/** Iniciais das duas primeiras palavras que começam com letra; ignora emoji. */
+function iniciais(nome: string): string {
+  const palavras = nome
+    .trim()
+    .split(/\s+/)
+    .filter((p) => /^\p{L}/u.test(p))
+    .slice(0, 2);
+  if (palavras.length > 0) {
+    return palavras.map((p) => (Array.from(p)[0] ?? "").toUpperCase()).join("");
+  }
+  return (Array.from(nome.trim())[0] ?? "?").toUpperCase();
+}
 
 export default async function ClientePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -47,23 +60,31 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
   const lifetimeValue = lifetimeAgg._sum.amount ?? 0;
 
   const pendingPayments = client.payments.filter((p) => p.status === "PENDING");
+  const temTelefone = client.phone !== "00000000000";
 
   return (
-    <div className="p-3 sm:p-6 max-w-4xl mx-auto">
-      <Link href="/clientes" className="flex items-center gap-2 text-gray-500 hover:text-gray-700 text-sm mb-6">
-        <ArrowLeft size={14} />
+    <div className="mx-auto max-w-4xl px-4 pb-24 pt-6 md:px-6 md:pt-8">
+      <Link
+        href="/clientes"
+        className="-ml-2 mb-4 inline-flex min-h-11 items-center gap-1 rounded-full px-2 text-sm text-gray-500 transition-colors hover:text-gray-800"
+      >
+        <ChevronLeft size={18} aria-hidden />
         Voltar
       </Link>
 
-      <div className="flex flex-wrap items-start gap-4 mb-8">
-        <div className="w-14 h-14 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-xl shrink-0">
-          {client.name.charAt(0).toUpperCase()}
+      {/* Topo: avatar, nome, telefone e etiquetas */}
+      <header className="flex items-center gap-4">
+        <div
+          aria-hidden
+          className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-violet-100 text-2xl font-semibold text-violet-700"
+        >
+          {iniciais(client.name)}
         </div>
-        <div className="flex-1 min-w-0">
-          <h2 className="font-display text-[30px] leading-tight text-gray-900 truncate">{client.name}</h2>
-          {client.phone !== "00000000000" && (
-            <p className="text-gray-500 text-sm flex items-center gap-1 mt-1">
-              <Phone size={12} />
+        <div className="min-w-0 flex-1">
+          <h1 className="font-display text-3xl leading-tight text-gray-900 break-words">{client.name}</h1>
+          {temTelefone && (
+            <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
+              <Phone size={13} aria-hidden />
               {client.phone}
             </p>
           )}
@@ -71,76 +92,103 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
             <ClientTags clientId={client.id} initialTags={client.tags ?? []} />
           </div>
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+      </header>
+
+      {/* Ações principais em pílula; os componentes existentes recebem o estilo pelos seletores filhos */}
+      <section aria-label="Ações do cliente" className="mt-6">
+        <div className="grid grid-cols-3 gap-2 [&>button]:flex [&>button]:min-h-11 [&>button]:w-full [&>button]:items-center [&>button]:justify-center [&>button]:gap-1.5 [&>button]:rounded-full [&>button]:border [&>button]:border-gray-200 [&>button]:bg-white [&>button]:px-2 [&>button]:text-sm [&>button]:font-medium [&>button]:text-gray-700 [&>button]:transition-colors [&>button]:hover:bg-gray-50">
           <SendWhatsappModal clientId={client.id} clientName={client.name} />
+          <Link
+            href="/agenda"
+            className="flex min-h-11 items-center justify-center gap-1.5 rounded-full bg-violet-600 px-2 text-sm font-medium text-white transition-colors hover:bg-violet-700"
+          >
+            <CalendarPlus size={16} aria-hidden />
+            Agendar
+          </Link>
+          <Link
+            href="/financeiro"
+            className="flex min-h-11 items-center justify-center gap-1.5 rounded-full border border-gray-200 bg-white px-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+          >
+            <QrCode size={16} aria-hidden />
+            Cobrar
+          </Link>
+        </div>
+        <div className="mt-2 flex justify-end [&>button]:min-h-11 [&>button]:rounded-full [&>button]:border-transparent [&>button]:px-4 [&>button]:text-sm [&>button]:text-gray-500">
           <EditClientForm client={client} />
-          <DeleteClientButton clientId={client.id} />
         </div>
-      </div>
+      </section>
 
-      {/* Lifetime stats */}
-      <div className="grid grid-cols-3 gap-2 mb-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-2 sm:p-4 text-center">
-          <p className="text-xs sm:text-xl font-bold text-green-600 truncate tabular-nums">
-            R${lifetimeValue.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ".")}
+      {/* Três números */}
+      <section aria-label="Resumo do cliente" className="mt-6 grid grid-cols-3 gap-2 md:gap-3">
+        <div className="min-w-0 rounded-xl border border-gray-200 bg-white p-3 text-center md:p-4">
+          <p className="truncate font-display text-lg leading-tight text-gray-900 tabular-nums sm:text-2xl">
+            {formatCurrencyBR(lifetimeValue)}
           </p>
-          <p className="text-xs text-gray-400 mt-0.5 leading-tight">Total gasto</p>
+          <p className="mt-1 text-xs leading-tight text-gray-500">Total gasto</p>
         </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-2 sm:p-4 text-center">
-          <p className="text-xs sm:text-xl font-bold text-violet-600">{sessoesDone}</p>
-          <p className="text-xs text-gray-400 mt-0.5 leading-tight">Sessões</p>
+        <div className="min-w-0 rounded-xl border border-gray-200 bg-white p-3 text-center md:p-4">
+          <p className="font-display text-lg leading-tight text-gray-900 tabular-nums sm:text-2xl">{sessoesDone}</p>
+          <p className="mt-1 text-xs leading-tight text-gray-500">Sessões</p>
         </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-2 sm:p-4 text-center">
-          <p className="text-xs sm:text-xl font-bold text-gray-500">{sessoesCanceladas}</p>
-          <p className="text-xs text-gray-400 mt-0.5 leading-tight">Cancelamentos</p>
+        <div className="min-w-0 rounded-xl border border-gray-200 bg-white p-3 text-center md:p-4">
+          <p className="font-display text-lg leading-tight text-gray-900 tabular-nums sm:text-2xl">{sessoesCanceladas}</p>
+          <p className="mt-1 text-xs leading-tight text-gray-500">Faltas e cancelamentos</p>
         </div>
-      </div>
+      </section>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      {/* Observações do cliente */}
+      {client.notes && (
+        <section aria-label="Observações" className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-amber-700">Observações</h2>
+          <p className="whitespace-pre-line text-sm leading-relaxed text-gray-800">{client.notes}</p>
+        </section>
+      )}
+
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
         {/* Histórico de atendimentos */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Calendar size={16} className="text-violet-600" />
+        <section className="rounded-xl border border-gray-200 bg-white p-5">
+          <h2 className="mb-4 flex items-center gap-2 font-semibold text-gray-900">
+            <Calendar size={16} className="text-violet-600" aria-hidden />
             Atendimentos
-          </h3>
+          </h2>
           {client.appointments.length === 0 ? (
             <EmptyState title="Nenhum atendimento ainda." />
           ) : (
-            <ul className="space-y-2">
+            <ul className="space-y-3">
               {client.appointments.slice(0, 8).map((appt) => (
-                <li key={appt.id} className="flex justify-between items-center text-sm">
-                  <div>
-                    <span className="text-gray-700">
+                <li key={appt.id} className="flex items-center justify-between gap-3 text-sm">
+                  <div className="min-w-0">
+                    <span className="text-gray-800">
                       {formatDateBR(appt.startTime)} às {formatTimeBR(appt.startTime)}
                     </span>
-                    <p className="text-xs text-gray-400">{appt.serviceType}</p>
+                    <p className="text-xs text-gray-500">{appt.serviceType}</p>
                   </div>
                   <StatusBadge status={appt.status} map={APPOINTMENT_STATUS} />
                 </li>
               ))}
             </ul>
           )}
-        </div>
+        </section>
 
         {/* Pagamentos */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <DollarSign size={16} className="text-amber-500" />
+        <section className="rounded-xl border border-gray-200 bg-white p-5">
+          <h2 className="mb-4 flex items-center gap-2 font-semibold text-gray-900">
+            <DollarSign size={16} className="text-amber-600" aria-hidden />
             Pagamentos
-          </h3>
+          </h2>
           {client.payments.length === 0 ? (
             <EmptyState title="Nenhum pagamento ainda." />
           ) : (
-            <ul className="space-y-2">
+            <ul className="space-y-3">
               {client.payments.slice(0, 8).map((p) => (
-                <li key={p.id} className="flex justify-between items-center text-sm">
-                  <div>
-                    <span className="text-gray-700">{formatCurrencyBR(p.amount)}</span>
-                    <span className="text-gray-400 text-xs ml-2">
+                <li key={p.id} className="flex items-center justify-between gap-3 text-sm">
+                  <div className="min-w-0">
+                    <span className="text-gray-800">{formatCurrencyBR(p.amount)}</span>
+                    <span className="ml-2 text-xs text-gray-500">
                       {format(p.createdAt, "dd/MM/yyyy", { locale: ptBR })}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex shrink-0 items-center gap-2">
                     <StatusBadge status={p.status} map={PAYMENT_STATUS} />
                     <PaymentRowActions paymentId={p.id} status={p.status} />
                   </div>
@@ -149,7 +197,7 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
             </ul>
           )}
           {pendingPayments.length > 0 && pendingPayments[0].appointmentId && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
+            <div className="mt-4 border-t border-gray-100 pt-4">
               <PaymentButton
                 appointmentId={pendingPayments[0].appointmentId}
                 amount={pendingPayments[0].amount}
@@ -157,33 +205,41 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
               />
             </div>
           )}
-        </div>
+        </section>
 
         {/* Mensagens enviadas */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5 md:col-span-2">
-          <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <MessageSquare size={16} className="text-green-600" />
+        <section className="rounded-xl border border-gray-200 bg-white p-5 md:col-span-2">
+          <h2 className="mb-4 flex items-center gap-2 font-semibold text-gray-900">
+            <MessageSquare size={16} className="text-green-600" aria-hidden />
             Mensagens WhatsApp
-          </h3>
+          </h2>
           {client.whatsappLogs.length === 0 ? (
             <EmptyState title="Nenhuma mensagem enviada ainda." />
           ) : (
             <ul className="space-y-3">
               {client.whatsappLogs.map((log) => (
-                <li key={log.id} className="text-sm border-l-2 border-green-200 pl-3">
-                  <div className="flex items-center gap-2 mb-1">
+                <li key={log.id} className="border-l-2 border-green-200 pl-3 text-sm">
+                  <div className="mb-1 flex items-center gap-2">
                     <StatusBadge status={log.type} map={MESSAGE_TYPE} />
-                    <span className="text-gray-400 text-xs">
+                    <span className="text-xs text-gray-500">
                       {format(log.sentAt, "dd/MM/yyyy HH:mm", { locale: ptBR })}
                     </span>
                   </div>
-                  <p className="text-gray-600 text-xs whitespace-pre-line">{log.message}</p>
+                  <p className="whitespace-pre-line text-xs text-gray-600">{log.message}</p>
                 </li>
               ))}
             </ul>
           )}
-        </div>
+        </section>
       </div>
+
+      {/* Zona de exclusão: separada e discreta */}
+      <section aria-label="Excluir cliente" className="mt-12 border-t border-gray-200 pt-6">
+        <h2 className="mb-3 text-xs font-medium uppercase tracking-[0.14em] text-gray-500">Excluir cliente</h2>
+        <div className="flex justify-start text-xs [&>button]:min-h-11 [&>button]:px-3 [&>button]:text-sm">
+          <DeleteClientButton clientId={client.id} />
+        </div>
+      </section>
     </div>
   );
 }
