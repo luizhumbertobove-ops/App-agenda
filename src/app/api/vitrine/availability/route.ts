@@ -34,16 +34,18 @@ export async function GET(req: NextRequest) {
   );
   const earliestStart = new Date(Date.now() + MIN_LEAD_MINUTES * 60 * 1000);
 
-  const appointments = await prisma.appointment.findMany({
-    where: {
-      status: { not: "CANCELLED" },
-      startTime: { lt: businessEnd },
-      endTime: { gt: businessStart },
-    },
-    select: { startTime: true, endTime: true },
-    orderBy: { startTime: "asc" },
-  });
+  const range = { startTime: { lt: businessEnd }, endTime: { gt: businessStart } };
+  const [appointments, blocked] = await Promise.all([
+    prisma.appointment.findMany({
+      where: { status: { not: "CANCELLED" }, ...range },
+      select: { startTime: true, endTime: true },
+      orderBy: { startTime: "asc" },
+    }),
+    prisma.blockedSlot.findMany({ where: range, select: { startTime: true, endTime: true } }),
+  ]);
   const existingRanges: Range[] = appointments.map((a) => ({ start: a.startTime, end: a.endTime }));
+  // Bloqueios tiram o horário da oferta, mas não servem de âncora para o "antes/depois".
+  const blockedRanges: Range[] = blocked.map((b) => ({ start: b.startTime, end: b.endTime }));
 
   // Grade de horários cheios (7h, 8h, 9h... até o último que cabe antes do fechamento).
   const grid: Range[] = [];
@@ -52,7 +54,9 @@ export async function GET(req: NextRequest) {
   }
 
   function isFree(slot: Range): boolean {
-    return slot.start >= earliestStart && !overlaps(slot, existingRanges);
+    return (
+      slot.start >= earliestStart && !overlaps(slot, existingRanges) && !overlaps(slot, blockedRanges)
+    );
   }
 
   function isAdjacentToBusy(index: number): boolean {

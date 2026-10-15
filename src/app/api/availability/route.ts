@@ -20,15 +20,16 @@ export async function GET(req: NextRequest) {
     BUSINESS_END_H
   );
 
-  const existing = await prisma.appointment.findMany({
-    where: {
-      status: { not: "CANCELLED" },
-      startTime: { lt: businessEnd },
-      endTime: { gt: businessStart },
-    },
-    select: { startTime: true, endTime: true },
-    orderBy: { startTime: "asc" },
-  });
+  const range = { startTime: { lt: businessEnd }, endTime: { gt: businessStart } };
+  const [appointments, blocked] = await Promise.all([
+    prisma.appointment.findMany({
+      where: { status: { not: "CANCELLED" }, ...range },
+      select: { startTime: true, endTime: true },
+    }),
+    prisma.blockedSlot.findMany({ where: range, select: { startTime: true, endTime: true } }),
+  ]);
+  // Bloqueios ocupam o horário do mesmo jeito que um atendimento.
+  const existing = [...appointments, ...blocked];
 
   const durationMs = durationMins * 60 * 1000;
   const slots: { start: string; end: string; available: boolean }[] = [];

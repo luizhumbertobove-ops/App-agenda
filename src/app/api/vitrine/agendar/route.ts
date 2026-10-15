@@ -68,9 +68,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const conflict = await prisma.appointment.findFirst({
-    where: { status: { not: "CANCELLED" }, startTime: { lt: end }, endTime: { gt: start } },
-  });
+  const overlap = { startTime: { lt: end }, endTime: { gt: start } };
+  const [conflictAppt, conflictBlock] = await Promise.all([
+    prisma.appointment.findFirst({ where: { status: { not: "CANCELLED" }, ...overlap } }),
+    prisma.blockedSlot.findFirst({ where: overlap }),
+  ]);
+  const conflict = conflictAppt ?? conflictBlock;
   if (conflict) {
     return NextResponse.json(
       { error: "Esse horário acabou de ser reservado. Escolha outro." },

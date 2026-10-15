@@ -107,13 +107,18 @@ export default async function AgendaPage({
       apptsByHour[h].push(appt);
     }
 
+    // Um bloqueio aparece em todas as linhas de hora que ele cobre (12h–14h ocupa 12h e 13h).
     const blockedByHour: Record<number, typeof blockedSlots> = {};
+    const HOUR_MS = 60 * 60 * 1000;
+    const dayStartMs = Date.parse(`${currentDateStr}T00:00:00-03:00`);
     for (const slot of blockedSlots) {
-      const slotLocal = new Date(slot.startTime.getTime() - 3 * 60 * 60 * 1000);
-      if (format(slotLocal, "yyyy-MM-dd") !== currentDateStr) continue;
-      const h = slotLocal.getUTCHours();
-      if (!blockedByHour[h]) blockedByHour[h] = [];
-      blockedByHour[h].push(slot);
+      const from = Math.max(slot.startTime.getTime(), dayStartMs);
+      const to = Math.min(slot.endTime.getTime(), dayStartMs + 24 * HOUR_MS);
+      if (from >= to) continue;
+      for (let h = Math.floor((from - dayStartMs) / HOUR_MS); h * HOUR_MS + dayStartMs < to; h++) {
+        if (!blockedByHour[h]) blockedByHour[h] = [];
+        blockedByHour[h].push(slot);
+      }
     }
 
     // 7h–19h, mais qualquer hora fora dessa faixa que tenha atendimento ou bloqueio.
