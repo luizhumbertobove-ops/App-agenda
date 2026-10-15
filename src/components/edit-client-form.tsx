@@ -58,15 +58,15 @@ export function EditClientForm({ client }: { client: Client }) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 border border-gray-200 rounded-lg hover:bg-gray-50"
+        className="flex min-h-11 items-center gap-1.5 rounded-full px-4 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
       >
-        <Pencil size={13} />
-        Editar
+        <Pencil size={16} aria-hidden />
+        Editar dados
       </button>
 
       {open && (
         <Modal onClose={() => setOpen(false)} className="p-6">
-          <h3 className="font-semibold text-gray-900 mb-4">Editar cliente</h3>
+          <h3 className="mb-4 font-display text-xl text-gray-900">Editar cliente</h3>
           <div className="space-y-3">
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Nome</label>
@@ -91,10 +91,10 @@ export function EditClientForm({ client }: { client: Client }) {
           </div>
           {error && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg mt-3">{error}</p>}
           <div className="flex gap-2 mt-5">
-            <Button variant="secondary" onClick={() => setOpen(false)} className="flex-1 py-2">
+            <Button variant="secondary" onClick={() => setOpen(false)} className="flex-1">
               Cancelar
             </Button>
-            <Button onClick={handleSave} disabled={loading} className="flex-1 py-2">
+            <Button onClick={handleSave} disabled={loading} className="flex-1">
               {loading ? "Salvando..." : "Salvar"}
             </Button>
           </div>

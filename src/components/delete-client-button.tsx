@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
+import { Button } from "@/components/button";
 
 export function DeleteClientButton({ clientId }: { clientId: string }) {
   const router = useRouter();
@@ -31,26 +32,20 @@ export function DeleteClientButton({ clientId }: { clientId: string }) {
 
   if (confirming) {
     return (
-      <div className="flex flex-col items-end gap-2">
-        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">
-          <span className="text-xs text-red-700 font-medium max-w-[220px]">
-            Excluir cliente? Atendimentos e mensagens serão removidos. Pagamentos ficam preservados no Financeiro.
-          </span>
-          <button
-            onClick={handleDelete}
-            disabled={loading}
-            className="text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
-          >
-            {loading ? "Excluindo..." : "Confirmar"}
-          </button>
-          <button
-            onClick={() => setConfirming(false)}
-            className="text-xs px-2 py-1 border border-gray-200 rounded hover:bg-gray-50 text-gray-600"
-          >
+      <div className="w-full max-w-md space-y-3 rounded-xl border border-red-200 bg-red-50 p-4">
+        <p className="text-sm text-red-700">
+          Excluir este cliente? Atendimentos e mensagens serão removidos. Os pagamentos continuam no
+          Financeiro.
+        </p>
+        <div className="flex gap-2">
+          <Button variant="danger" onClick={handleDelete} disabled={loading} className="flex-1">
+            {loading ? "Excluindo..." : "Excluir"}
+          </Button>
+          <Button variant="secondary" onClick={() => setConfirming(false)} className="flex-1">
             Cancelar
-          </button>
+          </Button>
         </div>
-        {error && <p className="text-xs text-red-600 max-w-xs text-right">{error}</p>}
+        {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
     );
   }
@@ -58,10 +53,10 @@ export function DeleteClientButton({ clientId }: { clientId: string }) {
   return (
     <button
       onClick={() => setConfirming(true)}
-      className="flex items-center gap-2 px-3 py-1.5 text-sm text-red-500 hover:text-red-700 border border-gray-200 rounded-lg hover:bg-red-50"
+      className="flex min-h-11 items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 text-sm font-medium text-red-600 transition-colors hover:border-red-200 hover:bg-red-50"
     >
-      <Trash2 size={13} />
-      Excluir
+      <Trash2 size={16} aria-hidden />
+      Excluir cliente
     </button>
   );
 }

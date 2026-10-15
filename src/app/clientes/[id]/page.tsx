@@ -94,9 +94,9 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
         </div>
       </header>
 
-      {/* Ações principais em pílula; os componentes existentes recebem o estilo pelos seletores filhos */}
+      {/* Ações principais em pílula */}
       <section aria-label="Ações do cliente" className="mt-6">
-        <div className="grid grid-cols-3 gap-2 [&>button]:flex [&>button]:min-h-11 [&>button]:w-full [&>button]:items-center [&>button]:justify-center [&>button]:gap-1.5 [&>button]:rounded-full [&>button]:border [&>button]:border-gray-200 [&>button]:bg-white [&>button]:px-2 [&>button]:text-sm [&>button]:font-medium [&>button]:text-gray-700 [&>button]:transition-colors [&>button]:hover:bg-gray-50">
+        <div className="grid grid-cols-3 gap-2">
           <SendWhatsappModal clientId={client.id} clientName={client.name} />
           <Link
             href="/agenda"
@@ -113,7 +113,7 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
             Cobrar
           </Link>
         </div>
-        <div className="mt-2 flex justify-end [&>button]:min-h-11 [&>button]:rounded-full [&>button]:border-transparent [&>button]:px-4 [&>button]:text-sm [&>button]:text-gray-500">
+        <div className="mt-2 flex justify-end">
           <EditClientForm client={client} />
         </div>
       </section>
@@ -236,9 +236,7 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
       {/* Zona de exclusão: separada e discreta */}
       <section aria-label="Excluir cliente" className="mt-12 border-t border-gray-200 pt-6">
         <h2 className="mb-3 text-xs font-medium uppercase tracking-[0.14em] text-gray-500">Excluir cliente</h2>
-        <div className="flex justify-start text-xs [&>button]:min-h-11 [&>button]:px-3 [&>button]:text-sm">
-          <DeleteClientButton clientId={client.id} />
-        </div>
+        <DeleteClientButton clientId={client.id} />
       </section>
     </div>
   );

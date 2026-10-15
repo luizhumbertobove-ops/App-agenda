@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { MessageSquare, X, Send } from "lucide-react";
+import { MessageSquare, X, Send, Check } from "lucide-react";
 import { Modal } from "@/components/modal";
+import { Button } from "@/components/button";
 import { Textarea } from "@/components/input";
 
 type MessageType = "confirmation" | "reengagement" | "custom";
@@ -59,9 +60,9 @@ export function SendWhatsappModal({
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 px-3 py-1.5 text-sm text-green-600 hover:text-green-700 border border-gray-200 rounded-lg hover:bg-green-50 transition-colors"
+        className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-full border border-gray-200 bg-white px-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
       >
-        <MessageSquare size={14} />
+        <MessageSquare size={16} aria-hidden />
         WhatsApp
       </button>
 
@@ -69,10 +70,14 @@ export function SendWhatsappModal({
         <Modal onClose={() => setOpen(false)}>
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
             <div>
-              <h3 className="font-semibold text-gray-900 text-sm">Enviar mensagem</h3>
-              <p className="text-xs text-gray-400 mt-0.5">{clientName}</p>
+              <h3 className="font-display text-xl text-gray-900">Enviar mensagem</h3>
+              <p className="mt-0.5 text-sm text-gray-500">{clientName}</p>
             </div>
-            <button onClick={() => setOpen(false)} aria-label="Fechar" className="text-gray-400 hover:text-gray-600">
+            <button
+              onClick={() => setOpen(false)}
+              aria-label="Fechar"
+              className="flex h-11 w-11 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            >
               <X size={18} />
             </button>
           </div>
@@ -87,7 +92,7 @@ export function SendWhatsappModal({
                 {(["reengagement", "confirmation", "custom"] as MessageType[]).map((t) => (
                   <label
                     key={t}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border cursor-pointer transition-colors ${
+                    className={`flex min-h-11 items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-colors ${
                       type === t
                         ? "border-violet-300 bg-violet-50"
                         : "border-gray-200 hover:bg-gray-50"
@@ -127,19 +132,20 @@ export function SendWhatsappModal({
             )}
 
             {success && (
-              <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">
-                ✓ Mensagem enviada com sucesso!
+              <p className="flex items-center gap-1.5 text-sm text-green-700 bg-green-50 rounded-lg px-3 py-2">
+                <Check size={14} aria-hidden />
+                Mensagem enviada.
               </p>
             )}
 
-            <button
+            <Button
               onClick={handleSend}
               disabled={loading || success}
-              className="w-full flex items-center justify-center gap-2 bg-green-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
+              className="flex w-full items-center justify-center gap-2"
             >
-              <Send size={14} />
-              {loading ? "Enviando..." : "Enviar via WhatsApp"}
-            </button>
+              <Send size={16} aria-hidden />
+              {loading ? "Enviando..." : "Enviar pelo WhatsApp"}
+            </Button>
           </div>
         </Modal>
       )}

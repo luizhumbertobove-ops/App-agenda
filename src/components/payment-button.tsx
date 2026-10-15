@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Send } from "lucide-react";
+import { Check, Send } from "lucide-react";
 import { formatCurrencyBR } from "@/lib/format";
 
 export function PaymentButton({
@@ -34,17 +34,22 @@ export function PaymentButton({
   }
 
   if (sent) {
-    return <span className="text-xs text-green-600 font-medium">Enviado ✓</span>;
+    return (
+      <span className="flex min-h-11 shrink-0 items-center gap-1 text-sm font-medium text-green-700">
+        <Check size={16} aria-hidden />
+        Enviado
+      </span>
+    );
   }
 
   return (
     <button
       onClick={handleSend}
       disabled={loading}
-      className="flex items-center gap-1 px-2 py-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-medium rounded-lg transition-colors"
+      className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-violet-300 bg-white px-4 text-sm font-medium text-violet-700 transition-colors hover:bg-violet-50 disabled:opacity-50"
     >
-      <Send size={11} />
-      {loading ? "..." : "Pix"}
+      <Send size={16} aria-hidden />
+      {loading ? "Enviando..." : "Enviar Pix"}
     </button>
   );
 }
