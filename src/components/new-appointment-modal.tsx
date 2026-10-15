@@ -14,14 +14,29 @@ type Client = { id: string; name: string; phone: string };
 type Service = { id: string; name: string; durationMins: number; price: number };
 type Slot = { start: string; end: string; available: boolean };
 
-export function NewAppointmentModal({ clients }: { clients: Client[] }) {
+function horaBR(iso: string) {
+  return new Date(iso).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  });
+}
+
+/** `preset`: aberto a partir de um horário "Livre" da Agenda, já com data e hora escolhidas. */
+export function NewAppointmentModal({
+  clients,
+  preset,
+}: {
+  clients: Client[];
+  preset?: { date: string; time: string };
+}) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(Boolean(preset));
 
   // Campos do formulário
   const [clientId, setClientId] = useState("");
   const [serviceId, setServiceId] = useState("");
-  const [date, setDate] = useState("");
+  const [date, setDate] = useState(preset?.date ?? "");
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
   const [notes, setNotes] = useState("");
 
@@ -65,13 +80,22 @@ export function NewAppointmentModal({ clients }: { clients: Client[] }) {
     date && selectedService ? `/api/availability?date=${date}&duration=${selectedService.durationMins}` : null;
   const { data: fetchedSlots, loading: loadingSlots } = useSlots<Slot[]>(slotsUrl);
   const slots = slotsUrl ? fetchedSlots ?? [] : [];
+  // Sem escolha manual, vale o primeiro horário disponível dentro da hora tocada no "Livre"
+  // (os horários seguem a duração do serviço, então 10:00 pode virar 10:30).
+  const slot =
+    selectedSlot ??
+    (preset && date === preset.date
+      ? slots.find((s) => s.available && horaBR(s.start).slice(0, 2) === preset.time.slice(0, 2)) ?? null
+      : null);
 
+  // Fechar tira o ?novo= da URL, senão o formulário reabriria ao atualizar a página.
   function handleClose() {
     setOpen(false);
+    if (preset) router.replace(`/agenda?date=${preset.date}`, { scroll: false });
   }
 
   async function handleSubmit() {
-    if (!clientId || !selectedSlot || !selectedService) return;
+    if (!clientId || !slot || !selectedService) return;
     setLoading(true);
     setError("");
 
@@ -82,8 +106,8 @@ export function NewAppointmentModal({ clients }: { clients: Client[] }) {
         body: JSON.stringify({
           clientId,
           serviceType: selectedService.name,
-          startTime: selectedSlot.start,
-          endTime: selectedSlot.end,
+          startTime: slot.start,
+          endTime: slot.end,
           notes: notes || undefined,
           amount: createPayment && paymentAmount ? Number(paymentAmount) : undefined,
           repeatWeeks: repeatWeeks > 0 ? repeatWeeks : undefined,
@@ -96,8 +120,9 @@ export function NewAppointmentModal({ clients }: { clients: Client[] }) {
         return;
       }
 
-      handleClose();
-      router.refresh();
+      setOpen(false);
+      if (preset) router.replace(`/agenda?date=${preset.date}`, { scroll: false });
+      else router.refresh();
     } catch {
       setError("Erro ao criar agendamento");
     } finally {
@@ -179,21 +204,17 @@ export function NewAppointmentModal({ clients }: { clients: Client[] }) {
               <p className="text-sm text-gray-400">Nenhum horário disponível nesta data.</p>
             ) : (
               <div className="grid grid-cols-4 gap-2">
-                {slots.map((slot) => {
-                  const time = new Date(slot.start).toLocaleTimeString("pt-BR", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    timeZone: "America/Sao_Paulo",
-                  });
-                  const isSelected = selectedSlot?.start === slot.start;
+                {slots.map((s) => {
+                  const time = horaBR(s.start);
+                  const isSelected = slot?.start === s.start;
                   return (
                     <button
-                      key={slot.start}
+                      key={s.start}
                       type="button"
-                      disabled={!slot.available}
-                      onClick={() => setSelectedSlot(slot)}
+                      disabled={!s.available}
+                      onClick={() => setSelectedSlot(s)}
                       className={`text-xs py-2 rounded-lg font-medium border transition-colors ${
-                        !slot.available
+                        !s.available
                           ? "border-gray-100 text-gray-300 bg-gray-50 cursor-not-allowed"
                           : isSelected
                           ? "border-violet-600 bg-violet-600 text-white"
@@ -290,7 +311,7 @@ export function NewAppointmentModal({ clients }: { clients: Client[] }) {
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!clientId || !selectedSlot || loading}
+            disabled={!clientId || !slot || loading}
             className="flex-1 py-2.5 disabled:cursor-not-allowed"
           >
             {loading ? "Salvando..." : "Confirmar Agendamento"}

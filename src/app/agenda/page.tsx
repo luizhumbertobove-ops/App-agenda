@@ -27,9 +27,9 @@ const DAY_END_HOUR = 19;
 export default async function AgendaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ week?: string; view?: string; date?: string }>;
+  searchParams: Promise<{ week?: string; view?: string; date?: string; novo?: string }>;
 }) {
-  const { week, view: viewParam, date: dateParam } = await searchParams;
+  const { week, view: viewParam, date: dateParam, novo } = await searchParams;
   const today = nowBR();
   // Server component dinâmico (render por requisição): ler o relógio aqui é intencional,
   // é o ponto de partida do relógio do AppointmentActions no navegador.
@@ -150,6 +150,9 @@ export default async function AgendaPage({
             prevHref={`/agenda?date=${prevDate}`}
             nextHref={`/agenda?date=${nextDate}`}
             clients={clients}
+            preset={
+              novo && /^\d{2}:\d{2}$/.test(novo) ? { date: currentDateStr, time: novo } : undefined
+            }
           />
 
           <nav aria-label="Dias da semana" className="grid grid-cols-5 gap-2">
@@ -204,9 +207,14 @@ export default async function AgendaPage({
                     ))}
 
                     {isEmpty && (
-                      <div className="flex min-h-12 items-center rounded-xl border border-dashed border-gray-300 px-3 text-sm text-gray-400">
+                      <Link
+                        href={`/agenda?date=${currentDateStr}&novo=${String(hour).padStart(2, "0")}:00`}
+                        scroll={false}
+                        aria-label={`Agendar às ${String(hour).padStart(2, "0")}:00`}
+                        className="flex min-h-12 items-center rounded-xl border border-dashed border-gray-300 px-3 text-sm text-gray-400 transition-colors hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700"
+                      >
                         Livre
-                      </div>
+                      </Link>
                     )}
 
                     {hourAppts.map((appt) => (
@@ -419,6 +427,7 @@ function AgendaHeader({
   prevHref,
   nextHref,
   clients,
+  preset,
 }: {
   view: "day" | "week";
   anchor: Date;
@@ -428,6 +437,7 @@ function AgendaHeader({
   prevHref: string;
   nextHref: string;
   clients: { id: string; name: string; phone: string }[];
+  preset?: { date: string; time: string };
 }) {
   const tab = (active: boolean) =>
     `inline-flex min-h-11 items-center rounded-full px-4 text-sm font-medium transition-colors ${
@@ -446,7 +456,11 @@ function AgendaHeader({
           <h1 className="font-display text-3xl text-gray-900">Agenda</h1>
           <p className="mt-1 text-sm capitalize text-gray-500">{subtitle}</p>
         </div>
-        <NewAppointmentModal clients={clients} />
+        <NewAppointmentModal
+          key={preset ? `${preset.date}-${preset.time}` : "novo"}
+          clients={clients}
+          preset={preset}
+        />
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
