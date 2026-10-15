@@ -37,7 +37,7 @@ export default async function AgendaPage({
   const renderedAt = Date.now();
   const view = viewParam === "week" ? "week" : "day";
 
-  const [appointments, clients, blockedSlots] = await Promise.all([
+  const [appointments, clients, blockedSlots, services] = await Promise.all([
     view === "week"
       ? (() => {
           const baseDate = week ? parseISO(week) : today;
@@ -48,7 +48,15 @@ export default async function AgendaPage({
               startTime: { gte: weekStart, lte: weekEnd },
               status: { not: "CANCELLED" },
             },
-            include: { client: true },
+            include: {
+              client: true,
+              payments: {
+                where: { status: { in: ["PENDING", "SENT", "OVERDUE"] } },
+                select: { amount: true },
+                orderBy: { createdAt: "desc" },
+                take: 1,
+              },
+            },
             orderBy: { startTime: "asc" },
           });
         })()
@@ -75,7 +83,15 @@ export default async function AgendaPage({
               startTime: { gte: dayStart, lte: dayEnd },
               status: { not: "CANCELLED" },
             },
-            include: { client: true },
+            include: {
+              client: true,
+              payments: {
+                where: { status: { in: ["PENDING", "SENT", "OVERDUE"] } },
+                select: { amount: true },
+                orderBy: { createdAt: "desc" },
+                take: 1,
+              },
+            },
             orderBy: { startTime: "asc" },
           });
         })(),
@@ -84,7 +100,13 @@ export default async function AgendaPage({
       select: { id: true, name: true, phone: true },
     }),
     prisma.blockedSlot.findMany({ orderBy: { startTime: "asc" } }),
+    prisma.service.findMany({ select: { name: true, price: true } }),
   ]);
+
+  // Valor sugerido ao concluir: a cobrança em aberto do atendimento ou o preço do serviço.
+  const priceByService = new Map(services.map((s) => [s.name, s.price]));
+  const suggestedAmount = (appt: (typeof appointments)[number]) =>
+    appt.payments[0]?.amount ?? priceByService.get(appt.serviceType) ?? null;
 
   const currentDate = dateParam ? parseISO(dateParam) : today;
   const prevDate = format(subDays(currentDate, 1), "yyyy-MM-dd");
@@ -256,6 +278,7 @@ export default async function AgendaPage({
                             }
                             startTime={appt.startTime.toISOString()}
                             serverNow={renderedAt}
+                            defaultAmount={suggestedAmount(appt)}
                           />
                         </div>
                       </article>

@@ -8,14 +8,14 @@ datasource db {
 }
 
 model Client {
-  id          String   @id @default(cuid())
-  name        String
-  phone       String   @unique
-  email       String?
-  notes       String?
-  birthday    String?
-  tags        String[] @default([])
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  name      String
+  phone     String   @unique
+  email     String?
+  notes     String?
+  birthday  String?
+  tags      String[] @default([])
+  createdAt DateTime @default(now())
 
   planSubscriptions PlanSubscription[]
   appointments      Appointment[]
@@ -77,25 +77,30 @@ model BlockedSlot {
 }
 
 model Service {
-  id           String  @id @default(cuid())
-  name         String
-  durationMins Int
-  price        Float
-  active       Boolean @default(true)
+  id             String  @id @default(cuid())
+  name           String
+  durationMins   Int
+  price          Float
+  active         Boolean @default(true)
+  /// Textos do modal de detalhes na vitrine
+  description    String?
+  sessionDetails String?
 }
 
 model Payment {
-  id            String        @id @default(cuid())
-  clientId      String?
-  appointmentId String?
-  amount        Float
-  status        PaymentStatus @default(PENDING)
-  pixCode       String?
-  pixQrCode     String?
-  mpPaymentId   String?       @unique
-  linkSentAt    DateTime?
-  paidAt        DateTime?
-  createdAt     DateTime      @default(now())
+  id             String        @id @default(cuid())
+  clientId       String?
+  appointmentId  String?
+  amount         Float
+  status         PaymentStatus @default(PENDING)
+  pixCode        String?
+  pixQrCode      String?
+  mpPaymentId    String?       @unique
+  linkSentAt     DateTime?
+  paidAt         DateTime?
+  /// Criada pelo "Concluir" da agenda; o "Reabrir" remove
+  fromCompletion Boolean       @default(false)
+  createdAt      DateTime      @default(now())
 
   client      Client?      @relation(fields: [clientId], references: [id])
   appointment Appointment? @relation(fields: [appointmentId], references: [id])
@@ -120,17 +125,19 @@ model SyncLog {
 }
 
 model Settings {
-  id                          String   @id @default("singleton")
-  confirmationTemplate        String?
-  paymentTemplate             String?
-  reengagementTemplate        String?
-  noShowTemplate              String?
-  confirmationDaysBefore      Int      @default(1)
-  confirmationSendHour        Int      @default(9)
-  reengagementInactivityDays  Int      @default(15)
-  reengagementCooldownDays    Int      @default(15)
-  monthlyGoal                 Float?
-  updatedAt                   DateTime @updatedAt
+  id                         String   @id @default("singleton")
+  confirmationTemplate       String?
+  paymentTemplate            String?
+  reengagementTemplate       String?
+  noShowTemplate             String?
+  confirmationDaysBefore     Int      @default(1)
+  confirmationSendHour       Int      @default(9)
+  reengagementInactivityDays Int      @default(15)
+  reengagementCooldownDays   Int      @default(15)
+  monthlyGoal                Float?
+  /// Jornada por dia da semana: { "1": { "start": "08:00", "end": "18:00" }, ... } (dia ausente = folga)
+  workSchedule               Json?
+  updatedAt                  DateTime @updatedAt
 }
 
 model VitrineContent {

@@ -14,6 +14,8 @@ const updateSchema = z.object({
   sessionNotes: z.string().optional().nullable(),
   cancelReason: z.string().optional(),
   noShow: z.string().optional(),
+  // Só junto com status DONE: lançamento no Financeiro (null = não cobrar, ex.: plano ou cortesia).
+  charge: z.object({ amount: z.number().positive(), paid: z.boolean() }).nullable().optional(),
 });
 
 export async function PATCH(
@@ -34,7 +36,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Agendamento não encontrado" }, { status: 404 });
   }
 
-  const { noShow, ...data } = body.data;
+  const { noShow, charge, ...data } = body.data;
   const startTime = data.startTime ? new Date(data.startTime) : existing.startTime;
   const endTime = data.endTime ? new Date(data.endTime) : existing.endTime;
   const serviceType = data.serviceType ?? existing.serviceType;
@@ -57,8 +59,11 @@ export async function PATCH(
     }
   }
 
+  const completing = data.status === "DONE" && existing.status !== "DONE";
+  const reopening = existing.status === "DONE" && data.status !== undefined && data.status !== "DONE";
+
   // Incrementar sessões do plano ao concluir
-  if (data.status === "DONE" && existing.status !== "DONE" && existing.clientId) {
+  if (completing && existing.clientId) {
     const activePlan = await prisma.planSubscription.findFirst({
       where: { clientId: existing.clientId, active: true },
     });
@@ -67,6 +72,56 @@ export async function PATCH(
         where: { id: activePlan.id },
         data: { sessionsUsed: { increment: 1 } },
       });
+    }
+  }
+
+  // Concluir lança no Financeiro: reaproveita a cobrança em aberto do atendimento, se houver.
+  if (completing && charge) {
+    const paidData = charge.paid
+      ? { status: "PAID" as const, paidAt: new Date() }
+      : {};
+    const open = await prisma.payment.findFirst({
+      where: { appointmentId: id, status: { in: ["PENDING", "SENT", "OVERDUE"] } },
+      orderBy: { createdAt: "desc" },
+    });
+    if (open) {
+      await prisma.payment.update({
+        where: { id: open.id },
+        data: { amount: charge.amount, ...paidData },
+      });
+    } else {
+      await prisma.payment.create({
+        data: {
+          appointmentId: id,
+          clientId: existing.clientId,
+          amount: charge.amount,
+          fromCompletion: true,
+          ...paidData,
+        },
+      });
+    }
+  }
+
+  // Reabrir desfaz a conclusão: remove o lançamento automático e devolve a sessão do plano.
+  // Pix pago pelo Mercado Pago não é apagado (o dinheiro entrou de verdade).
+  let keptPayments = 0;
+  if (reopening) {
+    const auto = await prisma.payment.findMany({ where: { appointmentId: id, fromCompletion: true } });
+    const removable = auto.filter((p) => !(p.status === "PAID" && p.mpPaymentId));
+    keptPayments = auto.length - removable.length;
+    if (removable.length > 0) {
+      await prisma.payment.deleteMany({ where: { id: { in: removable.map((p) => p.id) } } });
+    }
+    if (existing.clientId) {
+      const activePlan = await prisma.planSubscription.findFirst({
+        where: { clientId: existing.clientId, active: true, sessionsUsed: { gt: 0 } },
+      });
+      if (activePlan) {
+        await prisma.planSubscription.update({
+          where: { id: activePlan.id },
+          data: { sessionsUsed: { decrement: 1 } },
+        });
+      }
     }
   }
 
@@ -105,7 +160,7 @@ export async function PATCH(
     }
   }
 
-  return NextResponse.json(updated);
+  return NextResponse.json({ ...updated, keptPayments });
 }
 
 export async function DELETE(
