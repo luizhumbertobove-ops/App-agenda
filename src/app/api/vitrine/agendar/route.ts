@@ -3,9 +3,9 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { createCalendarEvent } from "@/lib/google-calendar";
 import { sendText } from "@/lib/evolution";
+import { getVitrineContent } from "@/lib/vitrine-content";
 import { formatDateBR, formatTimeBR, businessHoursRangeBR } from "@/lib/date";
 import {
-  BETO_PHONE,
   BUSINESS_START_H,
   BUSINESS_END_H,
   SESSION_SLOT_MINUTES,
@@ -112,8 +112,9 @@ export async function POST(req: NextRequest) {
   const dataHora = `${formatDateBR(start)} às ${formatTimeBR(start)}`;
 
   try {
+    const { telefoneWhatsapp } = await getVitrineContent();
     await sendText(
-      BETO_PHONE,
+      telefoneWhatsapp.replace(/\D/g, ""),
       `🔔 Novo agendamento pelo site!\n\n` +
         `Cliente: ${client.name}\n` +
         `Tel: ${client.phone}\n` +

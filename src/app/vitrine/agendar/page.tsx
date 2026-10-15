@@ -3,6 +3,7 @@ import "../bove-ds.css";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { AgendarForm } from "@/components/vitrine/agendar-form";
+import { getVitrineContent } from "@/lib/vitrine-content";
 
 export const metadata: Metadata = {
   title: "Agendar horário — Humberto Bove | Spaço Lhum",
@@ -21,12 +22,20 @@ export default async function AgendarPage({
 }: {
   searchParams: Promise<{ servico?: string }>;
 }) {
-  const [{ servico }, services] = await Promise.all([searchParams, getServices()]);
+  const [{ servico }, services, conteudo] = await Promise.all([
+    searchParams,
+    getServices(),
+    getVitrineContent(),
+  ]);
 
   return (
     <div className="bove-ds" style={{ background: "var(--surface-page)", minHeight: "100vh" }}>
       <div className="max-w-[560px] mx-auto px-[var(--gutter-inline)] py-12 lg:py-[var(--section-y-compact)]">
-        <AgendarForm services={services} initialServiceId={servico} />
+        <AgendarForm
+          services={services}
+          initialServiceId={servico}
+          whatsapp={conteudo.telefoneWhatsapp.replace(/\D/g, "")}
+        />
       </div>
     </div>
   );

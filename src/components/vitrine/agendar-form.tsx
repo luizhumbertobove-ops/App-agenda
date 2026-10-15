@@ -23,9 +23,12 @@ function todayBR(): string {
 export function AgendarForm({
   services,
   initialServiceId,
+  whatsapp,
 }: {
   services: Service[];
   initialServiceId?: string;
+  /** Número do Beto, editável na página Vitrine do app. */
+  whatsapp: string;
 }) {
   const [serviceId, setServiceId] = useState(
     initialServiceId && services.some((s) => s.id === initialServiceId)
@@ -156,7 +159,7 @@ export function AgendarForm({
 
         <Button
           variant="primary"
-          href={whatsappLink("Olá Humberto, acabei de reservar um horário pelo site!")}
+          href={whatsappLink("Olá Humberto, acabei de reservar um horário pelo site!", whatsapp)}
           target="_blank"
           rel="noopener noreferrer"
           iconLeft={<Icon icon={MessageCircle} size={18} />}
@@ -210,7 +213,7 @@ export function AgendarForm({
             {isWeekend ? (
               <p style={{ font: "var(--type-caption)", color: "var(--text-body)" }}>
                 Fins de semana são combinados diretamente.{" "}
-                <a href={whatsappLink(fallbackMessage())} target="_blank" rel="noopener noreferrer">
+                <a href={whatsappLink(fallbackMessage(), whatsapp)} target="_blank" rel="noopener noreferrer">
                   Fale no WhatsApp
                 </a>{" "}
                 pra ver a disponibilidade.
@@ -220,7 +223,7 @@ export function AgendarForm({
             ) : slots.length === 0 ? (
               <p style={{ font: "var(--type-caption)", color: "var(--text-body)" }}>
                 Nenhum horário disponível nessa data.{" "}
-                <a href={whatsappLink(fallbackMessage())} target="_blank" rel="noopener noreferrer">
+                <a href={whatsappLink(fallbackMessage(), whatsapp)} target="_blank" rel="noopener noreferrer">
                   Fale no WhatsApp
                 </a>
                 .
