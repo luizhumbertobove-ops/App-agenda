@@ -46,18 +46,18 @@ export function PaymentRowActions({
 
   if (confirmingDelete) {
     return (
-      <div className="flex items-center gap-1.5">
-        <span className="text-xs text-red-600">Excluir?</span>
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-red-600">Excluir?</span>
         <button
           onClick={handleDelete}
           disabled={loading}
-          className="text-xs px-1.5 py-0.5 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+          className="min-h-11 px-4 rounded-full bg-red-600 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
         >
           Sim
         </button>
         <button
           onClick={() => setConfirmingDelete(false)}
-          className="text-xs px-1.5 py-0.5 border border-gray-200 rounded hover:bg-gray-50"
+          className="min-h-11 px-4 rounded-full border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
         >
           Não
         </button>
@@ -66,23 +66,24 @@ export function PaymentRowActions({
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1">
       <button
         onClick={markPaid}
         disabled={loading}
         title="Marcar como pago"
-        className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50 font-medium transition-colors"
+        className="flex min-h-11 items-center gap-1.5 px-4 rounded-full bg-green-50 text-sm font-medium text-green-700 hover:bg-green-100 disabled:opacity-50 transition-colors"
       >
-        <Check size={11} />
+        <Check size={14} aria-hidden />
         Pago
       </button>
       <button
         onClick={() => setConfirmingDelete(true)}
         disabled={loading}
         title="Excluir"
-        className="text-gray-400 hover:text-red-600 disabled:opacity-50 transition-colors"
+        aria-label="Excluir cobrança"
+        className="flex h-11 w-11 items-center justify-center rounded-full text-gray-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 transition-colors"
       >
-        <Trash2 size={13} />
+        <Trash2 size={16} aria-hidden />
       </button>
     </div>
   );

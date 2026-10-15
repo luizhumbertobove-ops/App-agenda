@@ -1,21 +1,39 @@
 export const dynamic = "force-dynamic";
 
 import { prisma } from "@/lib/prisma";
+import { getSettings } from "@/lib/settings";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { DollarSign, TrendingUp, Clock, CheckCircle, BarChart2, Download } from "lucide-react";
+import { FileDown } from "lucide-react";
 import { nowBR } from "@/lib/date";
 import { NewChargeModal } from "@/components/new-charge-modal";
 import { PaymentRowActions } from "@/components/payment-row-actions";
 import { RevenueChart } from "@/components/revenue-chart";
-import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { PAYMENT_STATUS } from "@/lib/status-labels";
 import { EmptyState } from "@/components/empty-state";
 import { formatCurrencyBR } from "@/lib/format";
 import Link from "next/link";
 
-export default async function FinanceiroPage() {
+const PENDING_STATUSES = ["PENDING", "SENT", "OVERDUE"];
+
+const FILTERS = [
+  { key: "todas", label: "Todas", href: "/financeiro" },
+  { key: "pendentes", label: "Pendentes", href: "/financeiro?status=pendentes" },
+  { key: "pagas", label: "Pagas", href: "/financeiro?status=pagas" },
+] as const;
+
+type FilterKey = (typeof FILTERS)[number]["key"];
+
+export default async function FinanceiroPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
+  const { status } = await searchParams;
+  const filter: FilterKey =
+    status === "pendentes" || status === "pagas" ? status : "todas";
+
   const today = nowBR();
   const monthStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
   const monthEnd = new Date(
@@ -26,13 +44,13 @@ export default async function FinanceiroPage() {
   const chartMonths = Array.from({ length: 6 }, (_, i) => {
     const d = subMonths(today, 5 - i);
     return {
-      label: format(d, "MMM", { locale: ptBR }),
+      label: format(d, "MMM", { locale: ptBR }).replace(".", ""),
       start: startOfMonth(d),
       end: endOfMonth(d),
     };
   });
 
-  const [payments, monthStats, clients, chartData] = await Promise.all([
+  const [payments, monthStats, settings, clients, chartData] = await Promise.all([
     prisma.payment.findMany({
       include: { client: true, appointment: true },
       orderBy: { createdAt: "desc" },
@@ -43,7 +61,11 @@ export default async function FinanceiroPage() {
       _sum: { amount: true },
       _count: true,
     }),
-    prisma.client.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, phone: true } }),
+    getSettings(),
+    prisma.client.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, phone: true },
+    }),
     Promise.all(
       chartMonths.map(async (m) => {
         const agg = await prisma.payment.aggregate({
@@ -60,97 +82,181 @@ export default async function FinanceiroPage() {
   const totalPaid = paid?._sum.amount ?? 0;
   const totalPending = pendingGroups.reduce((sum, s) => sum + (s._sum.amount ?? 0), 0);
   const pendingCount = pendingGroups.reduce((sum, s) => sum + s._count, 0);
+  const totalForecast = totalPaid + totalPending;
+
+  const goal = settings.monthlyGoal ?? 0;
+  const goalPct = goal > 0 ? Math.min((totalPaid / goal) * 100, 100) : 0;
+  const missing = Math.max(0, goal - totalPaid);
+
+  const openCount = payments.filter((p) => PENDING_STATUSES.includes(p.status)).length;
+  const list = payments.filter((p) => {
+    if (filter === "pendentes") return PENDING_STATUSES.includes(p.status);
+    if (filter === "pagas") return p.status === "PAID";
+    return true;
+  });
+
+  const monthLabel = format(today, "MMMM yyyy", { locale: ptBR });
 
   return (
-    <div className="p-3 sm:p-6 max-w-4xl mx-auto">
-      <PageHeader
-        title="Financeiro"
-        subtitle={<span className="capitalize">{format(today, "MMMM yyyy", { locale: ptBR })}</span>}
-        action={
-          <div className="flex items-center gap-2">
-            <Link
-              href="/api/financeiro/export"
-              className="flex items-center gap-2 border border-gray-200 text-gray-600 px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
-            >
-              <Download size={14} />
-              <span className="hidden sm:inline">Exportar CSV</span>
-            </Link>
-            <NewChargeModal clients={clients} />
-          </div>
-        }
-      />
-
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <CheckCircle size={16} className="text-green-600" />
-            <span className="text-xs text-gray-500">Recebido no mês</span>
-          </div>
-          <p className="text-base sm:text-xl font-bold text-gray-900">{formatCurrencyBR(totalPaid)}</p>
-          <p className="text-xs text-gray-400">{paid?._count ?? 0} pagamentos</p>
+    <div className="px-5 pt-6 pb-24 md:mx-auto md:max-w-6xl md:px-6 md:pt-8">
+      <header className="mb-6 flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-[0.14em] text-amber-700">
+            {monthLabel}
+          </p>
+          <h1 className="font-display text-3xl text-gray-900">Financeiro</h1>
         </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Clock size={16} className="text-amber-500" />
-            <span className="text-xs text-gray-500">A receber</span>
-          </div>
-          <p className="text-base sm:text-xl font-bold text-gray-900">{formatCurrencyBR(totalPending)}</p>
-          <p className="text-xs text-gray-400">{pendingCount} pendentes</p>
+        <div className="flex shrink-0 items-center gap-2">
+          <Link
+            href="/api/financeiro/export"
+            aria-label="Exportar planilha"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 transition-colors hover:bg-gray-50"
+          >
+            <FileDown size={18} aria-hidden />
+          </Link>
+          <NewChargeModal clients={clients} />
         </div>
+      </header>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-4 col-span-2 md:col-span-1">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp size={16} className="text-violet-600" />
-            <span className="text-xs text-gray-500">Total previsto</span>
-          </div>
-          <p className="text-base sm:text-xl font-bold text-gray-900">{formatCurrencyBR(totalPaid + totalPending)}</p>
-          <p className="text-xs text-gray-400">recebido + pendente</p>
-        </div>
-      </div>
-
-      {/* Revenue chart */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
-        <h3 className="font-semibold text-gray-900 flex items-center gap-2 mb-4">
-          <BarChart2 size={16} className="text-violet-600" />
-          Receita dos últimos 6 meses
-        </h3>
-        <RevenueChart data={chartData} />
-      </div>
-
-      <div className="bg-white rounded-xl border border-gray-200">
-        <div className="p-4 border-b border-gray-100">
-          <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-            <DollarSign size={16} className="text-gray-400" />
-            Todos os pagamentos
-          </h3>
-        </div>
-        {payments.length === 0 ? (
-          <EmptyState title="Nenhum pagamento registrado ainda." padded />
-        ) : (
-          <div className="divide-y divide-gray-50">
-            {payments.map((p) => (
-              <div key={p.id} className="flex items-center justify-between px-4 py-3 gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">
-                    {p.client?.name ?? <span className="text-gray-400 italic">Cliente excluído</span>}
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    {format(p.createdAt, "dd/MM/yyyy", { locale: ptBR })}
-                    {p.appointment && (
-                      <> · {format(p.appointment.startTime, "HH:mm")}</>
-                    )}
-                  </p>
+      <div className="flex flex-col gap-6 md:grid md:grid-cols-2 md:items-start md:gap-6">
+        <div className="flex flex-col gap-4">
+          <section className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100 p-5">
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-amber-700">
+              Recebido no mês
+            </p>
+            <p className="font-display text-4xl tabular-nums text-gray-900">
+              {formatCurrencyBR(totalPaid)}
+            </p>
+            {goal > 0 && (
+              <>
+                <div
+                  role="progressbar"
+                  aria-label="Progresso da meta do mês"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={Math.round(goalPct)}
+                  className="h-2 overflow-hidden rounded bg-violet-100"
+                >
+                  <div className="h-full rounded bg-amber-500" style={{ width: `${goalPct}%` }} />
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-semibold text-gray-900">{formatCurrencyBR(p.amount)}</span>
-                  <StatusBadge status={p.status} map={PAYMENT_STATUS} />
-                  <PaymentRowActions paymentId={p.id} status={p.status} />
-                </div>
-              </div>
-            ))}
+                <p className="text-sm text-gray-700">
+                  Meta {formatCurrencyBR(goal)} · faltam {formatCurrencyBR(missing)}
+                </p>
+              </>
+            )}
+          </section>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl border border-gray-200 bg-white p-4">
+              <p className="text-xs text-gray-500">A receber</p>
+              <p className="mt-1 font-display text-xl tabular-nums text-amber-700 md:text-2xl">
+                {formatCurrencyBR(totalPending)}
+              </p>
+              <p className="mt-1 text-xs text-gray-500">{pendingCount} pendentes</p>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-white p-4">
+              <p className="text-xs text-gray-500">Previsto</p>
+              <p className="mt-1 font-display text-xl tabular-nums text-gray-900 md:text-2xl">
+                {formatCurrencyBR(totalForecast)}
+              </p>
+              <p className="mt-1 text-xs text-gray-500">recebido + a receber</p>
+            </div>
           </div>
-        )}
+
+          <section className="rounded-xl border border-gray-200 bg-white p-4">
+            <h2 className="mb-3 text-sm font-semibold text-gray-900">Últimos seis meses</h2>
+            <RevenueChart data={chartData} />
+          </section>
+        </div>
+
+        <section className="mt-6 flex flex-col gap-3 md:mt-0">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-display text-2xl text-gray-900">Cobranças</h2>
+          </div>
+
+          <nav aria-label="Filtrar cobranças" className="flex gap-2 overflow-x-auto">
+            {FILTERS.map((f) => {
+              const active = f.key === filter;
+              return (
+                <Link
+                  key={f.key}
+                  href={f.href}
+                  aria-current={active ? "page" : undefined}
+                  className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors ${
+                    active
+                      ? "bg-violet-600 text-white"
+                      : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  {f.label}
+                  {f.key === "pendentes" && (
+                    <span
+                      className={`rounded-full px-2 text-xs ${
+                        active ? "bg-white/20 text-white" : "bg-amber-100 text-amber-700"
+                      }`}
+                    >
+                      {openCount}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+            {list.length === 0 ? (
+              <EmptyState
+                title={
+                  payments.length === 0
+                    ? "Nenhum pagamento registrado ainda."
+                    : "Nenhuma cobrança nesta lista."
+                }
+                padded
+              />
+            ) : (
+              <ul className="divide-y divide-gray-100">
+                {list.map((p) => {
+                  const name = p.client?.name ?? null;
+                  const initial = name ? (Array.from(name)[0] ?? "?").toUpperCase() : "?";
+                  const what = p.appointment?.serviceType ?? "Cobrança avulsa";
+                  const when = format(p.createdAt, "d MMM", { locale: ptBR }).replace(".", "");
+                  return (
+                    <li key={p.id} className="flex items-center gap-3 px-4 py-3">
+                      <span
+                        aria-hidden
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-100 text-sm font-semibold text-violet-700"
+                      >
+                        {initial}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className={`truncate text-[15px] font-medium ${
+                            name ? "text-gray-900" : "italic text-gray-400"
+                          }`}
+                        >
+                          {name ?? "Cliente excluído"}
+                        </p>
+                        <p className="truncate text-xs text-gray-500">
+                          {what} · {when}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-1">
+                        <span className="text-[15px] font-semibold tabular-nums text-gray-900">
+                          {formatCurrencyBR(p.amount)}
+                        </span>
+                        {p.status === "PAID" ? (
+                          <StatusBadge status={p.status} map={PAYMENT_STATUS} />
+                        ) : (
+                          <PaymentRowActions paymentId={p.id} status={p.status} />
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </section>
       </div>
     </div>
   );
