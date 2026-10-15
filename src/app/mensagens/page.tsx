@@ -16,24 +16,28 @@ function inicioDoMesBR(): Date {
 }
 
 export default async function MensagensPage() {
-  const [logs, settings] = await Promise.all([
+  const [recentes, porTipo, settings] = await Promise.all([
     prisma.whatsappLog.findMany({
       include: { client: true },
       orderBy: { sentAt: "desc" },
-      take: 100,
+      take: 30,
+    }),
+    // Contagem no banco: o histórico mostra só as 30 últimas, os contadores precisam do mês inteiro.
+    prisma.whatsappLog.groupBy({
+      by: ["type"],
+      where: { sentAt: { gte: inicioDoMesBR() } },
+      _count: true,
     }),
     getSettings(),
   ]);
 
-  const inicioMes = inicioDoMesBR();
-  const doMes = logs.filter((l) => l.sentAt >= inicioMes);
+  const doTipo = (tipo: string) => porTipo.find((g) => g.type === tipo)?._count ?? 0;
   const contadores = [
-    { rotulo: "Confirmações", valor: doMes.filter((l) => l.type === "CONFIRMATION").length },
-    { rotulo: "Links de pagamento", valor: doMes.filter((l) => l.type === "PAYMENT_LINK").length },
-    { rotulo: "Reengajamentos", valor: doMes.filter((l) => l.type === "REENGAGEMENT").length },
-    { rotulo: "Não compareceu", valor: doMes.filter((l) => l.type === "NO_SHOW").length },
+    { rotulo: "Confirmações", valor: doTipo("CONFIRMATION") },
+    { rotulo: "Links de pagamento", valor: doTipo("PAYMENT_LINK") },
+    { rotulo: "Reengajamentos", valor: doTipo("REENGAGEMENT") },
+    { rotulo: "Não compareceu", valor: doTipo("NO_SHOW") },
   ];
-  const recentes = logs.slice(0, 30);
 
   return (
     <div className="mx-auto max-w-5xl space-y-10 px-5 pt-6 pb-24">

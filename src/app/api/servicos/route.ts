@@ -15,6 +15,7 @@ const createSchema = z.object({
   name: z.string().min(2),
   durationMins: z.number().int().min(5),
   price: z.number().min(0),
+  active: z.boolean().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -22,6 +23,6 @@ export async function POST(req: NextRequest) {
   if (!body.success) {
     return NextResponse.json({ error: body.error.flatten() }, { status: 400 });
   }
-  const service = await prisma.service.create({ data: { ...body.data, active: true } });
+  const service = await prisma.service.create({ data: { ...body.data, active: body.data.active ?? true } });
   return NextResponse.json(service, { status: 201 });
 }
