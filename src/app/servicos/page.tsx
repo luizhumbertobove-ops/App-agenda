@@ -1,65 +1,59 @@
 export const dynamic = "force-dynamic";
 
 import { prisma } from "@/lib/prisma";
-import { Clock, DollarSign, Package } from "lucide-react";
+import { Package } from "lucide-react";
 import { NewServiceModal, EditServiceModal } from "@/components/service-modal";
-import { PageHeader } from "@/components/page-header";
-import { EmptyState } from "@/components/empty-state";
 import { formatCurrencyBR } from "@/lib/format";
 
 export default async function ServicosPage() {
   const services = await prisma.service.findMany({ orderBy: { name: "asc" } });
+  const total = services.length;
+  const naVitrine = services.filter((s) => s.active).length;
 
   return (
-    <div className="p-3 sm:p-6 max-w-3xl mx-auto">
-      <PageHeader
-        title="Serviços"
-        subtitle={`${services.length} serviço${services.length !== 1 ? "s" : ""} cadastrado${services.length !== 1 ? "s" : ""}`}
-        action={<NewServiceModal />}
-      />
-
-      {services.length === 0 ? (
-        <EmptyState
-          icon={<Package size={40} className="text-gray-300 mx-auto mb-3" />}
-          title="Nenhum serviço cadastrado ainda."
-          subtitle="Cadastre seus serviços para usar ao criar atendimentos."
-        />
-      ) : (
-        <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-          {services.map((service) => (
-            <div
-              key={service.id}
-              className="flex items-center justify-between px-5 py-4"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center">
-                  <Package size={16} className="text-violet-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">{service.name}</p>
-                  <div className="flex items-center gap-3 mt-0.5">
-                    <span className="text-xs text-gray-400 flex items-center gap-1">
-                      <Clock size={10} />
-                      {service.durationMins} min
-                    </span>
-                    <span className="text-xs text-gray-400 flex items-center gap-1">
-                      <DollarSign size={10} />
-                      {formatCurrencyBR(service.price)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {!service.active && (
-                  <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-                    Inativo
-                  </span>
-                )}
-                <EditServiceModal service={service} />
-              </div>
-            </div>
-          ))}
+    <div className="mx-auto max-w-5xl space-y-6 p-4 pb-24 sm:p-6">
+      <header className="flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-[0.14em] text-amber-700">
+            {total} {total === 1 ? "serviço" : "serviços"} · {naVitrine} na vitrine
+          </p>
+          <h2 className="font-display text-3xl text-gray-900">Serviços</h2>
         </div>
+        <NewServiceModal />
+      </header>
+
+      {total === 0 ? (
+        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center">
+          <Package size={36} className="mx-auto mb-3 text-gray-300" aria-hidden="true" />
+          <p className="font-medium text-gray-700">Nenhum serviço cadastrado ainda.</p>
+          <div className="mt-4 flex justify-center">
+            <NewServiceModal fullLabel />
+          </div>
+        </div>
+      ) : (
+        <ul className="divide-y divide-gray-200 overflow-hidden rounded-xl border border-gray-200 bg-white md:grid md:grid-cols-2 md:gap-3 md:divide-y-0 md:overflow-visible md:border-0 md:bg-transparent">
+          {services.map((service) => (
+            <li
+              key={service.id}
+              className="flex min-h-16 items-center gap-3 bg-white px-4 py-3 md:rounded-xl md:border md:border-gray-200"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-display text-lg text-gray-900">{service.name}</p>
+                  {!service.active && (
+                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                      Fora da vitrine
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-gray-500">
+                  {service.durationMins} min · {formatCurrencyBR(service.price)}
+                </p>
+              </div>
+              <EditServiceModal service={service} />
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

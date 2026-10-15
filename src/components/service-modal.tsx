@@ -1,26 +1,46 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, Plus, Pencil } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { Modal } from "@/components/modal";
-import { Button } from "@/components/button";
-import { Input } from "@/components/input";
 
 type Service = { id: string; name: string; durationMins: number; price: number; active: boolean };
+type ServiceData = { name: string; durationMins: number; price: number; active: boolean };
+
+const labelClass = "mb-1.5 block text-sm font-medium text-gray-700";
+const inputClass =
+  "min-h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-[15px] text-gray-900 placeholder:text-gray-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-200";
+const primaryButtonClass =
+  "inline-flex min-h-11 w-full items-center justify-center rounded-full bg-violet-600 px-5 text-[15px] font-medium text-white transition-colors hover:bg-violet-700 disabled:opacity-50";
+const secondaryButtonClass =
+  "inline-flex min-h-11 w-full items-center justify-center rounded-full border border-violet-300 bg-white px-5 text-[15px] font-medium text-violet-700 transition-colors hover:bg-violet-50";
 
 function ServiceForm({
+  title,
   initial,
   onSave,
   onClose,
+  onDelete,
 }: {
+  title: string;
   initial?: Partial<Service>;
-  onSave: (data: { name: string; durationMins: number; price: number }) => Promise<void>;
+  onSave: (data: ServiceData) => Promise<void>;
   onClose: () => void;
+  onDelete?: () => void;
 }) {
+  const ids = {
+    name: useId(),
+    duration: useId(),
+    price: useId(),
+    switch: useId(),
+  };
   const [name, setName] = useState(initial?.name ?? "");
   const [duration, setDuration] = useState(String(initial?.durationMins ?? 60));
-  const [price, setPrice] = useState(initial?.price != null ? String(initial.price) : "");
+  const [price, setPrice] = useState(
+    initial?.price != null ? initial.price.toFixed(2).replace(".", ",") : "",
+  );
+  const [active, setActive] = useState(initial?.active ?? true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -35,7 +55,7 @@ function ServiceForm({
     setLoading(true);
     setError("");
     try {
-      await onSave({ name: name.trim(), durationMins: d, price: p });
+      await onSave({ name: name.trim(), durationMins: d, price: p, active });
       onClose();
     } catch {
       setError("Erro ao salvar serviço.");
@@ -45,46 +65,117 @@ function ServiceForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="p-5 space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-5 p-5">
+      <h3 className="font-display text-2xl text-gray-900">{title}</h3>
+
       <div>
-        <label className="block text-xs font-medium text-gray-600 mb-1.5">Nome do serviço</label>
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Massagem relaxante" required />
+        <label htmlFor={ids.name} className={labelClass}>
+          Nome
+        </label>
+        <input
+          id={ids.name}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Ex: Massagem relaxante"
+          required
+          className={inputClass}
+        />
       </div>
+
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1.5">Duração (minutos)</label>
-          <Input
+          <label htmlFor={ids.duration} className={labelClass}>
+            Duração (min)
+          </label>
+          <input
+            id={ids.duration}
             type="number"
+            inputMode="numeric"
             value={duration}
             onChange={(e) => setDuration(e.target.value)}
             min={5}
             step={5}
             required
+            className={inputClass}
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1.5">Preço (R$)</label>
-          <Input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0,00" required />
+          <label htmlFor={ids.price} className={labelClass}>
+            Preço (R$)
+          </label>
+          <input
+            id={ids.price}
+            inputMode="decimal"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            placeholder="0,00"
+            required
+            className={inputClass}
+          />
         </div>
       </div>
-      {error && <p className="text-xs text-red-600">{error}</p>}
-      <div className="flex gap-2 pt-1">
-        <Button type="button" variant="secondary" onClick={onClose} className="flex-1 py-2">
-          Cancelar
-        </Button>
-        <Button type="submit" disabled={loading} className="flex-1 py-2">
-          {loading ? "Salvando..." : "Salvar"}
-        </Button>
+
+      <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3">
+        <div className="min-w-0">
+          <p id={ids.switch} className="text-[15px] font-medium text-gray-900">
+            Mostrar na vitrine
+          </p>
+          <p className="text-sm text-gray-500">Clientes veem este serviço ao agendar sozinhos.</p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={active}
+          aria-labelledby={ids.switch}
+          onClick={() => setActive((v) => !v)}
+          className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors ${
+            active ? "bg-violet-600" : "bg-gray-300"
+          }`}
+        >
+          <span
+            aria-hidden="true"
+            className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${
+              active ? "translate-x-6" : "translate-x-1"
+            }`}
+          />
+        </button>
       </div>
+
+      {error && (
+        <p role="alert" className="text-sm text-red-600">
+          {error}
+        </p>
+      )}
+
+      <div className="space-y-2">
+        <button type="submit" disabled={loading} className={primaryButtonClass}>
+          {loading ? "Salvando..." : "Salvar"}
+        </button>
+        <button type="button" onClick={onClose} className={secondaryButtonClass}>
+          Voltar
+        </button>
+      </div>
+
+      {onDelete && (
+        <div className="border-t border-gray-200 pt-4">
+          <button
+            type="button"
+            onClick={onDelete}
+            className="flex min-h-11 w-full items-center justify-center text-sm font-medium text-red-600 hover:text-red-700 hover:underline"
+          >
+            Excluir serviço
+          </button>
+        </div>
+      )}
     </form>
   );
 }
 
-export function NewServiceModal() {
+export function NewServiceModal({ fullLabel = false }: { fullLabel?: boolean }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
-  async function handleSave(data: { name: string; durationMins: number; price: number }) {
+  async function handleSave(data: ServiceData) {
     const res = await fetch("/api/servicos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -96,19 +187,24 @@ export function NewServiceModal() {
 
   return (
     <>
-      <Button onClick={() => setOpen(true)} className="flex items-center gap-2">
-        <Plus size={16} />
-        Novo Serviço
-      </Button>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label="Novo serviço"
+        className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-violet-600 text-[15px] font-medium text-white transition-colors hover:bg-violet-700 ${
+          fullLabel ? "px-5" : "h-11 w-11 sm:w-auto sm:px-5"
+        }`}
+      >
+        <Plus size={18} aria-hidden="true" />
+        <span className={fullLabel ? "" : "hidden sm:inline"}>Novo serviço</span>
+      </button>
       {open && (
         <Modal onClose={() => setOpen(false)} maxWidth="sm">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <h3 className="font-semibold text-gray-900 text-sm">Novo serviço</h3>
-            <button onClick={() => setOpen(false)} aria-label="Fechar" className="text-gray-400 hover:text-gray-600">
-              <X size={18} />
-            </button>
-          </div>
-          <ServiceForm onSave={handleSave} onClose={() => setOpen(false)} />
+          <ServiceForm
+            title="Novo serviço"
+            onSave={handleSave}
+            onClose={() => setOpen(false)}
+          />
         </Modal>
       )}
     </>
@@ -119,7 +215,7 @@ export function EditServiceModal({ service }: { service: Service }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
-  async function handleSave(data: { name: string; durationMins: number; price: number }) {
+  async function handleSave(data: ServiceData) {
     const res = await fetch(`/api/servicos/${service.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -138,29 +234,22 @@ export function EditServiceModal({ service }: { service: Service }) {
   return (
     <>
       <button
+        type="button"
         onClick={() => setOpen(true)}
         aria-label="Editar serviço"
-        className="p-1.5 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded transition-colors"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-violet-50 hover:text-violet-600"
       >
-        <Pencil size={14} />
+        <Pencil size={18} aria-hidden="true" />
       </button>
       {open && (
         <Modal onClose={() => setOpen(false)} maxWidth="sm">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <h3 className="font-semibold text-gray-900 text-sm">Editar serviço</h3>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleDelete}
-                className="text-xs text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50"
-              >
-                Excluir
-              </button>
-              <button onClick={() => setOpen(false)} aria-label="Fechar" className="text-gray-400 hover:text-gray-600">
-                <X size={18} />
-              </button>
-            </div>
-          </div>
-          <ServiceForm initial={service} onSave={handleSave} onClose={() => setOpen(false)} />
+          <ServiceForm
+            title="Editar serviço"
+            initial={service}
+            onSave={handleSave}
+            onClose={() => setOpen(false)}
+            onDelete={handleDelete}
+          />
         </Modal>
       )}
     </>
