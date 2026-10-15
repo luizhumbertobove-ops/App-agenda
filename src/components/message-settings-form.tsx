@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Save } from "lucide-react";
 import {
   DEFAULT_CONFIRMATION_TEMPLATE,
   DEFAULT_PAYMENT_TEMPLATE,
@@ -22,6 +21,39 @@ type Settings = {
   reengagementCooldownDays: number;
   monthlyGoal: number | null;
 };
+
+type CampoModelo = "confirmationTemplate" | "paymentTemplate" | "reengagementTemplate" | "noShowTemplate";
+
+const MODELOS: { campo: CampoModelo; titulo: string; variaveis: string[]; padrao: string }[] = [
+  { campo: "confirmationTemplate", titulo: "Confirmação", variaveis: ["nome", "hora"], padrao: DEFAULT_CONFIRMATION_TEMPLATE },
+  { campo: "paymentTemplate", titulo: "Link de pagamento", variaveis: ["nome", "valor", "pix"], padrao: DEFAULT_PAYMENT_TEMPLATE },
+  { campo: "reengagementTemplate", titulo: "Reengajamento", variaveis: ["nome"], padrao: DEFAULT_REENGAGEMENT_TEMPLATE },
+  { campo: "noShowTemplate", titulo: "Não compareceu", variaveis: ["nome"], padrao: DEFAULT_NO_SHOW_TEMPLATE },
+];
+
+const EXEMPLOS: Record<string, string> = {
+  nome: "Ana",
+  hora: "15:00",
+  valor: "80,00",
+  pix: "código Pix",
+};
+
+/** Troca as variáveis por exemplos e tira as crases do Pix, para a prévia ficar como no WhatsApp. */
+function textoDeExemplo(texto: string): string {
+  return texto.replace(/\{\{(\w+)\}\}/g, (_, v: string) => EXEMPLOS[v] ?? "").replace(/`/g, "");
+}
+
+/** Balão no estilo WhatsApp: *trecho* vira negrito. */
+function BalaoPrevia({ texto }: { texto: string }) {
+  const partes = textoDeExemplo(texto).split(/\*([^*\n]+)\*/);
+  return (
+    <div className="max-w-[90%] break-words rounded-2xl rounded-tl-sm bg-green-50 p-3 text-sm whitespace-pre-line text-gray-800">
+      {partes.map((parte, i) =>
+        i % 2 === 1 ? <strong key={i}>{parte}</strong> : <span key={i}>{parte}</span>
+      )}
+    </div>
+  );
+}
 
 export function MessageSettingsForm({ settings }: { settings: Settings }) {
   const [form, setForm] = useState({
@@ -61,133 +93,161 @@ export function MessageSettingsForm({ settings }: { settings: Settings }) {
     }
   }
 
+  function inserirVariavel(campo: CampoModelo, padrao: string, variavel: string) {
+    setForm((f) => {
+      const atual = f[campo] || padrao;
+      const separador = atual && !/\s$/.test(atual) ? " " : "";
+      return { ...f, [campo]: `${atual}${separador}{{${variavel}}}` };
+    });
+  }
+
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-5">
-      <h3 className="font-semibold text-gray-900">Configurações de mensagens</h3>
+    <div className="space-y-8">
+      <section className="space-y-4">
+        <h2 className="font-display text-2xl text-gray-900">Modelos de mensagem</h2>
+        <div className="grid gap-4 md:grid-cols-2">
+          {MODELOS.map(({ campo, titulo, variaveis, padrao }) => (
+            <div key={campo} className="space-y-3 rounded-xl border border-gray-200 bg-white p-4">
+              <h3 className="font-semibold text-gray-900">{titulo}</h3>
 
-      <TemplateField
-        label="Confirmação de atendimento"
-        hint="Variáveis: {{nome}}, {{hora}}"
-        value={form.confirmationTemplate}
-        placeholder={DEFAULT_CONFIRMATION_TEMPLATE}
-        onChange={(v) => setForm((f) => ({ ...f, confirmationTemplate: v }))}
-      />
+              <div className="flex flex-wrap gap-2" aria-label={`Variáveis de ${titulo}`}>
+                {variaveis.map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => inserirVariavel(campo, padrao, v)}
+                    className="min-h-11 rounded-full border border-gray-200 bg-white px-3 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
+                  >
+                    {`{{${v}}}`}
+                  </button>
+                ))}
+              </div>
 
-      <TemplateField
-        label="Link de pagamento"
-        hint="Variáveis: {{nome}}, {{valor}}, {{pix}}"
-        value={form.paymentTemplate}
-        placeholder={DEFAULT_PAYMENT_TEMPLATE}
-        onChange={(v) => setForm((f) => ({ ...f, paymentTemplate: v }))}
-      />
+              <div className="space-y-1">
+                <p className="text-xs text-gray-500">Prévia</p>
+                <BalaoPrevia texto={form[campo] || padrao} />
+              </div>
 
-      <TemplateField
-        label="Reengajamento"
-        hint="Variáveis: {{nome}}"
-        value={form.reengagementTemplate}
-        placeholder={DEFAULT_REENGAGEMENT_TEMPLATE}
-        onChange={(v) => setForm((f) => ({ ...f, reengagementTemplate: v }))}
-      />
+              <div>
+                <label htmlFor={campo} className="mb-1 block text-sm font-medium text-gray-700">
+                  Editar texto
+                </label>
+                <Textarea
+                  id={campo}
+                  value={form[campo]}
+                  onChange={(e) => setForm((f) => ({ ...f, [campo]: e.target.value }))}
+                  placeholder={padrao}
+                  rows={5}
+                  className="min-h-28 rounded-xl border-gray-200"
+                />
+                {!form[campo] && (
+                  <p className="mt-1 text-xs text-gray-500">Em branco = usa o texto padrão.</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
 
-      <TemplateField
-        label="Não compareceu"
-        hint="Variáveis: {{nome}}"
-        value={form.noShowTemplate}
-        placeholder={DEFAULT_NO_SHOW_TEMPLATE}
-        onChange={(v) => setForm((f) => ({ ...f, noShowTemplate: v }))}
-      />
+      <section className="space-y-4">
+        <h2 className="font-display text-2xl text-gray-900">Automação</h2>
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <CampoNumero
+              id="confirmationDaysBefore"
+              label="Confirmar com quantos dias de antecedência"
+              value={form.confirmationDaysBefore}
+              onChange={(v) => setForm((f) => ({ ...f, confirmationDaysBefore: v }))}
+            />
+            <CampoNumero
+              id="confirmationSendHour"
+              label="Hora do envio das confirmações (0 a 23)"
+              value={form.confirmationSendHour}
+              min={0}
+              max={23}
+              onChange={(v) => setForm((f) => ({ ...f, confirmationSendHour: v }))}
+            />
+            <CampoNumero
+              id="reengagementInactivityDays"
+              label="Mandar saudade depois de quantos dias sem vir"
+              value={form.reengagementInactivityDays}
+              onChange={(v) => setForm((f) => ({ ...f, reengagementInactivityDays: v }))}
+            />
+            <CampoNumero
+              id="reengagementCooldownDays"
+              label="Intervalo mínimo entre saudades (dias)"
+              value={form.reengagementCooldownDays}
+              onChange={(v) => setForm((f) => ({ ...f, reengagementCooldownDays: v }))}
+            />
+          </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-100">
-        <NumberField
-          label="Confirmar com quantos dias de antecedência"
-          value={form.confirmationDaysBefore}
-          onChange={(v) => setForm((f) => ({ ...f, confirmationDaysBefore: v }))}
-        />
-        <NumberField
-          label="Hora do envio de confirmações (0–23)"
-          value={form.confirmationSendHour}
-          onChange={(v) => setForm((f) => ({ ...f, confirmationSendHour: v }))}
-        />
-        <NumberField
-          label="Reengajar após X dias inativo"
-          value={form.reengagementInactivityDays}
-          onChange={(v) => setForm((f) => ({ ...f, reengagementInactivityDays: v }))}
-        />
-        <NumberField
-          label="Intervalo mínimo entre reengajamentos (dias)"
-          value={form.reengagementCooldownDays}
-          onChange={(v) => setForm((f) => ({ ...f, reengagementCooldownDays: v }))}
-        />
-      </div>
+          <div className="mt-4 border-t border-gray-100 pt-4">
+            <label htmlFor="monthlyGoal" className="mb-1 block text-sm font-medium text-gray-700">
+              Meta de faturamento do mês
+            </label>
+            <div className="relative sm:max-w-xs">
+              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-gray-500">
+                R$
+              </span>
+              <Input
+                id="monthlyGoal"
+                type="number"
+                min={0}
+                step={100}
+                placeholder="5000"
+                value={form.monthlyGoal || ""}
+                onChange={(e) => setForm((f) => ({ ...f, monthlyGoal: Number(e.target.value) }))}
+                className="min-h-11 pl-10"
+              />
+            </div>
+            <p className="mt-1 text-xs text-gray-500">Aparece no Início.</p>
+          </div>
+        </div>
+      </section>
 
-      <div className="pt-2 border-t border-gray-100">
-        <label className="text-xs text-gray-500 block mb-1">Meta de faturamento mensal (R$) — aparece no Início</label>
-        <Input
-          type="number"
-          min={0}
-          step={100}
-          value={form.monthlyGoal || ""}
-          placeholder="Ex: 5000"
-          onChange={(e) => setForm((f) => ({ ...f, monthlyGoal: Number(e.target.value) }))}
-          className="sm:w-48"
-        />
-      </div>
-
-      <div className="flex items-center gap-3">
-        <Button onClick={handleSave} disabled={saving} className="flex items-center gap-2">
-          <Save size={14} />
-          {saving ? "Salvando..." : "Salvar configurações"}
+      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+        <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
+          {saving ? "Salvando..." : "Salvar"}
         </Button>
-        {saved && <span className="text-sm text-green-600">Salvo ✓</span>}
+        {saved && (
+          <span role="status" className="text-sm text-green-700">
+            Configurações salvas.
+          </span>
+        )}
       </div>
     </div>
   );
 }
 
-function TemplateField({
-  label,
-  hint,
-  value,
-  placeholder,
-  onChange,
-}: {
-  label: string;
-  hint: string;
-  value: string;
-  placeholder: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-1">
-        <label className="text-sm font-medium text-gray-700">{label}</label>
-        <span className="text-xs text-gray-400">{hint}</span>
-      </div>
-      <Textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        rows={4}
-        className="font-mono"
-      />
-      {!value && <p className="text-xs text-gray-400 mt-1">Em branco = usa o texto padrão acima.</p>}
-    </div>
-  );
-}
-
-function NumberField({
+function CampoNumero({
+  id,
   label,
   value,
+  min = 0,
+  max,
   onChange,
 }: {
+  id: string;
   label: string;
   value: number;
+  min?: number;
+  max?: number;
   onChange: (v: number) => void;
 }) {
   return (
     <div>
-      <label className="text-xs text-gray-500 block mb-1">{label}</label>
-      <Input type="number" min={0} value={value} onChange={(e) => onChange(Number(e.target.value))} />
+      <label htmlFor={id} className="mb-1 block text-sm font-medium text-gray-700">
+        {label}
+      </label>
+      <Input
+        id={id}
+        type="number"
+        min={min}
+        max={max}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="min-h-11"
+      />
     </div>
   );
 }

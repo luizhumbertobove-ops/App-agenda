@@ -1,16 +1,19 @@
 export const dynamic = "force-dynamic";
 
 import { prisma } from "@/lib/prisma";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { MessageSquare } from "lucide-react";
 import { getSettings } from "@/lib/settings";
+import { formatDateBR, formatTimeBR, nowBR } from "@/lib/date";
 import { MessageSettingsForm } from "@/components/message-settings-form";
 import { MessageTriggerButtons } from "@/components/message-trigger-buttons";
-import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { MESSAGE_TYPE } from "@/lib/status-labels";
 import { EmptyState } from "@/components/empty-state";
+
+/** Primeiro instante do mês atual em horário de Brasília (00:00 BRT = 03:00 UTC). */
+function inicioDoMesBR(): Date {
+  const agora = nowBR();
+  return new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), 1, 3));
+}
 
 export default async function MensagensPage() {
   const [logs, settings] = await Promise.all([
@@ -22,73 +25,65 @@ export default async function MensagensPage() {
     getSettings(),
   ]);
 
-  const stats = {
-    total: logs.length,
-    confirmation: logs.filter((l) => l.type === "CONFIRMATION").length,
-    payment: logs.filter((l) => l.type === "PAYMENT_LINK").length,
-    reengagement: logs.filter((l) => l.type === "REENGAGEMENT").length,
-    noShow: logs.filter((l) => l.type === ("NO_SHOW" as string)).length,
-  };
+  const inicioMes = inicioDoMesBR();
+  const doMes = logs.filter((l) => l.sentAt >= inicioMes);
+  const contadores = [
+    { rotulo: "Confirmações", valor: doMes.filter((l) => l.type === "CONFIRMATION").length },
+    { rotulo: "Links de pagamento", valor: doMes.filter((l) => l.type === "PAYMENT_LINK").length },
+    { rotulo: "Reengajamentos", valor: doMes.filter((l) => l.type === "REENGAGEMENT").length },
+    { rotulo: "Não compareceu", valor: doMes.filter((l) => l.type === "NO_SHOW").length },
+  ];
+  const recentes = logs.slice(0, 30);
 
   return (
-    <div className="p-3 sm:p-6 max-w-4xl mx-auto">
-      <PageHeader title="Mensagens" subtitle="Histórico e configurações de envio via WhatsApp" />
+    <div className="mx-auto max-w-5xl space-y-10 px-5 pt-6 pb-24">
+      <header>
+        <p className="text-xs font-medium uppercase tracking-[0.14em] text-amber-700">WhatsApp</p>
+        <h1 className="font-display text-3xl text-gray-900">Mensagens</h1>
+      </header>
 
-      <div className="mb-6">
+      <section className="space-y-3">
+        <p className="text-sm text-gray-500">Neste mês</p>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {contadores.map((c) => (
+            <div key={c.rotulo} className="rounded-xl border border-gray-200 bg-white p-4">
+              <p className="font-display text-2xl text-gray-900">{c.valor}</p>
+              <p className="text-sm text-gray-500">{c.rotulo}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="font-display text-2xl text-gray-900">Envios manuais</h2>
         <MessageTriggerButtons />
-      </div>
+      </section>
 
-      <div className="mb-8">
-        <MessageSettingsForm settings={settings} />
-      </div>
+      <MessageSettingsForm settings={settings} />
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-          <p className="text-2xl font-bold text-blue-600">{stats.confirmation}</p>
-          <p className="text-xs text-gray-500 mt-1">Confirmações</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-          <p className="text-2xl font-bold text-amber-600">{stats.payment}</p>
-          <p className="text-xs text-gray-500 mt-1">Links de pagamento</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-          <p className="text-2xl font-bold text-purple-600">{stats.reengagement}</p>
-          <p className="text-xs text-gray-500 mt-1">Reengajamentos</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-          <p className="text-2xl font-bold text-orange-600">{stats.noShow}</p>
-          <p className="text-xs text-gray-500 mt-1">Não compareceu</p>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-xl border border-gray-200">
-        <div className="p-4 border-b border-gray-100">
-          <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-            <MessageSquare size={16} className="text-gray-400" />
-            Histórico de mensagens
-          </h3>
-        </div>
-        {logs.length === 0 ? (
-          <EmptyState title="Nenhuma mensagem enviada ainda." padded />
-        ) : (
-          <div className="divide-y divide-gray-50">
-            {logs.map((log) => (
-              <div key={log.id} className="px-4 py-3">
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-800">{log.client.name}</span>
+      <section className="space-y-3">
+        <h2 className="font-display text-2xl text-gray-900">Histórico</h2>
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+          {recentes.length === 0 ? (
+            <EmptyState title="Nenhuma mensagem enviada ainda." padded />
+          ) : (
+            <ul className="divide-y divide-gray-100">
+              {recentes.map((log) => (
+                <li key={log.id} className="space-y-1 px-4 py-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate text-sm font-medium text-gray-900">{log.client.name}</span>
                     <StatusBadge status={log.type} map={MESSAGE_TYPE} />
                   </div>
-                  <span className="text-xs text-gray-400">
-                    {format(log.sentAt, "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-500 line-clamp-2">{log.message}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+                  <p className="text-xs text-gray-500">
+                    {formatDateBR(log.sentAt)} às {formatTimeBR(log.sentAt)}
+                  </p>
+                  <p className="line-clamp-2 text-sm text-gray-600">{log.message}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </section>
     </div>
   );
 }
