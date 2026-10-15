@@ -4,13 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { createCalendarEvent } from "@/lib/google-calendar";
 import { sendText } from "@/lib/evolution";
 import { getVitrineContent } from "@/lib/vitrine-content";
-import { formatDateBR, formatTimeBR, businessHoursRangeBR } from "@/lib/date";
+import { formatDateBR, formatTimeBR } from "@/lib/date";
+import { workRangeForDate } from "@/lib/work-schedule";
+import { getWorkSchedule } from "@/lib/settings";
 import {
-  BUSINESS_START_H,
-  BUSINESS_END_H,
   SESSION_SLOT_MINUTES,
   MIN_LEAD_MINUTES,
-  isBusinessDay,
 } from "@/lib/vitrine";
 
 const bookingSchema = z.object({
@@ -45,23 +44,13 @@ export async function POST(req: NextRequest) {
   const start = new Date(startTime);
   const end = new Date(start.getTime() + SESSION_SLOT_MINUTES * 60 * 1000);
   const dateStr = start.toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
-  const { start: businessStart, end: businessEnd } = businessHoursRangeBR(
-    dateStr,
-    BUSINESS_START_H,
-    BUSINESS_END_H
-  );
+  const work = workRangeForDate(await getWorkSchedule(), dateStr);
   const earliestStart = new Date(Date.now() + MIN_LEAD_MINUTES * 60 * 1000);
-  const startMinutesBR = Number(
-    start.toLocaleTimeString("pt-BR", { minute: "2-digit", timeZone: "America/Sao_Paulo" })
-  );
+  // A vitrine só oferece horários da grade (de hora em hora a partir do início da jornada).
+  const onGrid =
+    !!work && (start.getTime() - work.start.getTime()) % (SESSION_SLOT_MINUTES * 60 * 1000) === 0;
 
-  if (
-    !isBusinessDay(dateStr) ||
-    start < businessStart ||
-    end > businessEnd ||
-    start < earliestStart ||
-    startMinutesBR !== 0
-  ) {
+  if (!work || !onGrid || start < work.start || end > work.end || start < earliestStart) {
     return NextResponse.json(
       { error: "Esse horário não está mais disponível. Escolha outro." },
       { status: 400 }

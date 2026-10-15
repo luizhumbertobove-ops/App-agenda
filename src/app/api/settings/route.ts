@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
 import { z } from "zod";
+import { workScheduleSchema } from "@/lib/work-schedule";
 
 export async function GET() {
   const settings = await getSettings();
@@ -18,6 +19,7 @@ const updateSchema = z.object({
   reengagementInactivityDays: z.number().int().min(1).max(365).optional(),
   reengagementCooldownDays: z.number().int().min(1).max(365).optional(),
   monthlyGoal: z.number().min(0).optional().nullable(),
+  workSchedule: workScheduleSchema.optional(),
 });
 
 export async function PATCH(req: NextRequest) {

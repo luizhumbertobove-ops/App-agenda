@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { AgendarForm } from "@/components/vitrine/agendar-form";
 import { getVitrineContent } from "@/lib/vitrine-content";
+import { WEEKDAYS } from "@/lib/work-schedule";
+import { getWorkSchedule } from "@/lib/settings";
 
 export const metadata: Metadata = {
   title: "Agendar horário — Humberto Bove | Spaço Lhum",
@@ -22,11 +24,13 @@ export default async function AgendarPage({
 }: {
   searchParams: Promise<{ servico?: string }>;
 }) {
-  const [{ servico }, services, conteudo] = await Promise.all([
+  const [{ servico }, services, conteudo, jornada] = await Promise.all([
     searchParams,
     getServices(),
     getVitrineContent(),
+    getWorkSchedule(),
   ]);
+  const workDays = WEEKDAYS.filter((d) => jornada[d.key]).map((d) => d.key);
 
   return (
     <div className="bove-ds" style={{ background: "var(--surface-page)", minHeight: "100vh" }}>
@@ -35,6 +39,7 @@ export default async function AgendarPage({
           services={services}
           initialServiceId={servico}
           whatsapp={conteudo.telefoneWhatsapp.replace(/\D/g, "")}
+          workDays={workDays}
         />
       </div>
     </div>

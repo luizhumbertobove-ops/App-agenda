@@ -1,19 +1,13 @@
 export const dynamic = "force-dynamic";
 
 import { prisma } from "@/lib/prisma";
-import {
-  format,
-  startOfWeek,
-  endOfWeek,
-  addWeeks,
-  addDays,
-  subDays,
-  parseISO,
-} from "date-fns";
+import { format, startOfWeek, addWeeks, addDays, subDays, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Lock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Lock } from "lucide-react";
 import Link from "next/link";
 import { nowBR, formatTimeBR } from "@/lib/date";
+import { getWorkSchedule } from "@/lib/settings";
+import { hoursForDate, toMinutes, type WorkSchedule } from "@/lib/work-schedule";
 import { NewAppointmentModal } from "@/components/new-appointment-modal";
 import { AppointmentActions } from "@/components/appointment-actions";
 import { ClearAgendaButton } from "@/components/clear-agenda-button";
@@ -21,8 +15,61 @@ import { BlockSlotModal } from "@/components/block-slot-modal";
 import { StatusBadge } from "@/components/status-badge";
 import { APPOINTMENT_STATUS } from "@/lib/status-labels";
 
-const DAY_START_HOUR = 7;
-const DAY_END_HOUR = 19;
+const HOUR_MS = 60 * 60 * 1000;
+
+/** Meia-noite (horário de Brasília) de um "YYYY-MM-DD", em milissegundos. */
+function dayStartMs(dateStr: string): number {
+  return Date.parse(`${dateStr}T00:00:00-03:00`);
+}
+
+/** Linhas de hora cobertas pela jornada do dia (8h–18h → 8, 9, ..., 17). Folga = nenhuma. */
+function workHourRows(schedule: WorkSchedule, dateStr: string): number[] {
+  const hours = hoursForDate(schedule, dateStr);
+  if (!hours) return [];
+  const first = Math.floor(toMinutes(hours.start) / 60);
+  const last = Math.ceil(toMinutes(hours.end) / 60) - 1;
+  return Array.from({ length: last - first + 1 }, (_, i) => first + i);
+}
+
+/** A hora (0–23, Brasília) está dentro da jornada do dia? Vale também para jornadas quebradas em :30. */
+function isWorkHour(schedule: WorkSchedule, dateStr: string, hour: number): boolean {
+  const hours = hoursForDate(schedule, dateStr);
+  if (!hours) return false;
+  return hour * 60 + 60 > toMinutes(hours.start) && hour * 60 < toMinutes(hours.end);
+}
+
+type Range = { startTime: Date; endTime: Date };
+
+/** Agrupa por hora do dia: atendimentos pela hora de início; bloqueios em todas as horas que cobrem. */
+function bucketByHour<A extends Range, B extends Range>(dateStr: string, appts: A[], blocked: B[]) {
+  const base = dayStartMs(dateStr);
+  const apptsByHour: Record<number, A[]> = {};
+  const blockedByHour: Record<number, B[]> = {};
+  for (const appt of appts) {
+    const t = appt.startTime.getTime();
+    if (t < base || t >= base + 24 * HOUR_MS) continue;
+    const h = Math.floor((t - base) / HOUR_MS);
+    (apptsByHour[h] ??= []).push(appt);
+  }
+  for (const slot of blocked) {
+    const from = Math.max(slot.startTime.getTime(), base);
+    const to = Math.min(slot.endTime.getTime(), base + 24 * HOUR_MS);
+    if (from >= to) continue;
+    for (let h = Math.floor((from - base) / HOUR_MS); h * HOUR_MS + base < to; h++) {
+      (blockedByHour[h] ??= []).push(slot);
+    }
+  }
+  return { apptsByHour, blockedByHour };
+}
+
+const hh = (hour: number) => `${String(hour).padStart(2, "0")}:00`;
+
+/** Cor da borda do cartão na grade semanal, pelo status do atendimento. */
+const WEEK_CARD_STATUS: Record<string, string> = {
+  SCHEDULED: "border-l-blue-400",
+  CONFIRMED: "border-l-green-500",
+  DONE: "border-l-amber-400 opacity-70",
+};
 
 export default async function AgendaPage({
   searchParams,
@@ -37,77 +84,6 @@ export default async function AgendaPage({
   const renderedAt = Date.now();
   const view = viewParam === "week" ? "week" : "day";
 
-  const [appointments, clients, blockedSlots, services] = await Promise.all([
-    view === "week"
-      ? (() => {
-          const baseDate = week ? parseISO(week) : today;
-          const weekStart = startOfWeek(baseDate, { weekStartsOn: 1 });
-          const weekEnd = endOfWeek(baseDate, { weekStartsOn: 1 });
-          return prisma.appointment.findMany({
-            where: {
-              startTime: { gte: weekStart, lte: weekEnd },
-              status: { not: "CANCELLED" },
-            },
-            include: {
-              client: true,
-              payments: {
-                where: { status: { in: ["PENDING", "SENT", "OVERDUE"] } },
-                select: { amount: true },
-                orderBy: { createdAt: "desc" },
-                take: 1,
-              },
-            },
-            orderBy: { startTime: "asc" },
-          });
-        })()
-      : (() => {
-          const dayDate = dateParam ? parseISO(dateParam) : today;
-          const dayStart = new Date(
-            Date.UTC(
-              dayDate.getUTCFullYear(),
-              dayDate.getUTCMonth(),
-              dayDate.getUTCDate(),
-              0, 0, 0
-            )
-          );
-          const dayEnd = new Date(
-            Date.UTC(
-              dayDate.getUTCFullYear(),
-              dayDate.getUTCMonth(),
-              dayDate.getUTCDate(),
-              23, 59, 59
-            )
-          );
-          return prisma.appointment.findMany({
-            where: {
-              startTime: { gte: dayStart, lte: dayEnd },
-              status: { not: "CANCELLED" },
-            },
-            include: {
-              client: true,
-              payments: {
-                where: { status: { in: ["PENDING", "SENT", "OVERDUE"] } },
-                select: { amount: true },
-                orderBy: { createdAt: "desc" },
-                take: 1,
-              },
-            },
-            orderBy: { startTime: "asc" },
-          });
-        })(),
-    prisma.client.findMany({
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, phone: true },
-    }),
-    prisma.blockedSlot.findMany({ orderBy: { startTime: "asc" } }),
-    prisma.service.findMany({ select: { name: true, price: true } }),
-  ]);
-
-  // Valor sugerido ao concluir: a cobrança em aberto do atendimento ou o preço do serviço.
-  const priceByService = new Map(services.map((s) => [s.name, s.price]));
-  const suggestedAmount = (appt: (typeof appointments)[number]) =>
-    appt.payments[0]?.amount ?? priceByService.get(appt.serviceType) ?? null;
-
   const currentDate = dateParam ? parseISO(dateParam) : today;
   const prevDate = format(subDays(currentDate, 1), "yyyy-MM-dd");
   const nextDate = format(addDays(currentDate, 1), "yyyy-MM-dd");
@@ -117,40 +93,64 @@ export default async function AgendaPage({
 
   const baseDate = week ? parseISO(week) : today;
   const weekStart = startOfWeek(baseDate, { weekStartsOn: 1 });
+  const weekStartStr = format(weekStart, "yyyy-MM-dd");
   const prevWeek = format(addWeeks(weekStart, -1), "yyyy-MM-dd");
   const nextWeek = format(addWeeks(weekStart, 1), "yyyy-MM-dd");
 
+  // Limites em horário de Brasília (um atendimento às 22h não pode cair no dia seguinte).
+  const rangeStart = new Date(dayStartMs(view === "week" ? weekStartStr : currentDateStr));
+  const rangeEnd = new Date(rangeStart.getTime() + (view === "week" ? 7 : 1) * 24 * HOUR_MS);
+
+  const [appointments, clients, blockedSlots, services, schedule] = await Promise.all([
+    prisma.appointment.findMany({
+      where: {
+        startTime: { gte: rangeStart, lt: rangeEnd },
+        status: { not: "CANCELLED" },
+      },
+      include: {
+        client: true,
+        payments: {
+          where: { status: { in: ["PENDING", "SENT", "OVERDUE"] } },
+          select: { amount: true },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+      },
+      orderBy: { startTime: "asc" },
+    }),
+    prisma.client.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, phone: true },
+    }),
+    prisma.blockedSlot.findMany({ orderBy: { startTime: "asc" } }),
+    prisma.service.findMany({ select: { name: true, price: true } }),
+    getWorkSchedule(),
+  ]);
+
+  // Valor sugerido ao concluir: a cobrança em aberto do atendimento ou o preço do serviço.
+  const priceByService = new Map(services.map((s) => [s.name, s.price]));
+  const suggestedAmount = (appt: (typeof appointments)[number]) =>
+    appt.payments[0]?.amount ?? priceByService.get(appt.serviceType) ?? null;
+
+  const jornadaLink = (
+    <Link
+      href="/agenda/jornada"
+      className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+    >
+      <Clock size={16} strokeWidth={1.75} aria-hidden="true" />
+      Jornada
+    </Link>
+  );
+
   if (view === "day") {
-    const apptsByHour: Record<number, typeof appointments> = {};
-    for (const appt of appointments) {
-      const apptLocal = new Date(appt.startTime.getTime() - 3 * 60 * 60 * 1000);
-      const h = apptLocal.getUTCHours();
-      if (!apptsByHour[h]) apptsByHour[h] = [];
-      apptsByHour[h].push(appt);
-    }
+    const { apptsByHour, blockedByHour } = bucketByHour(currentDateStr, appointments, blockedSlots);
+    const workRows = workHourRows(schedule, currentDateStr);
+    const dayOff = workRows.length === 0;
 
-    // Um bloqueio aparece em todas as linhas de hora que ele cobre (12h–14h ocupa 12h e 13h).
-    const blockedByHour: Record<number, typeof blockedSlots> = {};
-    const HOUR_MS = 60 * 60 * 1000;
-    const dayStartMs = Date.parse(`${currentDateStr}T00:00:00-03:00`);
-    for (const slot of blockedSlots) {
-      const from = Math.max(slot.startTime.getTime(), dayStartMs);
-      const to = Math.min(slot.endTime.getTime(), dayStartMs + 24 * HOUR_MS);
-      if (from >= to) continue;
-      for (let h = Math.floor((from - dayStartMs) / HOUR_MS); h * HOUR_MS + dayStartMs < to; h++) {
-        if (!blockedByHour[h]) blockedByHour[h] = [];
-        blockedByHour[h].push(slot);
-      }
-    }
-
-    // 7h–19h, mais qualquer hora fora dessa faixa que tenha atendimento ou bloqueio.
-    const baseHours = Array.from(
-      { length: DAY_END_HOUR - DAY_START_HOUR + 1 },
-      (_, i) => DAY_START_HOUR + i
-    );
+    // Horas da jornada, mais qualquer hora fora dela que tenha atendimento ou bloqueio.
     const hourList = Array.from(
       new Set([
-        ...baseHours,
+        ...workRows,
         ...Object.keys(apptsByHour).map(Number),
         ...Object.keys(blockedByHour).map(Number),
       ])
@@ -162,8 +162,12 @@ export default async function AgendaPage({
       endTime: s.endTime.toISOString(),
     }));
 
+    // Faixa de dias: os dias de trabalho da semana (e o dia aberto, se for folga).
     const dayWeekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-    const weekDays = Array.from({ length: 5 }, (_, i) => addDays(dayWeekStart, i));
+    const weekDays = Array.from({ length: 7 }, (_, i) => addDays(dayWeekStart, i)).filter((d) => {
+      const key = format(d, "yyyy-MM-dd");
+      return key === currentDateStr || workHourRows(schedule, key).length > 0;
+    });
 
     return (
       <div className="mx-auto max-w-7xl px-5 pb-24 pt-6 md:px-8">
@@ -182,7 +186,11 @@ export default async function AgendaPage({
             }
           />
 
-          <nav aria-label="Dias da semana" className="grid grid-cols-5 gap-2">
+          <nav
+            aria-label="Dias da semana"
+            className="grid gap-2"
+            style={{ gridTemplateColumns: `repeat(${weekDays.length}, minmax(0, 1fr))` }}
+          >
             {weekDays.map((d) => {
               const key = format(d, "yyyy-MM-dd");
               const on = key === currentDateStr;
@@ -208,6 +216,13 @@ export default async function AgendaPage({
             })}
           </nav>
 
+          {dayOff && (
+            <p className="rounded-xl bg-gray-100 px-4 py-3 text-sm text-gray-600">
+              Dia de folga na sua jornada. Você ainda pode encaixar alguém pelo botão de novo
+              agendamento.
+            </p>
+          )}
+
           <ol className="flex flex-col">
             {hourList.map((hour) => {
               const hourAppts = apptsByHour[hour] ?? [];
@@ -217,7 +232,7 @@ export default async function AgendaPage({
               return (
                 <li key={hour} className="flex gap-3">
                   <span className="w-12 shrink-0 pt-3 text-sm tabular-nums text-gray-500">
-                    {String(hour).padStart(2, "0")}:00
+                    {hh(hour)}
                   </span>
                   <div className="flex min-w-0 flex-1 flex-col gap-2 pb-3">
                     {hourBlocked.map((slot) => (
@@ -235,9 +250,9 @@ export default async function AgendaPage({
 
                     {isEmpty && (
                       <Link
-                        href={`/agenda?date=${currentDateStr}&novo=${String(hour).padStart(2, "0")}:00`}
+                        href={`/agenda?date=${currentDateStr}&novo=${hh(hour)}`}
                         scroll={false}
-                        aria-label={`Agendar às ${String(hour).padStart(2, "0")}:00`}
+                        aria-label={`Agendar às ${hh(hour)}`}
                         className="flex min-h-12 items-center rounded-xl border border-dashed border-gray-300 px-3 text-sm text-gray-400 transition-colors hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700"
                       >
                         Livre
@@ -289,31 +304,35 @@ export default async function AgendaPage({
             })}
           </ol>
 
-          <div className="flex items-center justify-between gap-3 border-t border-gray-200 pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-4">
             <BlockSlotModal currentDate={currentDateStr} blockedSlots={blockedSlotsForModal} />
-            <ClearAgendaButton />
+            <div className="flex items-center gap-1">
+              {jornadaLink}
+              <ClearAgendaButton />
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  // ── Week view ──────────────────────────────────────────────
-  const byDay: Record<string, typeof appointments> = {};
-  for (const appt of appointments) {
-    const key = format(appt.startTime, "yyyy-MM-dd");
-    if (!byDay[key]) byDay[key] = [];
-    byDay[key].push(appt);
-  }
-
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(weekStart);
-    d.setDate(d.getDate() + i);
-    return d;
-  });
+  // ── Visão semanal: grade de hora em hora (rola na horizontal no celular) ──
+  const days = Array.from({ length: 7 }, (_, i) => format(addDays(weekStart, i), "yyyy-MM-dd"));
+  const buckets = Object.fromEntries(
+    days.map((key) => [key, bucketByHour(key, appointments, blockedSlots)])
+  );
+  const hourList = Array.from(
+    new Set(
+      days.flatMap((key) => [
+        ...workHourRows(schedule, key),
+        ...Object.keys(buckets[key].apptsByHour).map(Number),
+        ...Object.keys(buckets[key].blockedByHour).map(Number),
+      ])
+    )
+  ).sort((a, b) => a - b);
 
   const currentWeekKey = format(startOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd");
-  const isCurrentWeek = format(weekStart, "yyyy-MM-dd") === currentWeekKey;
+  const isCurrentWeek = weekStartStr === currentWeekKey;
   const weekEndDate = addDays(weekStart, 6);
 
   return (
@@ -330,115 +349,118 @@ export default async function AgendaPage({
           clients={clients}
         />
 
-        {/* Celular: um cartão por dia, leva à visão Dia */}
-        <ul className="flex flex-col gap-3 md:hidden">
-          {days.map((day) => {
-            const key = format(day, "yyyy-MM-dd");
-            const dayAppts = byDay[key] ?? [];
-            const isDayToday = key === todayStr;
-            const weekend = day.getDay() === 0 || day.getDay() === 6;
-            const count = dayAppts.length;
-
-            return (
-              <li key={key}>
+        <div className="-mx-5 overflow-x-auto px-5 pb-2 [contain:paint] md:mx-0 md:px-0">
+          <div
+            role="grid"
+            aria-label="Semana de hora em hora"
+            className="grid w-max grid-cols-[3rem_repeat(7,6.25rem)] overflow-hidden rounded-xl border border-gray-200 bg-white md:w-auto md:grid-cols-[3rem_repeat(7,minmax(0,1fr))]"
+          >
+            {/* Cabeçalho: dias */}
+            <div className="sticky left-0 z-10 border-b border-gray-200 bg-white" />
+            {days.map((key) => {
+              const d = parseISO(key);
+              const isDayToday = key === todayStr;
+              const off = workHourRows(schedule, key).length === 0;
+              return (
                 <Link
+                  key={key}
                   href={`/agenda?date=${key}`}
-                  className={`flex min-h-14 items-center gap-4 rounded-xl border border-gray-200 p-4 transition-colors hover:bg-gray-50 ${
-                    isDayToday ? "bg-amber-50" : "bg-white"
+                  className={`flex flex-col items-center justify-center gap-0.5 border-b border-l border-gray-200 py-2 text-center hover:bg-gray-50 ${
+                    isDayToday ? "bg-amber-50" : ""
                   }`}
                 >
-                  <div className="flex w-16 shrink-0 flex-col items-center gap-1">
-                    <span className="text-xs capitalize text-gray-500">
-                      {format(day, "EEEE", { locale: ptBR })}
-                    </span>
-                    <span className="font-display text-2xl leading-none text-gray-900">
-                      {format(day, "d")}
-                    </span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    {isDayToday && (
-                      <p className="text-xs font-medium uppercase tracking-[0.14em] text-amber-700">
-                        Hoje
-                      </p>
-                    )}
-                    <p className="text-sm text-gray-700">
-                      {count > 0
-                        ? `${count} atendimento${count > 1 ? "s" : ""}`
-                        : weekend
-                          ? "Combinado pelo WhatsApp"
-                          : "Sem atendimentos"}
-                    </p>
-                  </div>
-                  <ChevronRight
-                    size={18}
-                    strokeWidth={1.75}
-                    className="shrink-0 text-gray-400"
-                    aria-hidden="true"
-                  />
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-
-        {/* PC: uma coluna por dia */}
-        <div className="hidden gap-3 md:grid md:grid-cols-7">
-          {days.map((day) => {
-            const key = format(day, "yyyy-MM-dd");
-            const dayAppts = byDay[key] ?? [];
-            const isDayToday = key === todayStr;
-            const weekend = day.getDay() === 0 || day.getDay() === 6;
-
-            return (
-              <section key={key} className="flex min-w-0 flex-col gap-2">
-                <div className="flex flex-col items-center gap-1 pb-1 text-center">
                   <span
                     className={`text-xs capitalize ${isDayToday ? "text-violet-700" : "text-gray-500"}`}
                   >
-                    {format(day, "EEE", { locale: ptBR })}
+                    {format(d, "EEE", { locale: ptBR })}
                   </span>
-                  <Link
-                    href={`/agenda?date=${key}`}
-                    className={`text-xl font-medium tabular-nums hover:underline ${
+                  <span
+                    className={`text-lg font-medium leading-none tabular-nums ${
                       isDayToday ? "text-violet-700" : "text-gray-900"
                     }`}
                   >
-                    {format(day, "d")}
-                  </Link>
-                  <span
-                    className={`h-1.5 w-1.5 rounded-full ${isDayToday ? "bg-violet-600" : "bg-transparent"}`}
-                    aria-hidden="true"
-                  />
-                </div>
+                    {format(d, "d")}
+                  </span>
+                  {off && <span className="text-[11px] text-gray-400">Folga</span>}
+                </Link>
+              );
+            })}
 
-                {dayAppts.length === 0 ? (
-                  <p className="text-center text-xs text-gray-400">
-                    {weekend ? "Combinado pelo WhatsApp" : "Livre"}
-                  </p>
-                ) : (
-                  dayAppts.map((appt) => (
+            {/* Linhas de hora */}
+            {hourList.map((hour) => (
+              <div key={hour} role="row" className="contents">
+                <div className="sticky left-0 z-10 border-t border-gray-100 bg-white pr-2 pt-2 text-right text-xs tabular-nums text-gray-500">
+                  {hh(hour)}
+                </div>
+                {days.map((key) => {
+                  const appts = buckets[key].apptsByHour[hour] ?? [];
+                  const blocked = buckets[key].blockedByHour[hour] ?? [];
+                  const working = isWorkHour(schedule, key, hour);
+                  return (
                     <div
-                      key={appt.id}
-                      className="flex flex-col gap-1 rounded-lg border border-gray-200 bg-white p-2"
+                      key={key}
+                      role="gridcell"
+                      className={`flex min-h-14 flex-col gap-1 border-l border-t border-gray-100 p-1 ${
+                        working ? "" : "bg-gray-50"
+                      }`}
                     >
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-xs tabular-nums text-gray-500">
-                          {formatTimeBR(appt.startTime)}
-                        </span>
-                        <StatusBadge status={appt.status} map={APPOINTMENT_STATUS} />
-                      </div>
-                      <p className="truncate text-sm font-medium text-gray-900">
-                        {appt.client?.name ?? appt.title}
-                      </p>
+                      {blocked.length > 0 && (
+                        <div
+                          className="flex min-h-11 flex-1 items-center gap-1 rounded-lg bg-gray-100 px-2 text-xs text-gray-500"
+                          title={blocked[0].reason ?? undefined}
+                        >
+                          <Lock size={12} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />
+                          Bloqueado
+                        </div>
+                      )}
+                      {appts.map((appt) => (
+                        <Link
+                          key={appt.id}
+                          href={`/agenda?date=${key}`}
+                          className={`flex min-h-11 flex-col justify-center rounded-lg border border-l-4 border-gray-200 bg-white px-2 py-1 hover:bg-gray-50 ${
+                            WEEK_CARD_STATUS[appt.status] ?? ""
+                          }`}
+                        >
+                          <span className="text-[11px] tabular-nums text-gray-500">
+                            {formatTimeBR(appt.startTime)}
+                            <span className="sr-only"> · {APPOINTMENT_STATUS[appt.status]?.label}</span>
+                          </span>
+                          <span className="truncate text-xs font-medium text-gray-900">
+                            {appt.client?.name ?? appt.title}
+                          </span>
+                        </Link>
+                      ))}
+                      {working && appts.length === 0 && blocked.length === 0 && (
+                        <Link
+                          href={`/agenda?date=${key}&novo=${hh(hour)}`}
+                          aria-label={`Agendar em ${format(parseISO(key), "d/MM")} às ${hh(hour)}`}
+                          className="flex min-h-11 flex-1 items-center justify-center rounded-lg text-xs text-gray-300 transition-colors hover:bg-violet-50 hover:text-violet-700"
+                        >
+                          Livre
+                        </Link>
+                      )}
                     </div>
-                  ))
-                )}
-              </section>
-            );
-          })}
+                  );
+                })}
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div className="flex justify-end border-t border-gray-200 pt-4">
+        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500" aria-label="Legenda">
+          <span className="flex items-center gap-1.5">
+            <span className="h-3 w-1 rounded-full bg-blue-400" aria-hidden /> Agendado
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-3 w-1 rounded-full bg-green-500" aria-hidden /> Confirmado
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-3 w-1 rounded-full bg-amber-400" aria-hidden /> Concluído
+          </span>
+        </div>
+
+        <div className="flex items-center justify-end gap-1 border-t border-gray-200 pt-4">
+          {jornadaLink}
           <ClearAgendaButton />
         </div>
       </div>

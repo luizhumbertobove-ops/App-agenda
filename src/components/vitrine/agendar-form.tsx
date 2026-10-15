@@ -24,11 +24,14 @@ export function AgendarForm({
   services,
   initialServiceId,
   whatsapp,
+  workDays,
 }: {
   services: Service[];
   initialServiceId?: string;
   /** Número do Beto, editável na página Vitrine do app. */
   whatsapp: string;
+  /** Dias da semana da jornada ("0" = domingo). */
+  workDays: string[];
 }) {
   const [serviceId, setServiceId] = useState(
     initialServiceId && services.some((s) => s.id === initialServiceId)
@@ -52,7 +55,7 @@ export function AgendarForm({
 
   const service = services.find((s) => s.id === serviceId);
   const today = useMemo(() => todayBR(), []);
-  const isWeekend = date.length > 0 && !isBusinessDay(date);
+  const isWeekend = date.length > 0 && !isBusinessDay(date, workDays);
 
   const slotsUrl = date && service && !isWeekend ? `/api/vitrine/availability?date=${date}` : null;
   const { data: fetchedSlots, loading: loadingSlots, refetch: refetchSlots } = useSlots<Slot[]>(slotsUrl);
@@ -212,7 +215,7 @@ export function AgendarForm({
             </span>
             {isWeekend ? (
               <p style={{ font: "var(--type-caption)", color: "var(--text-body)" }}>
-                Fins de semana são combinados diretamente.{" "}
+                Esse dia é combinado diretamente.{" "}
                 <a href={whatsappLink(fallbackMessage(), whatsapp)} target="_blank" rel="noopener noreferrer">
                   Fale no WhatsApp
                 </a>{" "}

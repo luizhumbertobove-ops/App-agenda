@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { businessHoursRangeBR } from "@/lib/date";
-import { BUSINESS_START_H, BUSINESS_END_H, SESSION_SLOT_MINUTES, MIN_LEAD_MINUTES, isBusinessDay } from "@/lib/vitrine";
+import { SESSION_SLOT_MINUTES, MIN_LEAD_MINUTES } from "@/lib/vitrine";
+import { workRangeForDate } from "@/lib/work-schedule";
+import { getWorkSchedule } from "@/lib/settings";
 
 // Horários "isca" (dentro da grade cheia) usados quando o dia ainda não tem
 // nenhum agendamento que sirva de âncora para a regra de antes/depois.
@@ -23,15 +25,12 @@ export async function GET(req: NextRequest) {
   if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     return NextResponse.json({ error: "Parâmetro date obrigatório (YYYY-MM-DD)" }, { status: 400 });
   }
-  if (!isBusinessDay(dateStr)) {
+  // Dia de folga na jornada do Beto: a vitrine não oferece horários.
+  const work = workRangeForDate(await getWorkSchedule(), dateStr);
+  if (!work) {
     return NextResponse.json([]);
   }
-
-  const { start: businessStart, end: businessEnd } = businessHoursRangeBR(
-    dateStr,
-    BUSINESS_START_H,
-    BUSINESS_END_H
-  );
+  const { start: businessStart, end: businessEnd } = work;
   const earliestStart = new Date(Date.now() + MIN_LEAD_MINUTES * 60 * 1000);
 
   const range = { startTime: { lt: businessEnd }, endTime: { gt: businessStart } };
@@ -75,7 +74,7 @@ export async function GET(req: NextRequest) {
 
   if (candidates.size === 0) {
     for (const hour of FALLBACK_HOURS) {
-      const targetMs = businessStart.getTime() + (hour - BUSINESS_START_H) * 60 * 60 * 1000;
+      const targetMs = businessHoursRangeBR(dateStr, hour, hour).start.getTime();
       const slot = grid.find((s) => s.start.getTime() === targetMs);
       if (slot && isFree(slot)) candidates.set(slot.start.getTime(), slot);
     }

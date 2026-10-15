@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { businessHoursRangeBR } from "@/lib/date";
-
-const BUSINESS_START_H = 8;
-const BUSINESS_END_H = 18;
+import { COMERCIAL, rangeForHours, workRangeForDate } from "@/lib/work-schedule";
+import { getWorkSchedule } from "@/lib/settings";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -14,11 +12,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Parâmetro date obrigatório (YYYY-MM-DD)" }, { status: 400 });
   }
 
-  const { start: businessStart, end: businessEnd } = businessHoursRangeBR(
-    dateStr,
-    BUSINESS_START_H,
-    BUSINESS_END_H
-  );
+  // Dentro da jornada do dia. Em dia de folga o Beto ainda pode encaixar alguém
+  // (ex.: sábado combinado pelo WhatsApp), então vale o horário comercial padrão.
+  const schedule = await getWorkSchedule();
+  const { start: businessStart, end: businessEnd } =
+    workRangeForDate(schedule, dateStr) ?? rangeForHours(dateStr, COMERCIAL);
 
   const range = { startTime: { lt: businessEnd }, endTime: { gt: businessStart } };
   const [appointments, blocked] = await Promise.all([
