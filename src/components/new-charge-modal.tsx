@@ -49,9 +49,9 @@ export function NewChargeModal({ clients }: { clients: Client[] }) {
 
   if (!open) {
     return (
-      <Button onClick={() => setOpen(true)} className="flex items-center gap-2">
+      <Button onClick={() => setOpen(true)} aria-label="Nova cobrança" className="flex items-center gap-2">
         <Plus size={16} />
-        Nova Cobrança
+        <span className="hidden sm:inline">Nova cobrança</span>
       </Button>
     );
   }

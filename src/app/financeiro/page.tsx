@@ -244,11 +244,8 @@ export default async function FinanceiroPage({
                         <span className="text-[15px] font-semibold tabular-nums text-gray-900">
                           {formatCurrencyBR(p.amount)}
                         </span>
-                        {p.status === "PAID" ? (
-                          <StatusBadge status={p.status} map={PAYMENT_STATUS} />
-                        ) : (
-                          <PaymentRowActions paymentId={p.id} status={p.status} />
-                        )}
+                        <StatusBadge status={p.status} map={PAYMENT_STATUS} />
+                        {p.status !== "PAID" && <PaymentRowActions paymentId={p.id} status={p.status} />}
                       </div>
                     </li>
                   );
