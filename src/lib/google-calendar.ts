@@ -25,19 +25,29 @@ export function parseEventTitle(title: string): { clientName: string; serviceTyp
 // ─── Leitura ────────────────────────────────────────────────
 
 export async function listUpcomingEvents(daysAhead = 30) {
-  const now = new Date();
   const future = new Date();
   future.setDate(future.getDate() + daysAhead);
+  return listEventsBetween(new Date(), future);
+}
 
-  const res = await calendar.events.list({
-    calendarId: CALENDAR_ID(),
-    timeMin: now.toISOString(),
-    timeMax: future.toISOString(),
-    singleEvents: true,
-    orderBy: "startTime",
-  });
-
-  return res.data.items ?? [];
+/** Eventos com início entre `from` e `to` (passado incluído), já com as recorrências expandidas. */
+export async function listEventsBetween(from: Date, to: Date) {
+  const items = [];
+  let pageToken: string | undefined;
+  do {
+    const res = await calendar.events.list({
+      calendarId: CALENDAR_ID(),
+      timeMin: from.toISOString(),
+      timeMax: to.toISOString(),
+      singleEvents: true,
+      orderBy: "startTime",
+      maxResults: 2500,
+      pageToken,
+    });
+    items.push(...(res.data.items ?? []));
+    pageToken = res.data.nextPageToken ?? undefined;
+  } while (pageToken);
+  return items;
 }
 
 export async function listTodayEvents() {

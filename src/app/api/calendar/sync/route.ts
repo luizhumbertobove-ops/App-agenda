@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isCronRequest, hasValidSession } from "@/lib/auth";
 import {
-  listUpcomingEvents,
+  listEventsBetween,
   parseEventTitle,
   createCalendarEvent,
 } from "@/lib/google-calendar";
@@ -15,17 +15,30 @@ export async function GET(req: Request) {
   return POST(req);
 }
 
+// Por padrão importa de agora até 60 dias. Com ?from=YYYY-MM-DD&to=YYYY-MM-DD importa
+// um período (inclusive o passado), ex.: o mês inteiro.
 export async function POST(req: Request) {
   if (!isCronRequest(req) && !(await hasValidSession(req))) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
-  return sync();
+  const { searchParams } = new URL(req.url);
+  const isDate = (v: string | null) => !!v && /^\d{4}-\d{2}-\d{2}$/.test(v);
+  const fromParam = searchParams.get("from");
+  const toParam = searchParams.get("to");
+  if (isDate(fromParam) && isDate(toParam)) {
+    const from = new Date(`${fromParam}T00:00:00-03:00`);
+    const to = new Date(new Date(`${toParam}T00:00:00-03:00`).getTime() + 24 * 60 * 60 * 1000);
+    return sync(from, to);
+  }
+  const to = new Date();
+  to.setDate(to.getDate() + 60);
+  return sync(new Date(), to);
 }
 
-async function sync() {
+async function sync(from: Date, to: Date) {
   try {
     // ── Fase 1: Importar eventos do Google Calendar ──────────────
-    const events = await listUpcomingEvents(60);
+    const events = await listEventsBetween(from, to);
     let processed = 0;
 
     for (const event of events) {
@@ -47,7 +60,8 @@ async function sync() {
           serviceType,
           startTime,
           endTime,
-          status: event.status === "cancelled" ? "CANCELLED" : "SCHEDULED",
+          // Mantém o status marcado no app (confirmado, concluído...); só o cancelamento vem do Google.
+          ...(event.status === "cancelled" ? { status: "CANCELLED" as const } : {}),
           ...(client ? { clientId: client.id } : {}),
         },
         create: {
