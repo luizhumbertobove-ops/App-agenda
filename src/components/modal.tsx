@@ -20,15 +20,21 @@ export function Modal({
   children: React.ReactNode;
 }) {
   const boxRef = useRef<HTMLDivElement>(null);
+  // onClose costuma ser uma função nova a cada render; guardada em ref para o efeito
+  // abaixo rodar uma vez só (senão o foco voltava para a caixa a cada tecla digitada).
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onCloseRef.current();
     }
     document.addEventListener("keydown", onKeyDown);
     boxRef.current?.focus();
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+  }, []);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;

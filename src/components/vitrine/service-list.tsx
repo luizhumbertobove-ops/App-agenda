@@ -55,10 +55,15 @@ export function ServiceList({ services }: { services: VitrineService[] }) {
 
 function ServiceDialog({ service, onClose }: { service: VitrineService; onClose: () => void }) {
   const boxRef = useRef<HTMLDivElement>(null);
+  // Mesma regra do Modal do app: o efeito roda só ao abrir, com onClose lido de uma ref.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onCloseRef.current();
     }
     document.addEventListener("keydown", onKeyDown);
     const overflow = document.body.style.overflow;
@@ -68,7 +73,7 @@ function ServiceDialog({ service, onClose }: { service: VitrineService; onClose:
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = overflow;
     };
-  }, [onClose]);
+  }, []);
 
   const titleId = `servico-${service.id}`;
 
