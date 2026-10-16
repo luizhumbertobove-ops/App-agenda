@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
-import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { FileDown } from "lucide-react";
 import { nowBR } from "@/lib/date";
@@ -35,31 +35,30 @@ export default async function FinanceiroPage({
     status === "pendentes" || status === "pagas" ? status : "todas";
 
   const today = nowBR();
-  const monthStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
-  const monthEnd = new Date(
-    Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0, 23, 59, 59)
-  );
-
-  // Last 6 months for the chart
-  const chartMonths = Array.from({ length: 6 }, (_, i) => {
-    const d = subMonths(today, 5 - i);
+  // Limites de mês em horário de Brasília (00:00 BRT = 03:00 UTC); fim exclusivo.
+  const monthBR = (offset: number) => {
+    const y = today.getUTCFullYear();
+    const m = today.getUTCMonth() + offset;
     return {
-      label: format(d, "MMM", { locale: ptBR }).replace(".", ""),
-      start: startOfMonth(d),
-      end: endOfMonth(d),
+      start: new Date(Date.UTC(y, m, 1, 3)),
+      end: new Date(Date.UTC(y, m + 1, 1, 3)),
+      label: format(new Date(Date.UTC(y, m, 15)), "MMM", { locale: ptBR }).replace(".", ""),
     };
-  });
+  };
+  const thisMonth = monthBR(0);
+
+  // Últimos 6 meses para o gráfico
+  const chartMonths = Array.from({ length: 6 }, (_, i) => monthBR(i - 5));
 
   const [payments, monthStats, settings, clients, chartData] = await Promise.all([
     prisma.payment.findMany({
       include: { client: true, appointment: true },
       orderBy: { createdAt: "desc" },
     }),
-    prisma.payment.groupBy({
-      by: ["status"],
-      where: { createdAt: { gte: monthStart, lte: monthEnd } },
+    // Recebido no mês = pagas com data de pagamento no mês (não a data em que a cobrança foi criada).
+    prisma.payment.aggregate({
+      where: { status: "PAID", paidAt: { gte: thisMonth.start, lt: thisMonth.end } },
       _sum: { amount: true },
-      _count: true,
     }),
     getSettings(),
     prisma.client.findMany({
@@ -69,7 +68,7 @@ export default async function FinanceiroPage({
     Promise.all(
       chartMonths.map(async (m) => {
         const agg = await prisma.payment.aggregate({
-          where: { status: "PAID", paidAt: { gte: m.start, lte: m.end } },
+          where: { status: "PAID", paidAt: { gte: m.start, lt: m.end } },
           _sum: { amount: true },
         });
         return { label: m.label, value: agg._sum.amount ?? 0 };
@@ -77,11 +76,11 @@ export default async function FinanceiroPage({
     ),
   ]);
 
-  const paid = monthStats.find((s) => s.status === "PAID");
-  const pendingGroups = monthStats.filter((s) => s.status === "PENDING" || s.status === "SENT");
-  const totalPaid = paid?._sum.amount ?? 0;
-  const totalPending = pendingGroups.reduce((sum, s) => sum + (s._sum.amount ?? 0), 0);
-  const pendingCount = pendingGroups.reduce((sum, s) => sum + s._count, 0);
+  const totalPaid = monthStats._sum.amount ?? 0;
+  // A receber = tudo o que está em aberto (inclusive vencidas), de qualquer mês.
+  const openPayments = payments.filter((p) => PENDING_STATUSES.includes(p.status));
+  const totalPending = openPayments.reduce((sum, p) => sum + p.amount, 0);
+  const pendingCount = openPayments.length;
   const totalForecast = totalPaid + totalPending;
 
   const goal = settings.monthlyGoal ?? 0;
@@ -216,7 +215,9 @@ export default async function FinanceiroPage({
             ) : (
               <ul className="divide-y divide-gray-100">
                 {list.map((p) => {
-                  const name = p.client?.name ?? null;
+                  // Sem cadastro ligado (atendimento importado do Google), usa o nome do título do atendimento.
+                  const name =
+                    p.client?.name ?? (p.appointment ? p.appointment.title.split(" - ")[0].trim() : null);
                   const initial = name ? (Array.from(name)[0] ?? "?").toUpperCase() : "?";
                   const what = p.appointment?.serviceType ?? "Cobrança avulsa";
                   const when = format(p.createdAt, "d MMM", { locale: ptBR }).replace(".", "");
