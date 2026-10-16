@@ -8,7 +8,7 @@ import { Modal } from "@/components/modal";
 import { Button } from "@/components/button";
 import { Input, Textarea } from "@/components/input";
 import { ClientCombobox } from "@/components/client-combobox";
-import { SessionHoursPicker, sessionMinutes } from "@/components/session-hours-picker";
+import { MAX_SESSION_HOURS, SessionHoursPicker, sessionMinutes } from "@/components/session-hours-picker";
 
 type Service = { id: string; name: string; durationMins: number; price: number };
 type Slot = { start: string; end: string; available: boolean };
@@ -57,7 +57,7 @@ export function EditAppointmentModal({
   const [notes, setNotes] = useState(initialNotes ?? "");
   // Tempo atual: até 1 h conta como sessão normal; acima disso, horas inteiras (2 h, 3 h).
   const [hours, setHours] = useState(() =>
-    Math.min(3, Math.max(1, Math.ceil((new Date(endTime).getTime() - new Date(startTime).getTime()) / 3_600_000)))
+    Math.min(MAX_SESSION_HOURS, Math.max(1, Math.ceil((new Date(endTime).getTime() - new Date(startTime).getTime()) / 3_600_000)))
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
