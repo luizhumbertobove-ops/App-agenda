@@ -70,11 +70,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const client = await prisma.client.upsert({
-    where: { phone },
-    update: {},
-    create: { name, phone },
-  });
+  // O cliente é reconhecido pelo WhatsApp, com ou sem o 55 (a base guarda com 55).
+  // Cliente que já existe mantém o nome cadastrado pelo Beto, mesmo se digitar outro.
+  const client =
+    (await prisma.client.findFirst({ where: { phone: { in: [`55${phone}`, phone] } } })) ??
+    (await prisma.client.create({ data: { name, phone: `55${phone}` } }));
   const priorAppointments = await prisma.appointment.count({
     where: { clientId: client.id, status: { not: "CANCELLED" } },
   });

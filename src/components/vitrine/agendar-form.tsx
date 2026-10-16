@@ -9,6 +9,19 @@ import { Card } from "@/components/vitrine/ds/Card";
 import { ServiceCard } from "@/components/vitrine/ds/ServiceCard";
 import { Input } from "@/components/vitrine/ds/Input";
 import { Textarea } from "@/components/vitrine/ds/Textarea";
+
+/** Nome e WhatsApp lembrados neste aparelho depois da primeira reserva. */
+const CLIENTE_KEY = "bove-cliente";
+
+function clienteSalvo(): { name: string; phone: string } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const salvo = JSON.parse(localStorage.getItem(CLIENTE_KEY) ?? "null");
+    return salvo && typeof salvo.name === "string" && typeof salvo.phone === "string" ? salvo : null;
+  } catch {
+    return null;
+  }
+}
 import { TimeSlot } from "@/components/vitrine/ds/TimeSlot";
 import { Button } from "@/components/vitrine/ds/Button";
 import { Icon } from "@/components/vitrine/ds/Icon";
@@ -44,8 +57,11 @@ export function AgendarForm({
   const [date, setDate] = useState("");
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
 
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  // Os campos só aparecem depois de escolher um horário (já no navegador), então ler o
+  // localStorage aqui não causa diferença de hidratação.
+  const [lembrado, setLembrado] = useState(() => clienteSalvo());
+  const [name, setName] = useState(() => lembrado?.name ?? "");
+  const [phone, setPhone] = useState(() => lembrado?.phone ?? "");
   const [notes, setNotes] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
@@ -111,6 +127,12 @@ export function AgendarForm({
           setSelectedSlot(null);
         }
         return;
+      }
+
+      try {
+        localStorage.setItem(CLIENTE_KEY, JSON.stringify({ name: name.trim(), phone: phone.trim() }));
+      } catch {
+        // Sem armazenamento (aba anônima etc.): só não lembra da próxima vez.
       }
 
       setConfirmed({
@@ -186,7 +208,7 @@ export function AgendarForm({
 
       <div className="flex flex-col gap-2">
         <span className="ds-eyebrow">Serviço</span>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {services.map((s) => (
             <ServiceCard
               key={s.id}
@@ -262,16 +284,38 @@ export function AgendarForm({
 
         {selectedSlot && (
           <>
-            <Input label="Seu nome" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome completo" />
-            <Input
-              type="tel"
-              label="WhatsApp"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="(16) 99999-9999"
-              iconLeft={<Icon icon={Phone} size={16} />}
-              hint="Só para confirmar o horário."
-            />
+            {lembrado ? (
+              <p style={{ font: "var(--type-body)", color: "var(--text-body)" }}>
+                Reservando como <strong>{lembrado.name}</strong>, WhatsApp {lembrado.phone}.{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      localStorage.removeItem(CLIENTE_KEY);
+                    } catch {}
+                    setLembrado(null);
+                    setName("");
+                    setPhone("");
+                  }}
+                  style={{ color: "var(--action-primary)", textDecoration: "underline" }}
+                >
+                  Não é você?
+                </button>
+              </p>
+            ) : (
+              <>
+                <Input label="Seu nome" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome completo" />
+                <Input
+                  type="tel"
+                  label="WhatsApp"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="(16) 99999-9999"
+                  iconLeft={<Icon icon={Phone} size={16} />}
+                  hint="Só para confirmar o horário. Da próxima vez, este aparelho lembra de você."
+                />
+              </>
+            )}
             <Textarea
               label="Observações (opcional)"
               value={notes}
