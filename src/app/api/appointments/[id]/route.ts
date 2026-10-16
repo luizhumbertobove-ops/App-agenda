@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { updateCalendarEvent, deleteCalendarEvent } from "@/lib/google-calendar";
+import { updateCalendarEvent, deleteCalendarEvent, parseEventTitle } from "@/lib/google-calendar";
 import { sendText, buildNoShowMessage } from "@/lib/evolution";
 import { getSettings } from "@/lib/settings";
 import { z } from "zod";
@@ -125,7 +125,11 @@ export async function PATCH(
     }
   }
 
-  const title = `${existing.client?.name ?? "Cliente"} - ${serviceType}`;
+  // O título só muda se o serviço mudar. Atendimento importado do Google pode não ter
+  // cadastro de cliente: aí o nome é o que já está no título ("Caio - Massagem").
+  const serviceChanged = data.serviceType !== undefined && data.serviceType !== existing.serviceType;
+  const clientLabel = existing.client?.name ?? parseEventTitle(existing.title).clientName;
+  const title = serviceChanged ? `${clientLabel} - ${serviceType}` : existing.title;
 
   const updated = await prisma.appointment.update({
     where: { id },
