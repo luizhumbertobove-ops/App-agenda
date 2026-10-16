@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { formatDateBR } from "@/lib/date";
 
 export async function GET() {
   const payments = await prisma.payment.findMany({
@@ -19,12 +18,12 @@ export async function GET() {
         OVERDUE: "Vencido",
       };
       return [
-        format(p.createdAt, "dd/MM/yyyy", { locale: ptBR }),
+        formatDateBR(p.createdAt),
         p.client?.name ?? "Cliente excluído",
         p.appointment?.serviceType ?? "-",
         p.amount.toFixed(2).replace(".", ","),
         status[p.status] ?? p.status,
-        p.paidAt ? format(p.paidAt, "dd/MM/yyyy", { locale: ptBR }) : "-",
+        p.paidAt ? formatDateBR(p.paidAt) : "-",
       ].join(";");
     }),
   ].join("\n");
@@ -33,7 +32,7 @@ export async function GET() {
   return new NextResponse(bom + rows, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="financeiro-${format(new Date(), "yyyy-MM-dd")}.csv"`,
+      "Content-Disposition": `attachment; filename="financeiro-${new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" })}.csv"`,
     },
   });
 }

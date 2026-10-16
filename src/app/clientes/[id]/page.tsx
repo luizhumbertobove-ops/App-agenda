@@ -2,8 +2,6 @@ export const dynamic = "force-dynamic";
 
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { Phone, Calendar, DollarSign, MessageSquare, ChevronLeft, CalendarPlus, QrCode } from "lucide-react";
 import Link from "next/link";
 import { EditClientForm } from "@/components/edit-client-form";
@@ -222,7 +220,7 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
                   <div className="min-w-0">
                     <span className="text-gray-800">{formatCurrencyBR(p.amount)}</span>
                     <span className="ml-2 text-xs text-gray-500">
-                      {format(p.createdAt, "dd/MM/yyyy", { locale: ptBR })}
+                      {formatDateBR(p.createdAt)}
                     </span>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
@@ -259,7 +257,7 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
                   <div className="mb-1 flex items-center gap-2">
                     <StatusBadge status={log.type} map={MESSAGE_TYPE} />
                     <span className="text-xs text-gray-500">
-                      {format(log.sentAt, "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                      {formatDateBR(log.sentAt)} {formatTimeBR(log.sentAt)}
                     </span>
                   </div>
                   <p className="whitespace-pre-line text-xs text-gray-600">{log.message}</p>

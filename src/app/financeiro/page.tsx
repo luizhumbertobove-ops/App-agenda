@@ -95,6 +95,19 @@ export default async function FinanceiroPage({
   const missing = Math.max(0, goal - totalPaid);
 
   const openCount = payments.filter((p) => PENDING_STATUSES.includes(p.status)).length;
+  // Data que importa: a do atendimento (quando houver); senão, a do lançamento.
+  const refDate = (p: (typeof payments)[number]) => p.appointment?.startTime ?? p.createdAt;
+  const diaMes = (d: Date) => {
+    const parts = new Intl.DateTimeFormat("pt-BR", {
+      day: "numeric",
+      month: "short",
+      timeZone: "America/Sao_Paulo",
+    }).formatToParts(d);
+    const get = (t: string) => parts.find((x) => x.type === t)?.value ?? "";
+    return `${get("day")} ${get("month").replace(".", "")}`;
+  };
+  payments.sort((a, b) => refDate(b).getTime() - refDate(a).getTime());
+
   const list = payments.filter((p) => {
     if (filter === "pendentes") return PENDING_STATUSES.includes(p.status);
     if (filter === "pagas") return p.status === "PAID";
@@ -229,7 +242,7 @@ export default async function FinanceiroPage({
                   const what =
                     p.appointment?.serviceType ??
                     (p.planSubscriptionId ? planName.get(p.planSubscriptionId) ?? "Pacote" : "Cobrança avulsa");
-                  const when = format(p.createdAt, "d MMM", { locale: ptBR }).replace(".", "");
+                  const when = diaMes(refDate(p));
                   return (
                     <li key={p.id} className="flex items-center gap-3 px-4 py-3">
                       <span

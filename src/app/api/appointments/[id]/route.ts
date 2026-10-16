@@ -91,8 +91,11 @@ export async function PATCH(
 
   // Concluir lança no Financeiro: reaproveita a cobrança em aberto do atendimento, se houver.
   if (completing && charge) {
+    // "Já recebi" num atendimento que já passou: o dinheiro entrou no dia do atendimento,
+    // não no dia em que o Beto lançou (conta no mês certo do Financeiro).
+    const now = new Date();
     const paidData = charge.paid
-      ? { status: "PAID" as const, paidAt: new Date() }
+      ? { status: "PAID" as const, paidAt: existing.startTime < now ? existing.startTime : now }
       : {};
     const open = await prisma.payment.findFirst({
       where: { appointmentId: id, status: { in: ["PENDING", "SENT", "OVERDUE"] } },
