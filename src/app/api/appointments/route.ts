@@ -13,15 +13,6 @@ const createSchema = z.object({
   repeatWeeks: z.number().int().min(2).max(52).optional(),
 });
 
-export async function DELETE(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  if (searchParams.get("confirm") !== "true") {
-    return NextResponse.json({ error: "Passe confirm=true para confirmar" }, { status: 400 });
-  }
-  const result = await prisma.appointment.deleteMany({});
-  return NextResponse.json({ deleted: result.count });
-}
-
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const from = searchParams.get("from");

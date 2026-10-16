@@ -8,6 +8,8 @@ import { z } from "zod";
 const updateSchema = z.object({
   status: z.enum(["SCHEDULED", "CONFIRMED", "DONE", "CANCELLED"]).optional(),
   serviceType: z.string().optional(),
+  // Ligar o atendimento a um cadastro (ex.: evento importado do Google só com o nome no título).
+  clientId: z.string().optional(),
   startTime: z.string().datetime().optional(),
   endTime: z.string().datetime().optional(),
   notes: z.string().optional().nullable(),
@@ -128,8 +130,24 @@ export async function PATCH(
   // O título só muda se o serviço mudar. Atendimento importado do Google pode não ter
   // cadastro de cliente: aí o nome é o que já está no título ("Caio - Massagem").
   const serviceChanged = data.serviceType !== undefined && data.serviceType !== existing.serviceType;
-  const clientLabel = existing.client?.name ?? parseEventTitle(existing.title).clientName;
-  const title = serviceChanged ? `${clientLabel} - ${serviceType}` : existing.title;
+  const newClient =
+    data.clientId && data.clientId !== existing.clientId
+      ? await prisma.client.findUnique({ where: { id: data.clientId } })
+      : null;
+  if (data.clientId && data.clientId !== existing.clientId && !newClient) {
+    return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 });
+  }
+  const clientLabel = newClient?.name ?? existing.client?.name ?? parseEventTitle(existing.title).clientName;
+  const titleChanged = serviceChanged || !!newClient;
+  const title = titleChanged ? `${clientLabel} - ${serviceType}` : existing.title;
+
+  // Cobranças do atendimento que estavam sem cliente passam a ser do cliente escolhido.
+  if (newClient) {
+    await prisma.payment.updateMany({
+      where: { appointmentId: id, clientId: null },
+      data: { clientId: newClient.id },
+    });
+  }
 
   const updated = await prisma.appointment.update({
     where: { id },
@@ -156,7 +174,7 @@ export async function PATCH(
     try {
       if (data.status === "CANCELLED") {
         await deleteCalendarEvent(existing.googleEventId);
-      } else if (data.startTime || data.endTime || data.serviceType) {
+      } else if (data.startTime || data.endTime || titleChanged) {
         await updateCalendarEvent(existing.googleEventId, { title, startTime, endTime });
       }
     } catch {

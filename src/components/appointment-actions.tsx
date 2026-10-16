@@ -28,6 +28,7 @@ export function AppointmentActions({
   startTime,
   serverNow,
   defaultAmount,
+  clientId,
   clientName,
   serviceType,
   notes,
@@ -37,6 +38,7 @@ export function AppointmentActions({
   startTime: string;
   /** Valor sugerido ao concluir: cobrança em aberto do atendimento ou preço do serviço. */
   defaultAmount?: number | null;
+  clientId: string | null;
   clientName: string;
   serviceType: string;
   notes: string | null;
@@ -272,6 +274,7 @@ export function AppointmentActions({
       {editing && (
         <EditAppointmentModal
           appointmentId={appointmentId}
+          clientId={clientId}
           clientName={clientName}
           serviceType={serviceType}
           startTime={startTime}

@@ -7,9 +7,11 @@ import { useSlots } from "@/hooks/use-slots";
 import { Modal } from "@/components/modal";
 import { Button } from "@/components/button";
 import { Input, Textarea } from "@/components/input";
+import { ClientCombobox } from "@/components/client-combobox";
 
 type Service = { id: string; name: string; durationMins: number; price: number };
 type Slot = { start: string; end: string; available: boolean };
+type Client = { id: string; name: string; phone: string };
 
 function dataBR(iso: string) {
   return new Date(iso).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
@@ -26,6 +28,7 @@ function horaBR(iso: string) {
 /** Folha para mudar serviço, data, horário e observações de um atendimento já marcado. */
 export function EditAppointmentModal({
   appointmentId,
+  clientId: initialClientId,
   clientName,
   serviceType,
   startTime,
@@ -33,6 +36,8 @@ export function EditAppointmentModal({
   onClose,
 }: {
   appointmentId: string;
+  /** Cadastro ligado ao atendimento; null em evento importado do Google sem cliente. */
+  clientId: string | null;
   clientName: string;
   serviceType: string;
   startTime: string;
@@ -41,6 +46,8 @@ export function EditAppointmentModal({
 }) {
   const router = useRouter();
   const [services, setServices] = useState<Service[]>([]);
+  const [clients, setClients] = useState<Client[] | null>(null);
+  const [clientId, setClientId] = useState(initialClientId ?? "");
   const [serviceName, setServiceName] = useState(serviceType);
   const [date, setDate] = useState(dataBR(startTime));
   const [selected, setSelected] = useState<Slot | null>(null);
@@ -49,6 +56,13 @@ export function EditAppointmentModal({
   const [error, setError] = useState("");
 
   // Todos os serviços (inclusive os fora da vitrine), para o atual sempre aparecer na lista.
+  useEffect(() => {
+    fetch("/api/clients?simple=1")
+      .then((r) => r.json())
+      .then(setClients)
+      .catch(() => setClients([]));
+  }, []);
+
   useEffect(() => {
     fetch("/api/servicos?all=1")
       .then((r) => r.json())
@@ -77,6 +91,7 @@ export function EditAppointmentModal({
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...(clientId && clientId !== initialClientId ? { clientId } : {}),
           serviceType: serviceName,
           startTime: slot.start,
           endTime: slot.end,
@@ -115,6 +130,27 @@ export function EditAppointmentModal({
       </div>
 
       <div className="space-y-5 p-6">
+        <div>
+          <p className="mb-1.5 text-sm font-medium text-gray-700">Cliente</p>
+          {clients === null ? (
+            <p className="text-sm text-gray-400">Carregando clientes...</p>
+          ) : (
+            <ClientCombobox
+              clients={clients}
+              value={clientId}
+              onChange={(id) => setClientId(id)}
+              allowCreate
+              initialSearch={clientName}
+            />
+          )}
+          {!initialClientId && (
+            <p className="mt-1.5 text-xs text-gray-500">
+              Este atendimento veio do Google Agenda sem cadastro. Escolha o cliente ou crie um novo com o
+              WhatsApp.
+            </p>
+          )}
+        </div>
+
         <div>
           <label htmlFor={`servico-${appointmentId}`} className="mb-1.5 block text-sm font-medium text-gray-700">
             Serviço

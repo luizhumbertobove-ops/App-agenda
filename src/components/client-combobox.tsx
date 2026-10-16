@@ -17,20 +17,28 @@ export function ClientCombobox({
   value,
   onChange,
   allowCreate = false,
+  initialSearch = "",
 }: {
   clients: Client[];
   value: string;
   onChange: (clientId: string, name: string) => void;
   allowCreate?: boolean;
+  /** Texto inicial da busca (ex.: nome atual do cliente, ou o nome vindo do título do evento). */
+  initialSearch?: string;
 }) {
   const [clients, setClients] = useState(initialClients);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch);
   const [showNewClient, setShowNewClient] = useState(false);
   const [newClientPhone, setNewClientPhone] = useState("");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
 
-  const filtered = clients.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
+  // Busca pelo nome ou pelos dígitos do WhatsApp.
+  const termo = search.toLowerCase();
+  const digitos = search.replace(/[^0-9]/g, "");
+  const filtered = clients.filter(
+    (c) => c.name.toLowerCase().includes(termo) || (digitos.length >= 4 && c.phone.includes(digitos))
+  );
   const showDropdown = search.length > 0 && !value;
 
   function handleSelect(c: Client) {

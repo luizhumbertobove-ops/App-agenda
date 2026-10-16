@@ -10,7 +10,6 @@ import { getWorkSchedule } from "@/lib/settings";
 import { hoursForDate, toMinutes, type WorkSchedule } from "@/lib/work-schedule";
 import { NewAppointmentModal } from "@/components/new-appointment-modal";
 import { AppointmentActions } from "@/components/appointment-actions";
-import { ClearAgendaButton } from "@/components/clear-agenda-button";
 import { BlockSlotModal } from "@/components/block-slot-modal";
 import { StatusBadge } from "@/components/status-badge";
 import { APPOINTMENT_STATUS } from "@/lib/status-labels";
@@ -294,7 +293,8 @@ export default async function AgendaPage({
                             startTime={appt.startTime.toISOString()}
                             serverNow={renderedAt}
                             defaultAmount={suggestedAmount(appt)}
-                            clientName={appt.client?.name ?? appt.title}
+                            clientId={appt.clientId}
+                            clientName={appt.client?.name ?? appt.title.split(" - ")[0].trim()}
                             serviceType={appt.serviceType}
                             notes={appt.notes}
                           />
@@ -309,10 +309,7 @@ export default async function AgendaPage({
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-4">
             <BlockSlotModal currentDate={currentDateStr} blockedSlots={blockedSlotsForModal} />
-            <div className="flex items-center gap-1">
-              {jornadaLink}
-              <ClearAgendaButton />
-            </div>
+            {jornadaLink}
           </div>
         </div>
       </div>
@@ -468,7 +465,6 @@ export default async function AgendaPage({
 
         <div className="flex items-center justify-end gap-1 border-t border-gray-200 pt-4">
           {jornadaLink}
-          <ClearAgendaButton />
         </div>
       </div>
     </div>
