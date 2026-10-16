@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { AgendarForm } from "@/components/vitrine/agendar-form";
 import { getVitrineContent } from "@/lib/vitrine-content";
-import { WEEKDAYS } from "@/lib/work-schedule";
+import { WEEKDAYS, describeSchedule } from "@/lib/work-schedule";
 import { getWorkSchedule } from "@/lib/settings";
 
 export const metadata: Metadata = {
@@ -40,6 +40,7 @@ export default async function AgendarPage({
           initialServiceId={servico}
           whatsapp={conteudo.telefoneWhatsapp.replace(/\D/g, "")}
           workDays={workDays}
+          scheduleText={describeSchedule(jornada)}
         />
       </div>
     </div>

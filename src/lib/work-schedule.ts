@@ -86,3 +86,42 @@ export function rangeForHours(dateStr: string, hours: DayHours): { start: Date; 
     end: new Date(base + toMinutes(hours.end) * 60_000),
   };
 }
+
+/** "07:00" → "7h", "08:30" → "8h30". */
+function horaCurta(time: string): string {
+  const [h, m] = time.split(":");
+  return `${Number(h)}h${m === "00" ? "" : m}`;
+}
+
+/**
+ * Resumo da jornada para o cliente: "segunda a sexta, das 7h às 19h; sábado, das 8h às 12h".
+ * Junta dias seguidos com o mesmo horário. Vazio se não houver nenhum dia de trabalho.
+ */
+export function describeSchedule(schedule: WorkSchedule): string {
+  const grupos: { de: string; ate: string; dias: number; horas: DayHours }[] = [];
+  for (const { key, label } of WEEKDAYS) {
+    const horas = schedule[key];
+    const ultimo = grupos[grupos.length - 1];
+    const anterior = WEEKDAYS[WEEKDAYS.findIndex((d) => d.key === key) - 1];
+    if (
+      horas &&
+      ultimo &&
+      anterior &&
+      ultimo.ate === anterior.label &&
+      schedule[anterior.key] &&
+      ultimo.horas.start === horas.start &&
+      ultimo.horas.end === horas.end
+    ) {
+      ultimo.ate = label;
+      ultimo.dias++;
+    } else if (horas) {
+      grupos.push({ de: label, ate: label, dias: 1, horas });
+    }
+  }
+  return grupos
+    .map((g) => {
+      const dias = g.dias === 1 ? g.de : `${g.de} ${g.dias === 2 ? "e" : "a"} ${g.ate}`;
+      return `${dias.toLowerCase()}, das ${horaCurta(g.horas.start)} às ${horaCurta(g.horas.end)}`;
+    })
+    .join("; ");
+}

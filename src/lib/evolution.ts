@@ -3,6 +3,8 @@ import { interpolate } from "./template";
 
 const api = axios.create({
   baseURL: process.env.EVOLUTION_API_URL,
+  // Sem limite, um servidor fora do ar segura a tela até a rede desistir (minutos).
+  timeout: 15_000,
   headers: {
     apikey: process.env.EVOLUTION_API_KEY,
     "Content-Type": "application/json",

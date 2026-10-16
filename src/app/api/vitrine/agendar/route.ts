@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { createCalendarEvent } from "@/lib/google-calendar";
@@ -94,41 +94,46 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  try {
-    const googleEventId = await createCalendarEvent({ title, startTime: start, endTime: end });
-    await prisma.appointment.update({ where: { id: appointment.id }, data: { googleEventId } });
-  } catch (err) {
-    console.error("[vitrine/agendar] falha ao criar evento no Google Calendar:", err);
-  }
-
+  // Google Agenda e WhatsApp rodam depois da resposta: o cliente vê a confirmação na hora,
+  // mesmo se algum desses serviços estiver lento ou fora do ar.
+  const serviceName = service.name;
   const dataHora = `${formatDateBR(start)} às ${formatTimeBR(start)}`;
 
-  try {
-    const { telefoneWhatsapp } = await getVitrineContent();
-    await sendText(
-      telefoneWhatsapp.replace(/\D/g, ""),
-      `🔔 Novo agendamento pelo site!\n\n` +
-        `Cliente: ${client.name}\n` +
-        `Tel: ${client.phone}\n` +
-        `Serviço: ${service.name}\n` +
-        `Quando: ${dataHora}` +
-        (notes ? `\nObs: ${notes}` : "") +
-        `\n\nJá está na sua agenda. Confirme com o cliente se precisar ajustar algo.`
-    );
-  } catch (err) {
-    console.error("[vitrine/agendar] falha ao avisar o Beto pelo WhatsApp:", err);
-  }
+  after(async () => {
+    try {
+      const googleEventId = await createCalendarEvent({ title, startTime: start, endTime: end });
+      await prisma.appointment.update({ where: { id: appointment.id }, data: { googleEventId } });
+    } catch (err) {
+      console.error("[vitrine/agendar] falha ao criar evento no Google Calendar:", err);
+    }
 
-  try {
-    await sendText(
-      client.phone,
-      `Olá ${client.name.split(" ")[0]}! 👋\n\n` +
-        `Seu horário de *${service.name}* foi reservado para *${dataHora}* no Spaço Lhum.\n\n` +
-        `Qualquer imprevisto, é só chamar por aqui. Até lá! 💆`
-    );
-  } catch (err) {
-    console.error("[vitrine/agendar] falha ao confirmar pro cliente pelo WhatsApp:", err);
-  }
+    try {
+      const { telefoneWhatsapp } = await getVitrineContent();
+      await sendText(
+        telefoneWhatsapp.replace(/\D/g, ""),
+        `Novo agendamento pelo site\n\n` +
+          `Cliente: ${client.name}\n` +
+          `Tel: ${client.phone}\n` +
+          `Serviço: ${serviceName}\n` +
+          `Quando: ${dataHora}` +
+          (notes ? `\nObs: ${notes}` : "") +
+          `\n\nJá está na sua agenda. Confirme com o cliente se precisar ajustar algo.`
+      );
+    } catch (err) {
+      console.error("[vitrine/agendar] falha ao avisar o Beto pelo WhatsApp:", err);
+    }
+
+    try {
+      await sendText(
+        client.phone,
+        `Olá, ${client.name.split(" ")[0]}.\n\n` +
+          `Seu horário de *${serviceName}* foi reservado para *${dataHora}* no Spaço Lhum.\n\n` +
+          `Qualquer imprevisto, é só chamar por aqui. Até lá!`
+      );
+    } catch (err) {
+      console.error("[vitrine/agendar] falha ao confirmar pro cliente pelo WhatsApp:", err);
+    }
+  });
 
   return NextResponse.json(
     {

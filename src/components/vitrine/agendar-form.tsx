@@ -25,6 +25,7 @@ export function AgendarForm({
   initialServiceId,
   whatsapp,
   workDays,
+  scheduleText,
 }: {
   services: Service[];
   initialServiceId?: string;
@@ -32,6 +33,8 @@ export function AgendarForm({
   whatsapp: string;
   /** Dias da semana da jornada ("0" = domingo). */
   workDays: string[];
+  /** Resumo da jornada, ex.: "segunda a sexta, das 7h às 19h". */
+  scheduleText: string;
 }) {
   const [serviceId, setServiceId] = useState(
     initialServiceId && services.some((s) => s.id === initialServiceId)
@@ -204,7 +207,11 @@ export function AgendarForm({
           value={date}
           min={today}
           onChange={(e) => handleDateChange(e.target.value)}
-          hint="Horários online de segunda a sexta, das 7h às 19h. Fins de semana são combinados direto."
+          hint={
+            scheduleText
+              ? `Horários online: ${scheduleText}. Outros dias são combinados direto.`
+              : "Os horários são combinados direto pelo WhatsApp."
+          }
         />
 
         {date && (
