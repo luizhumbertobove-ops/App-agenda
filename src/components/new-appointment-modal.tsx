@@ -172,6 +172,7 @@ export function NewAppointmentModal({
       <div className="p-6 space-y-5">
         {/* Cliente */}
         <div>
+          <PartnerToggle checked={isPartner} onChange={setIsPartner} />
           <label className="text-sm font-medium text-gray-700 block mb-1.5">Cliente</label>
           {isPartner ? (
             <Input
@@ -183,7 +184,6 @@ export function NewAppointmentModal({
           ) : (
             <ClientCombobox clients={clients} value={clientId} onChange={(id) => setClientId(id)} allowCreate />
           )}
-          <PartnerToggle checked={isPartner} onChange={setIsPartner} />
         </div>
 
         {/* Serviço */}

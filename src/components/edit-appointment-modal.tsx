@@ -148,6 +148,7 @@ export function EditAppointmentModal({
 
       <div className="space-y-5 p-6">
         <div>
+          <PartnerToggle checked={isPartner} onChange={setIsPartner} />
           <p className="mb-1.5 text-sm font-medium text-gray-700">Cliente</p>
           {isPartner ? (
             <Input
@@ -167,7 +168,6 @@ export function EditAppointmentModal({
               initialSearch={clientName}
             />
           )}
-          <PartnerToggle checked={isPartner} onChange={setIsPartner} />
           {!initialClientId && !isPartner && (
             <p className="mt-1.5 text-xs text-gray-500">
               Este atendimento veio do Google Agenda sem cadastro. Escolha o cliente ou crie um novo com o

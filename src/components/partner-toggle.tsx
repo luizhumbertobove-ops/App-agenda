@@ -3,7 +3,7 @@
 /** Chave "Atendimento em parceria": cliente da outra massoterapeuta, sem cadastro aqui. */
 export function PartnerToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <label className="mt-3 flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2">
+    <label className="mb-4 flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2">
       <span className="min-w-0">
         <span className="block text-sm font-medium text-gray-900">Atendimento em parceria</span>
         <span className="block text-xs text-gray-500">Cliente da outra massoterapeuta: só o nome, sem cadastro.</span>
