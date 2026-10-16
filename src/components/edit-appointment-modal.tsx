@@ -8,6 +8,7 @@ import { Modal } from "@/components/modal";
 import { Button } from "@/components/button";
 import { Input, Textarea } from "@/components/input";
 import { ClientCombobox } from "@/components/client-combobox";
+import { PartnerToggle } from "@/components/partner-toggle";
 import { MAX_SESSION_HOURS, SessionHoursPicker, sessionMinutes } from "@/components/session-hours-picker";
 
 type Service = { id: string; name: string; durationMins: number; price: number };
@@ -35,6 +36,7 @@ export function EditAppointmentModal({
   startTime,
   endTime,
   notes: initialNotes,
+  isPartner: initialPartner = false,
   onClose,
 }: {
   appointmentId: string;
@@ -45,12 +47,15 @@ export function EditAppointmentModal({
   startTime: string;
   endTime: string;
   notes: string | null;
+  isPartner?: boolean;
   onClose: () => void;
 }) {
   const router = useRouter();
   const [services, setServices] = useState<Service[]>([]);
   const [clients, setClients] = useState<Client[] | null>(null);
   const [clientId, setClientId] = useState(initialClientId ?? "");
+  const [isPartner, setIsPartner] = useState(initialPartner);
+  const [partnerName, setPartnerName] = useState(clientName);
   const [serviceName, setServiceName] = useState(serviceType);
   const [date, setDate] = useState(dataBR(startTime));
   const [selected, setSelected] = useState<Slot | null>(null);
@@ -98,7 +103,12 @@ export function EditAppointmentModal({
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...(clientId && clientId !== initialClientId ? { clientId } : {}),
+          ...(isPartner
+            ? { isPartner: true, partnerName: partnerName.trim() }
+            : {
+                ...(initialPartner ? { isPartner: false } : {}),
+                ...(clientId && clientId !== initialClientId ? { clientId } : {}),
+              }),
           serviceType: serviceName,
           startTime: slot.start,
           endTime: slot.end,
@@ -139,7 +149,14 @@ export function EditAppointmentModal({
       <div className="space-y-5 p-6">
         <div>
           <p className="mb-1.5 text-sm font-medium text-gray-700">Cliente</p>
-          {clients === null ? (
+          {isPartner ? (
+            <Input
+              value={partnerName}
+              onChange={(e) => setPartnerName(e.target.value)}
+              placeholder="Nome do cliente"
+              aria-label="Nome do cliente da parceria"
+            />
+          ) : clients === null ? (
             <p className="text-sm text-gray-400">Carregando clientes...</p>
           ) : (
             <ClientCombobox
@@ -150,7 +167,8 @@ export function EditAppointmentModal({
               initialSearch={clientName}
             />
           )}
-          {!initialClientId && (
+          <PartnerToggle checked={isPartner} onChange={setIsPartner} />
+          {!initialClientId && !isPartner && (
             <p className="mt-1.5 text-xs text-gray-500">
               Este atendimento veio do Google Agenda sem cadastro. Escolha o cliente ou crie um novo com o
               WhatsApp.
@@ -255,7 +273,7 @@ export function EditAppointmentModal({
           <Button variant="secondary" onClick={onClose} className="flex-1">
             Cancelar
           </Button>
-          <Button onClick={handleSave} disabled={saving || !slot} className="flex-1">
+          <Button onClick={handleSave} disabled={saving || !slot || (isPartner && !partnerName.trim())} className="flex-1">
             {saving ? "Salvando..." : "Salvar"}
           </Button>
         </div>

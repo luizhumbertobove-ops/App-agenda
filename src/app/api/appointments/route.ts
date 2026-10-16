@@ -4,7 +4,10 @@ import { createCalendarEvent } from "@/lib/google-calendar";
 import { z } from "zod";
 
 const createSchema = z.object({
-  clientId: z.string(),
+  // Obrigatório, exceto em parceria (cliente da outra massoterapeuta, sem cadastro: vai partnerName).
+  clientId: z.string().optional(),
+  isPartner: z.boolean().optional(),
+  partnerName: z.string().trim().min(1).optional(),
   serviceType: z.string().default("Massagem"),
   startTime: z.string().datetime(),
   endTime: z.string().datetime(),
@@ -37,7 +40,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: body.error.flatten() }, { status: 400 });
   }
 
-  const { clientId, serviceType, startTime, endTime, notes, amount, repeatWeeks } = body.data;
+  const { serviceType, startTime, endTime, notes, amount, repeatWeeks, isPartner, partnerName } = body.data;
+  const clientId = isPartner ? undefined : body.data.clientId;
+  if (isPartner ? !partnerName : !clientId) {
+    return NextResponse.json(
+      { error: isPartner ? "Informe o nome do cliente" : "Escolha o cliente" },
+      { status: 400 }
+    );
+  }
   const start = new Date(startTime);
   const end = new Date(endTime);
 
@@ -61,12 +71,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const client = await prisma.client.findUnique({ where: { id: clientId } });
-  if (!client) {
+  const client = clientId ? await prisma.client.findUnique({ where: { id: clientId } }) : null;
+  if (clientId && !client) {
     return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 });
   }
 
-  const title = `${client.name} - ${serviceType}`;
+  const title = `${client?.name ?? partnerName} - ${serviceType}`;
 
   const durationMs = end.getTime() - start.getTime();
   const recurrenceId = repeatWeeks ? crypto.randomUUID() : undefined;
@@ -78,12 +88,21 @@ export async function POST(req: NextRequest) {
       const occStart = new Date(start.getTime() + i * 7 * 24 * 60 * 60 * 1000);
       const occEnd = new Date(occStart.getTime() + durationMs);
       const appt = await prisma.appointment.create({
-        data: { clientId, serviceType, title, startTime: occStart, endTime: occEnd, notes, recurrenceId },
+        data: {
+          clientId: clientId ?? null,
+          serviceType,
+          title,
+          startTime: occStart,
+          endTime: occEnd,
+          notes,
+          recurrenceId,
+          isPartner: !!isPartner,
+        },
         include: { client: true },
       });
       if (amount) {
         await prisma.payment.create({
-          data: { clientId, appointmentId: appt.id, amount, status: "PENDING" },
+          data: { clientId: clientId ?? null, appointmentId: appt.id, amount, status: "PENDING" },
         });
       }
       if (i === 0) {

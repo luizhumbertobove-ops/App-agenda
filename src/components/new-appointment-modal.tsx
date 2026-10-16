@@ -9,6 +9,7 @@ import { Modal } from "@/components/modal";
 import { Button } from "@/components/button";
 import { Input, Textarea } from "@/components/input";
 import { ClientCombobox } from "@/components/client-combobox";
+import { PartnerToggle } from "@/components/partner-toggle";
 import { SessionHoursPicker, sessionMinutes } from "@/components/session-hours-picker";
 
 type Client = { id: string; name: string; phone: string };
@@ -37,6 +38,10 @@ export function NewAppointmentModal({
 
   // Campos do formulário
   const [clientId, setClientId] = useState("");
+  // Parceria: cliente da outra massoterapeuta, só com o nome (sem cadastro).
+  const [isPartner, setIsPartner] = useState(false);
+  const [partnerName, setPartnerName] = useState("");
+  const hasClient = isPartner ? partnerName.trim().length > 0 : !!clientId;
   const [serviceId, setServiceId] = useState("");
   const [date, setDate] = useState(preset?.date ?? "");
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
@@ -105,7 +110,7 @@ export function NewAppointmentModal({
   }
 
   async function handleSubmit() {
-    if (!clientId || !slot || !selectedService) return;
+    if (!hasClient || !slot || !selectedService) return;
     setLoading(true);
     setError("");
 
@@ -114,7 +119,7 @@ export function NewAppointmentModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          clientId,
+          ...(isPartner ? { isPartner: true, partnerName: partnerName.trim() } : { clientId }),
           serviceType: selectedService.name,
           startTime: slot.start,
           endTime: slot.end,
@@ -168,7 +173,17 @@ export function NewAppointmentModal({
         {/* Cliente */}
         <div>
           <label className="text-sm font-medium text-gray-700 block mb-1.5">Cliente</label>
-          <ClientCombobox clients={clients} value={clientId} onChange={(id) => setClientId(id)} allowCreate />
+          {isPartner ? (
+            <Input
+              value={partnerName}
+              onChange={(e) => setPartnerName(e.target.value)}
+              placeholder="Nome do cliente"
+              aria-label="Nome do cliente da parceria"
+            />
+          ) : (
+            <ClientCombobox clients={clients} value={clientId} onChange={(id) => setClientId(id)} allowCreate />
+          )}
+          <PartnerToggle checked={isPartner} onChange={setIsPartner} />
         </div>
 
         {/* Serviço */}
@@ -323,7 +338,7 @@ export function NewAppointmentModal({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!clientId || !slot || loading}
+            disabled={!hasClient || !slot || loading}
             className="flex-1 py-2.5 disabled:cursor-not-allowed"
           >
             {loading ? "Salvando..." : "Confirmar Agendamento"}

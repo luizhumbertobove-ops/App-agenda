@@ -49,6 +49,8 @@ export function WeekAppointmentCard({
   clientName,
   serviceType,
   notes,
+  planRemaining = 0,
+  isPartner = false,
 }: {
   appointmentId: string;
   status: Status;
@@ -60,6 +62,8 @@ export function WeekAppointmentCard({
   clientName: string;
   serviceType: string;
   notes: string | null;
+  planRemaining?: number;
+  isPartner?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -78,6 +82,7 @@ export function WeekAppointmentCard({
           <span className="sr-only"> · {APPOINTMENT_STATUS[status]?.label}</span>
         </span>
         <span className="truncate text-xs font-medium text-gray-900">{clientName}</span>
+        {isPartner && <span className="text-[10px] font-medium text-amber-700">Parceria</span>}
       </button>
 
       {open && (
@@ -115,7 +120,14 @@ export function WeekAppointmentCard({
                 <p className="text-sm text-gray-500">{serviceType}</p>
                 {notes && <p className="mt-2 whitespace-pre-line text-sm text-gray-600">{notes}</p>}
               </div>
-              <StatusBadge status={status} map={APPOINTMENT_STATUS} />
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                <StatusBadge status={status} map={APPOINTMENT_STATUS} />
+                {isPartner && (
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                    Parceria
+                  </span>
+                )}
+              </div>
             </div>
 
             <AppointmentActions
@@ -129,6 +141,8 @@ export function WeekAppointmentCard({
               clientName={clientName}
               serviceType={serviceType}
               notes={notes}
+              planRemaining={planRemaining}
+              isPartner={isPartner}
               menuUp
             />
           </div>

@@ -12,6 +12,7 @@ import { DeleteClientButton } from "@/components/delete-client-button";
 import { PaymentRowActions } from "@/components/payment-row-actions";
 import { SendWhatsappModal } from "@/components/send-whatsapp-modal";
 import { ClientTags } from "@/components/client-tags";
+import { SellPlanModal } from "@/components/sell-plan-modal";
 import { formatTimeBR, formatDateBR } from "@/lib/date";
 import { formatCurrencyBR } from "@/lib/format";
 import { StatusBadge } from "@/components/status-badge";
@@ -134,6 +135,42 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
           <p className="font-display text-lg leading-tight text-gray-900 tabular-nums sm:text-2xl">{sessoesCanceladas}</p>
           <p className="mt-1 text-xs leading-tight text-gray-500">Faltas e cancelamentos</p>
         </div>
+      </section>
+
+      {/* Pacotes de sessões */}
+      <section aria-label="Pacotes" className="mt-6 rounded-xl border border-gray-200 bg-white p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-semibold text-gray-900">Pacotes</h2>
+          <SellPlanModal clientId={client.id} clientName={client.name} />
+        </div>
+        {client.planSubscriptions.length === 0 ? (
+          <p className="mt-2 text-sm text-gray-500">Nenhum pacote. Use para sessões pagas de uma vez.</p>
+        ) : (
+          <ul className="mt-3 space-y-2">
+            {client.planSubscriptions.map((sub) => {
+              const restantes = Math.max(0, sub.plan.sessions - sub.sessionsUsed);
+              return (
+                <li key={sub.id} className="rounded-lg bg-gray-50 px-3 py-2.5">
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <span className="font-medium text-gray-900">{sub.plan.name}</span>
+                    <span className={restantes > 0 ? "text-violet-700" : "text-gray-500"}>
+                      {restantes > 0 ? `${restantes} de ${sub.plan.sessions} restantes` : "Concluído"}
+                    </span>
+                  </div>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-200" aria-hidden>
+                    <div
+                      className="h-full rounded-full bg-violet-600"
+                      style={{ width: `${Math.min(100, (sub.sessionsUsed / sub.plan.sessions) * 100)}%` }}
+                    />
+                  </div>
+                  <p className="mt-1.5 text-xs text-gray-500">
+                    {formatCurrencyBR(sub.plan.price)} · comprado em {formatDateBR(sub.purchasedAt)}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </section>
 
       {/* Observações do cliente */}

@@ -61,6 +61,10 @@ model Appointment {
   confirmedAt        DateTime?
   confirmationSentAt DateTime?
   recurrenceId       String?
+  /// Pacote usado ao concluir (o Reabrir devolve a sessão)
+  planSubscriptionId String?
+  /// Atendimento em parceria com outra massoterapeuta (cliente dela, sem cadastro)
+  isPartner          Boolean           @default(false)
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
@@ -100,6 +104,8 @@ model Payment {
   paidAt         DateTime?
   /// Criada pelo "Concluir" da agenda; o "Reabrir" remove
   fromCompletion Boolean       @default(false)
+  /// Pagamento de um pacote de sessões
+  planSubscriptionId String?
   createdAt      DateTime      @default(now())
 
   client      Client?      @relation(fields: [clientId], references: [id])

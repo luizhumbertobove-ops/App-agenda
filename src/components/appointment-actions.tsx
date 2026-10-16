@@ -9,12 +9,12 @@ import { Button } from "@/components/button";
 import { EditAppointmentModal } from "@/components/edit-appointment-modal";
 
 type Status = "SCHEDULED" | "CONFIRMED" | "DONE" | "CANCELLED";
-type ChargeMode = "paid" | "pending" | "none";
+type ChargeMode = "plan" | "paid" | "pending" | "none";
 
-const CHARGE_OPTIONS: { value: ChargeMode; label: string; hint: string }[] = [
+const CHARGE_OPTIONS: { value: Exclude<ChargeMode, "plan">; label: string; hint: string }[] = [
   { value: "paid", label: "Já recebi", hint: "Entra como recebido no Financeiro" },
   { value: "pending", label: "A receber", hint: "Fica pendente para enviar o Pix depois" },
-  { value: "none", label: "Não cobrar", hint: "Sessão de plano ou cortesia" },
+  { value: "none", label: "Não cobrar", hint: "Cortesia ou combinado à parte" },
 ];
 
 const BTN_BASE =
@@ -34,6 +34,8 @@ export function AppointmentActions({
   serviceType,
   notes,
   menuUp = false,
+  planRemaining = 0,
+  isPartner = false,
 }: {
   appointmentId: string;
   status: Status;
@@ -49,6 +51,10 @@ export function AppointmentActions({
   serverNow: number;
   /** Abre o menu "Mais" para cima: dentro da folha da Semana o espaço abaixo é cortado. */
   menuUp?: boolean;
+  /** Sessões que sobram nos pacotes ativos do cliente: com saldo, concluir já vem "pelo pacote". */
+  planRemaining?: number;
+  /** Atendimento em parceria (o valor sugerido já vem pela metade). */
+  isPartner?: boolean;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -100,12 +106,14 @@ export function AppointmentActions({
   }
 
   const amountNumber = Number(amount.replace(",", "."));
-  const amountValid = chargeMode === "none" || (Number.isFinite(amountNumber) && amountNumber > 0);
+  const noCharge = chargeMode === "none" || chargeMode === "plan";
+  const amountValid = noCharge || (Number.isFinite(amountNumber) && amountNumber > 0);
 
   function confirmCompletion() {
     if (!amountValid) return;
     updateStatus("DONE", {
-      charge: chargeMode === "none" ? null : { amount: amountNumber, paid: chargeMode === "paid" },
+      charge: noCharge ? null : { amount: amountNumber, paid: chargeMode === "paid" },
+      usePlan: chargeMode === "plan",
     });
   }
 
@@ -191,7 +199,7 @@ export function AppointmentActions({
             type="button"
             onClick={() => {
               setAmount(defaultAmount ? String(defaultAmount) : "");
-              setChargeMode("paid");
+              setChargeMode(planRemaining > 0 ? "plan" : "paid");
               setCompleting(true);
             }}
             disabled={loading}
@@ -229,7 +237,18 @@ export function AppointmentActions({
 
           <fieldset className="space-y-2">
             <legend className="mb-2 text-sm font-medium text-gray-700">Pagamento</legend>
-            {CHARGE_OPTIONS.map((o) => (
+            {[
+              ...(planRemaining > 0
+                ? [
+                    {
+                      value: "plan" as const,
+                      label: "Pelo pacote",
+                      hint: `Já pago. Sobram ${planRemaining} ${planRemaining === 1 ? "sessão" : "sessões"}; esta usa uma`,
+                    },
+                  ]
+                : []),
+              ...CHARGE_OPTIONS,
+            ].map((o) => (
               <label
                 key={o.value}
                 className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors ${
@@ -251,7 +270,11 @@ export function AppointmentActions({
             ))}
           </fieldset>
 
-          {chargeMode !== "none" && (
+          {isPartner && !noCharge && (
+            <p className="mt-3 text-xs text-gray-500">Parceria: o valor sugerido é a sua metade.</p>
+          )}
+
+          {!noCharge && (
             <div className="mt-4">
               <label htmlFor={`valor-${appointmentId}`} className="mb-1.5 block text-sm font-medium text-gray-700">
                 Valor cobrado (R$)
@@ -285,6 +308,7 @@ export function AppointmentActions({
           startTime={startTime}
           endTime={endTime}
           notes={notes}
+          isPartner={isPartner}
           onClose={() => setEditing(false)}
         />
       )}

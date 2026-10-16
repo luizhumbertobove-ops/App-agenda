@@ -105,7 +105,11 @@ export default async function AgendaPage({
         status: { not: "CANCELLED" },
       },
       include: {
-        client: true,
+        client: {
+          include: {
+            planSubscriptions: { where: { active: true }, include: { plan: true } },
+          },
+        },
         payments: {
           where: { status: { in: ["PENDING", "SENT", "OVERDUE"] } },
           select: { amount: true },
@@ -132,8 +136,15 @@ export default async function AgendaPage({
     const price = priceByService.get(appt.serviceType);
     if (price == null) return null;
     const horas = Math.max(1, Math.ceil((appt.endTime.getTime() - appt.startTime.getTime()) / HOUR_MS));
-    return price * horas;
+    // Parceria: a parte do Beto costuma ser a metade.
+    return (price * horas) / (appt.isPartner ? 2 : 1);
   };
+  // Sessões que sobram nos pacotes ativos do cliente.
+  const planRemaining = (appt: (typeof appointments)[number]) =>
+    (appt.client?.planSubscriptions ?? []).reduce(
+      (n, s) => n + Math.max(0, s.plan.sessions - s.sessionsUsed),
+      0
+    );
 
   const jornadaLink = (
     <Link
@@ -301,7 +312,14 @@ export default async function AgendaPage({
                               {appt.serviceType ? ` · ${appt.serviceType}` : ""}
                             </p>
                           </div>
-                          <StatusBadge status={appt.status} map={APPOINTMENT_STATUS} />
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            {appt.isPartner && (
+                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                                Parceria
+                              </span>
+                            )}
+                            <StatusBadge status={appt.status} map={APPOINTMENT_STATUS} />
+                          </div>
                         </div>
                         <div className="mt-3">
                           <AppointmentActions
@@ -317,6 +335,8 @@ export default async function AgendaPage({
                             clientName={appt.client?.name ?? appt.title.split(" - ")[0].trim()}
                             serviceType={appt.serviceType}
                             notes={appt.notes}
+                            planRemaining={planRemaining(appt)}
+                            isPartner={appt.isPartner}
                           />
                         </div>
                       </article>
@@ -452,6 +472,8 @@ export default async function AgendaPage({
                           clientName={appt.client?.name ?? appt.title.split(" - ")[0].trim()}
                           serviceType={appt.serviceType}
                           notes={appt.notes}
+                          planRemaining={planRemaining(appt)}
+                          isPartner={appt.isPartner}
                         />
                       ))}
                       {cont.map((appt) => (

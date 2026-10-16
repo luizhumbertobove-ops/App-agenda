@@ -18,6 +18,12 @@ const updateSchema = z.object({
   noShow: z.string().optional(),
   // Só junto com status DONE: lançamento no Financeiro (null = não cobrar, ex.: plano ou cortesia).
   charge: z.object({ amount: z.number().positive(), paid: z.boolean() }).nullable().optional(),
+  // Só junto com status DONE: a sessão sai do pacote ativo do cliente (sem nova cobrança).
+  usePlan: z.boolean().optional(),
+  // Atendimento em parceria com outra massoterapeuta.
+  isPartner: z.boolean().optional(),
+  // Nome do cliente da parceria (sem cadastro): vai para o título.
+  partnerName: z.string().trim().min(1).optional(),
 });
 
 export async function PATCH(
@@ -38,7 +44,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Agendamento não encontrado" }, { status: 404 });
   }
 
-  const { noShow, charge, ...data } = body.data;
+  const { noShow, charge, usePlan, partnerName, ...data } = body.data;
   const startTime = data.startTime ? new Date(data.startTime) : existing.startTime;
   const endTime = data.endTime ? new Date(data.endTime) : existing.endTime;
   const serviceType = data.serviceType ?? existing.serviceType;
@@ -64,16 +70,22 @@ export async function PATCH(
   const completing = data.status === "DONE" && existing.status !== "DONE";
   const reopening = existing.status === "DONE" && data.status !== undefined && data.status !== "DONE";
 
-  // Incrementar sessões do plano ao concluir
-  if (completing && existing.clientId) {
-    const activePlan = await prisma.planSubscription.findFirst({
+  // Concluir pelo pacote: usa uma sessão do pacote ativo (o mais antigo com saldo).
+  let planUsedId: string | null = null;
+  if (completing && usePlan && existing.clientId) {
+    const subs = await prisma.planSubscription.findMany({
       where: { clientId: existing.clientId, active: true },
+      include: { plan: true },
+      orderBy: { purchasedAt: "asc" },
     });
-    if (activePlan) {
+    const sub = subs.find((s) => s.sessionsUsed < s.plan.sessions);
+    if (sub) {
+      const used = sub.sessionsUsed + 1;
       await prisma.planSubscription.update({
-        where: { id: activePlan.id },
-        data: { sessionsUsed: { increment: 1 } },
+        where: { id: sub.id },
+        data: { sessionsUsed: used, active: used < sub.plan.sessions },
       });
+      planUsedId = sub.id;
     }
   }
 
@@ -114,14 +126,13 @@ export async function PATCH(
     if (removable.length > 0) {
       await prisma.payment.deleteMany({ where: { id: { in: removable.map((p) => p.id) } } });
     }
-    if (existing.clientId) {
-      const activePlan = await prisma.planSubscription.findFirst({
-        where: { clientId: existing.clientId, active: true, sessionsUsed: { gt: 0 } },
-      });
-      if (activePlan) {
+    // Devolve a sessão ao pacote que foi usado nesta conclusão (se foi).
+    if (existing.planSubscriptionId) {
+      const sub = await prisma.planSubscription.findUnique({ where: { id: existing.planSubscriptionId } });
+      if (sub && sub.sessionsUsed > 0) {
         await prisma.planSubscription.update({
-          where: { id: activePlan.id },
-          data: { sessionsUsed: { decrement: 1 } },
+          where: { id: sub.id },
+          data: { sessionsUsed: sub.sessionsUsed - 1, active: true },
         });
       }
     }
@@ -137,8 +148,9 @@ export async function PATCH(
   if (data.clientId && data.clientId !== existing.clientId && !newClient) {
     return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 });
   }
-  const clientLabel = newClient?.name ?? existing.client?.name ?? parseEventTitle(existing.title).clientName;
-  const titleChanged = serviceChanged || !!newClient;
+  const clientLabel =
+    newClient?.name ?? partnerName ?? existing.client?.name ?? parseEventTitle(existing.title).clientName;
+  const titleChanged = serviceChanged || !!newClient || (!!partnerName && partnerName !== parseEventTitle(existing.title).clientName);
   const title = titleChanged ? `${clientLabel} - ${serviceType}` : existing.title;
 
   // Cobranças do atendimento que estavam sem cliente passam a ser do cliente escolhido.
@@ -151,7 +163,16 @@ export async function PATCH(
 
   const updated = await prisma.appointment.update({
     where: { id },
-    data: { ...data, startTime, endTime, title },
+    data: {
+      ...data,
+      startTime,
+      endTime,
+      title,
+      ...(planUsedId ? { planSubscriptionId: planUsedId } : {}),
+      ...(reopening ? { planSubscriptionId: null } : {}),
+      // Parceria não tem cadastro: ao marcar, desliga o cliente.
+      ...(data.isPartner ? { clientId: null } : {}),
+    },
     include: { client: true },
   });
 

@@ -76,6 +76,13 @@ export default async function FinanceiroPage({
     ),
   ]);
 
+  // Nome do pacote para as cobranças de venda de pacote.
+  const planIds = payments.map((p) => p.planSubscriptionId).filter((id): id is string => !!id);
+  const planSubs = planIds.length
+    ? await prisma.planSubscription.findMany({ where: { id: { in: planIds } }, include: { plan: true } })
+    : [];
+  const planName = new Map(planSubs.map((s) => [s.id, s.plan.name]));
+
   const totalPaid = monthStats._sum.amount ?? 0;
   // A receber = tudo o que está em aberto (inclusive vencidas), de qualquer mês.
   const openPayments = payments.filter((p) => PENDING_STATUSES.includes(p.status));
@@ -219,7 +226,9 @@ export default async function FinanceiroPage({
                   const name =
                     p.client?.name ?? (p.appointment ? p.appointment.title.split(" - ")[0].trim() : null);
                   const initial = name ? (Array.from(name)[0] ?? "?").toUpperCase() : "?";
-                  const what = p.appointment?.serviceType ?? "Cobrança avulsa";
+                  const what =
+                    p.appointment?.serviceType ??
+                    (p.planSubscriptionId ? planName.get(p.planSubscriptionId) ?? "Pacote" : "Cobrança avulsa");
                   const when = format(p.createdAt, "d MMM", { locale: ptBR }).replace(".", "");
                   return (
                     <li key={p.id} className="flex items-center gap-3 px-4 py-3">
@@ -245,7 +254,14 @@ export default async function FinanceiroPage({
                         <span className="text-[15px] font-semibold tabular-nums text-gray-900">
                           {formatCurrencyBR(p.amount)}
                         </span>
-                        <StatusBadge status={p.status} map={PAYMENT_STATUS} />
+                        <div className="flex items-center gap-1">
+                          {p.appointment?.isPartner && (
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                              Parceria
+                            </span>
+                          )}
+                          <StatusBadge status={p.status} map={PAYMENT_STATUS} />
+                        </div>
                         {p.status !== "PAID" && <PaymentRowActions paymentId={p.id} status={p.status} />}
                       </div>
                     </li>
