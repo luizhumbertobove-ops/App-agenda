@@ -5,7 +5,7 @@ import { createCalendarEvent } from "@/lib/google-calendar";
 import { sendText } from "@/lib/evolution";
 import { getVitrineContent } from "@/lib/vitrine-content";
 import { formatDateBR, formatTimeBR } from "@/lib/date";
-import { workRangeForDate } from "@/lib/work-schedule";
+import { ceilToHour, workRangeForDate } from "@/lib/work-schedule";
 import { getWorkSchedule } from "@/lib/settings";
 import {
   SESSION_SLOT_MINUTES,
@@ -46,9 +46,8 @@ export async function POST(req: NextRequest) {
   const dateStr = start.toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
   const work = workRangeForDate(await getWorkSchedule(), dateStr);
   const earliestStart = new Date(Date.now() + MIN_LEAD_MINUTES * 60 * 1000);
-  // A vitrine só oferece horários da grade (de hora em hora a partir do início da jornada).
-  const onGrid =
-    !!work && (start.getTime() - work.start.getTime()) % (SESSION_SLOT_MINUTES * 60 * 1000) === 0;
+  // A vitrine só oferece horas cheias (7h, 8h, 9h...).
+  const onGrid = start.getTime() === ceilToHour(start);
 
   if (!work || !onGrid || start < work.start || end > work.end || start < earliestStart) {
     return NextResponse.json(

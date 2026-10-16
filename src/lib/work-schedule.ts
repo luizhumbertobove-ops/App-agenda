@@ -125,3 +125,13 @@ export function describeSchedule(schedule: WorkSchedule): string {
     })
     .join("; ");
 }
+
+const HOUR_MS = 60 * 60 * 1000;
+
+/**
+ * Primeiro instante de hora cheia a partir de `date` (Brasília é UTC-3, então hora cheia
+ * em UTC também é hora cheia aqui). Os atendimentos começam sempre em hora fechada.
+ */
+export function ceilToHour(date: Date): number {
+  return Math.ceil(date.getTime() / HOUR_MS) * HOUR_MS;
+}

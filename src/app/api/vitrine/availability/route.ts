@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { businessHoursRangeBR } from "@/lib/date";
 import { SESSION_SLOT_MINUTES, MIN_LEAD_MINUTES } from "@/lib/vitrine";
-import { workRangeForDate } from "@/lib/work-schedule";
+import { ceilToHour, workRangeForDate } from "@/lib/work-schedule";
 import { getWorkSchedule } from "@/lib/settings";
 
 // Horários "isca" (dentro da grade cheia) usados quando o dia ainda não tem
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
 
   // Grade de horários cheios (7h, 8h, 9h... até o último que cabe antes do fechamento).
   const grid: Range[] = [];
-  for (let t = businessStart.getTime(); t + SLOT_MS <= businessEnd.getTime(); t += SLOT_MS) {
+  for (let t = ceilToHour(businessStart); t + SLOT_MS <= businessEnd.getTime(); t += SLOT_MS) {
     grid.push({ start: new Date(t), end: new Date(t + SLOT_MS) });
   }
 

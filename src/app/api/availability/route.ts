@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { COMERCIAL, rangeForHours, workRangeForDate } from "@/lib/work-schedule";
+import { COMERCIAL, ceilToHour, rangeForHours, workRangeForDate } from "@/lib/work-schedule";
 import { getWorkSchedule } from "@/lib/settings";
 
 export async function GET(req: NextRequest) {
@@ -29,16 +29,21 @@ export async function GET(req: NextRequest) {
   // Bloqueios ocupam o horário do mesmo jeito que um atendimento.
   const existing = [...appointments, ...blocked];
 
+  // Atendimentos começam sempre em hora cheia (7h, 8h, 9h...), mesmo os de 50 min:
+  // a sessão dura o tempo do serviço, mas a hora inteira fica reservada.
+  const HOUR_MS = 60 * 60 * 1000;
   const durationMs = durationMins * 60 * 1000;
+  const reservedMs = Math.max(durationMs, HOUR_MS);
   const slots: { start: string; end: string; available: boolean }[] = [];
-  let cursor = businessStart.getTime();
+  let cursor = ceilToHour(businessStart);
 
   while (cursor + durationMs <= businessEnd.getTime()) {
     const slotStart = new Date(cursor);
     const slotEnd = new Date(cursor + durationMs);
+    const reservedEnd = new Date(cursor + reservedMs);
 
     const busy = existing.some(
-      (appt) => appt.startTime < slotEnd && appt.endTime > slotStart
+      (appt) => appt.startTime < reservedEnd && appt.endTime > slotStart
     );
 
     slots.push({
@@ -47,7 +52,7 @@ export async function GET(req: NextRequest) {
       available: !busy,
     });
 
-    cursor += durationMs;
+    cursor += HOUR_MS;
   }
 
   return NextResponse.json(slots);
