@@ -44,12 +44,16 @@ type Range = { startTime: Date; endTime: Date };
 function bucketByHour<A extends Range, B extends Range>(dateStr: string, appts: A[], blocked: B[]) {
   const base = dayStartMs(dateStr);
   const apptsByHour: Record<number, A[]> = {};
+  // Horas seguintes de uma sessão longa (9h–11h ocupa também a linha das 10h).
+  const contByHour: Record<number, A[]> = {};
   const blockedByHour: Record<number, B[]> = {};
   for (const appt of appts) {
     const t = appt.startTime.getTime();
     if (t < base || t >= base + 24 * HOUR_MS) continue;
     const h = Math.floor((t - base) / HOUR_MS);
     (apptsByHour[h] ??= []).push(appt);
+    const end = Math.min(appt.endTime.getTime(), base + 24 * HOUR_MS);
+    for (let k = h + 1; k * HOUR_MS + base < end; k++) (contByHour[k] ??= []).push(appt);
   }
   for (const slot of blocked) {
     const from = Math.max(slot.startTime.getTime(), base);
@@ -59,7 +63,7 @@ function bucketByHour<A extends Range, B extends Range>(dateStr: string, appts: 
       (blockedByHour[h] ??= []).push(slot);
     }
   }
-  return { apptsByHour, blockedByHour };
+  return { apptsByHour, contByHour, blockedByHour };
 }
 
 const hh = (hour: number) => `${String(hour).padStart(2, "0")}:00`;
@@ -122,8 +126,14 @@ export default async function AgendaPage({
 
   // Valor sugerido ao concluir: a cobrança em aberto do atendimento ou o preço do serviço.
   const priceByService = new Map(services.map((s) => [s.name, s.price]));
-  const suggestedAmount = (appt: (typeof appointments)[number]) =>
-    appt.payments[0]?.amount ?? priceByService.get(appt.serviceType) ?? null;
+  // Sessão de 2 h ou 3 h sugere o preço multiplicado pelas horas.
+  const suggestedAmount = (appt: (typeof appointments)[number]) => {
+    if (appt.payments[0]) return appt.payments[0].amount;
+    const price = priceByService.get(appt.serviceType);
+    if (price == null) return null;
+    const horas = Math.max(1, Math.ceil((appt.endTime.getTime() - appt.startTime.getTime()) / HOUR_MS));
+    return price * horas;
+  };
 
   const jornadaLink = (
     <Link
@@ -136,7 +146,11 @@ export default async function AgendaPage({
   );
 
   if (view === "day") {
-    const { apptsByHour, blockedByHour } = bucketByHour(currentDateStr, appointments, blockedSlots);
+    const { apptsByHour, contByHour, blockedByHour } = bucketByHour(
+      currentDateStr,
+      appointments,
+      blockedSlots
+    );
     const workRows = workHourRows(schedule, currentDateStr);
     const dayOff = workRows.length === 0;
 
@@ -220,7 +234,8 @@ export default async function AgendaPage({
             {hourList.map((hour) => {
               const hourAppts = apptsByHour[hour] ?? [];
               const hourBlocked = blockedByHour[hour] ?? [];
-              const isEmpty = hourAppts.length === 0 && hourBlocked.length === 0;
+              const hourCont = contByHour[hour] ?? [];
+              const isEmpty = hourAppts.length === 0 && hourBlocked.length === 0 && hourCont.length === 0;
 
               return (
                 <li key={hour} className="flex gap-3">
@@ -238,6 +253,16 @@ export default async function AgendaPage({
                           Bloqueado {formatTimeBR(slot.startTime)}–{formatTimeBR(slot.endTime)}
                           {slot.reason ? ` · ${slot.reason}` : ""}
                         </span>
+                      </div>
+                    ))}
+
+                    {hourCont.map((appt) => (
+                      <div
+                        key={appt.id}
+                        className="flex min-h-12 items-center rounded-xl bg-violet-50 px-3 text-sm text-violet-700"
+                      >
+                        {appt.client?.name ?? appt.title.split(" - ")[0].trim()} · continua até{" "}
+                        {formatTimeBR(appt.endTime)}
                       </div>
                     ))}
 
@@ -285,6 +310,7 @@ export default async function AgendaPage({
                               appt.status as "SCHEDULED" | "CONFIRMED" | "DONE" | "CANCELLED"
                             }
                             startTime={appt.startTime.toISOString()}
+                            endTime={appt.endTime.toISOString()}
                             serverNow={renderedAt}
                             defaultAmount={suggestedAmount(appt)}
                             clientId={appt.clientId}
@@ -394,6 +420,7 @@ export default async function AgendaPage({
                 {days.map((key) => {
                   const appts = buckets[key].apptsByHour[hour] ?? [];
                   const blocked = buckets[key].blockedByHour[hour] ?? [];
+                  const cont = buckets[key].contByHour[hour] ?? [];
                   const working = isWorkHour(schedule, key, hour);
                   return (
                     <div
@@ -427,7 +454,15 @@ export default async function AgendaPage({
                           notes={appt.notes}
                         />
                       ))}
-                      {working && appts.length === 0 && blocked.length === 0 && (
+                      {cont.map((appt) => (
+                        <div
+                          key={appt.id}
+                          className="flex min-h-11 flex-1 items-center truncate rounded-lg bg-violet-50 px-2 text-xs text-violet-700"
+                        >
+                          {appt.client?.name ?? appt.title.split(" - ")[0].trim()}
+                        </div>
+                      ))}
+                      {working && appts.length === 0 && blocked.length === 0 && cont.length === 0 && (
                         <Link
                           href={`/agenda?view=week&week=${weekStartStr}&date=${key}&novo=${hh(hour)}`}
                           scroll={false}

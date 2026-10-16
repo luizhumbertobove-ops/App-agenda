@@ -9,6 +9,7 @@ import { Modal } from "@/components/modal";
 import { Button } from "@/components/button";
 import { Input, Textarea } from "@/components/input";
 import { ClientCombobox } from "@/components/client-combobox";
+import { SessionHoursPicker, sessionMinutes } from "@/components/session-hours-picker";
 
 type Client = { id: string; name: string; phone: string };
 type Service = { id: string; name: string; durationMins: number; price: number };
@@ -40,6 +41,7 @@ export function NewAppointmentModal({
   const [date, setDate] = useState(preset?.date ?? "");
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
   const [notes, setNotes] = useState("");
+  const [hours, setHours] = useState(1);
 
   // Cobrança opcional
   const [createPayment, setCreatePayment] = useState(false);
@@ -73,16 +75,23 @@ export function NewAppointmentModal({
     setServiceId(id);
     setSelectedSlot(null);
     const service = services.find((s) => s.id === id);
-    if (service) setPaymentAmount(String(service.price));
+    if (service) setPaymentAmount(String(service.price * hours));
+  }
+
+  function handleHoursChange(h: number) {
+    setHours(h);
+    setSelectedSlot(null);
+    if (selectedService) setPaymentAmount(String(selectedService.price * h));
   }
 
   // Carregar slots ao mudar data ou serviço
   const slotsUrl =
-    date && selectedService ? `/api/availability?date=${date}&duration=${selectedService.durationMins}` : null;
+    date && selectedService
+      ? `/api/availability?date=${date}&duration=${sessionMinutes(hours, selectedService.durationMins)}`
+      : null;
   const { data: fetchedSlots, loading: loadingSlots } = useSlots<Slot[]>(slotsUrl);
   const slots = slotsUrl ? fetchedSlots ?? [] : [];
-  // Sem escolha manual, vale o primeiro horário disponível dentro da hora tocada no "Livre"
-  // (os horários seguem a duração do serviço, então 10:00 pode virar 10:30).
+  // Sem escolha manual, vale o horário disponível na hora tocada no "Livre".
   const slot =
     selectedSlot ??
     (preset && date === preset.date
@@ -177,6 +186,8 @@ export function NewAppointmentModal({
             ))}
           </select>
         </div>
+
+        <SessionHoursPicker value={hours} onChange={handleHoursChange} />
 
         {/* Data */}
         <div>

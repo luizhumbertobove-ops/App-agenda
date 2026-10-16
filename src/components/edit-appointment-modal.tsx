@@ -8,6 +8,7 @@ import { Modal } from "@/components/modal";
 import { Button } from "@/components/button";
 import { Input, Textarea } from "@/components/input";
 import { ClientCombobox } from "@/components/client-combobox";
+import { SessionHoursPicker, sessionMinutes } from "@/components/session-hours-picker";
 
 type Service = { id: string; name: string; durationMins: number; price: number };
 type Slot = { start: string; end: string; available: boolean };
@@ -32,6 +33,7 @@ export function EditAppointmentModal({
   clientName,
   serviceType,
   startTime,
+  endTime,
   notes: initialNotes,
   onClose,
 }: {
@@ -41,6 +43,7 @@ export function EditAppointmentModal({
   clientName: string;
   serviceType: string;
   startTime: string;
+  endTime: string;
   notes: string | null;
   onClose: () => void;
 }) {
@@ -52,6 +55,10 @@ export function EditAppointmentModal({
   const [date, setDate] = useState(dataBR(startTime));
   const [selected, setSelected] = useState<Slot | null>(null);
   const [notes, setNotes] = useState(initialNotes ?? "");
+  // Tempo atual: até 1 h conta como sessão normal; acima disso, horas inteiras (2 h, 3 h).
+  const [hours, setHours] = useState(() =>
+    Math.min(3, Math.max(1, Math.ceil((new Date(endTime).getTime() - new Date(startTime).getTime()) / 3_600_000)))
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -71,7 +78,7 @@ export function EditAppointmentModal({
   }, []);
 
   const service = services.find((s) => s.name === serviceName);
-  const duration = service?.durationMins ?? 60;
+  const duration = sessionMinutes(hours, service?.durationMins ?? 60);
   const slotsUrl = date
     ? `/api/availability?date=${date}&duration=${duration}&exclude=${appointmentId}`
     : null;
@@ -172,6 +179,14 @@ export function EditAppointmentModal({
             ))}
           </select>
         </div>
+
+        <SessionHoursPicker
+          value={hours}
+          onChange={(h) => {
+            setHours(h);
+            setSelected(null);
+          }}
+        />
 
         <div>
           <label htmlFor={`data-${appointmentId}`} className="mb-1.5 block text-sm font-medium text-gray-700">

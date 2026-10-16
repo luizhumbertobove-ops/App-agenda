@@ -122,6 +122,7 @@ export function WeekAppointmentCard({
               appointmentId={appointmentId}
               status={status}
               startTime={startTime}
+              endTime={endTime}
               serverNow={serverNow}
               defaultAmount={defaultAmount}
               clientId={clientId}
