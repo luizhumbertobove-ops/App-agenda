@@ -97,6 +97,8 @@ async function sync() {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await prisma.syncLog.create({ data: { errors: message } });
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    // invalid_grant = a autorização do Google expirou ou foi revogada: precisa reconectar.
+    const reconnect = message.includes("invalid_grant");
+    return NextResponse.json({ ok: false, error: message, reconnect }, { status: 500 });
   }
 }
