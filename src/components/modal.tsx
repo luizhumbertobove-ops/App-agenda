@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
+
+/** Modais abertos, do mais antigo ao mais novo: o Esc fecha só o de cima. */
+const openStack: symbol[] = [];
+
+const noopSubscribe = () => () => {};
 
 const MAX_WIDTH = {
   sm: "md:max-w-sm",
@@ -28,13 +34,23 @@ export function Modal({
   }, [onClose]);
 
   useEffect(() => {
+    const token = Symbol("modal");
+    openStack.push(token);
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onCloseRef.current();
+      if (e.key === "Escape" && openStack[openStack.length - 1] === token) onCloseRef.current();
     }
     document.addEventListener("keydown", onKeyDown);
     boxRef.current?.focus();
-    return () => document.removeEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      openStack.splice(openStack.indexOf(token), 1);
+    };
   }, []);
+
+  // No navegador o modal vai direto para o <body>: assim um modal aberto de dentro de
+  // outro (ex.: Editar a partir da folha do atendimento) não fica preso na caixa do primeiro.
+  // No servidor (e na hidratação) renderiza no lugar, para o HTML bater.
+  const inBrowser = useSyncExternalStore(noopSubscribe, () => true, () => false);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -44,7 +60,7 @@ export function Modal({
     };
   }, []);
 
-  return (
+  const overlay = (
     <div
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -66,4 +82,6 @@ export function Modal({
       </div>
     </div>
   );
+
+  return inBrowser ? createPortal(overlay, document.body) : overlay;
 }

@@ -18,6 +18,8 @@ export function BlockSlotModal({
   blockedSlots: BlockedSlot[];
 }) {
   const [open, setOpen] = useState(false);
+  // Começa no dia aberto na agenda, mas dá para escolher outro (útil na visão Semana).
+  const [date, setDate] = useState(currentDate);
   const [startTime, setStartTime] = useState("12:00");
   const [endTime, setEndTime] = useState("13:00");
   const [reason, setReason] = useState("");
@@ -25,16 +27,16 @@ export function BlockSlotModal({
   const [error, setError] = useState("");
   const router = useRouter();
 
-  const daySlots = blockedSlots.filter((s) =>
-    s.startTime.startsWith(currentDate)
+  const daySlots = blockedSlots.filter(
+    (s) => new Date(s.startTime).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" }) === date
   );
 
   async function handleBlock() {
     setLoading(true);
     setError("");
     try {
-      const start = new Date(`${currentDate}T${startTime}:00-03:00`);
-      const end = new Date(`${currentDate}T${endTime}:00-03:00`);
+      const start = new Date(`${date}T${startTime}:00-03:00`);
+      const end = new Date(`${date}T${endTime}:00-03:00`);
       if (end <= start) {
         setError("Horário de fim deve ser após o início.");
         return;
@@ -67,7 +69,10 @@ export function BlockSlotModal({
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setDate(currentDate);
+          setOpen(true);
+        }}
         className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-red-600 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-red-50 transition-colors"
       >
         <BanIcon size={13} />
@@ -84,6 +89,10 @@ export function BlockSlotModal({
           </div>
 
           <div className="p-5 space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">Dia</label>
+              <Input type="date" ring="danger" value={date} onChange={(e) => setDate(e.target.value)} />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">Início</label>
@@ -106,7 +115,7 @@ export function BlockSlotModal({
 
             {daySlots.length > 0 && (
               <div>
-                <p className="text-xs font-medium text-gray-500 mb-2">Já bloqueado hoje:</p>
+                <p className="text-xs font-medium text-gray-500 mb-2">Já bloqueado neste dia:</p>
                 <div className="space-y-1">
                   {daySlots.map((s) => (
                     <div key={s.id} className="flex items-center justify-between text-xs bg-red-50 rounded-lg px-3 py-1.5">

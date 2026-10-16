@@ -10,6 +10,7 @@ import { getWorkSchedule } from "@/lib/settings";
 import { hoursForDate, toMinutes, type WorkSchedule } from "@/lib/work-schedule";
 import { NewAppointmentModal } from "@/components/new-appointment-modal";
 import { AppointmentActions } from "@/components/appointment-actions";
+import { WeekAppointmentCard } from "@/components/week-appointment-card";
 import { BlockSlotModal } from "@/components/block-slot-modal";
 import { StatusBadge } from "@/components/status-badge";
 import { APPOINTMENT_STATUS } from "@/lib/status-labels";
@@ -62,13 +63,6 @@ function bucketByHour<A extends Range, B extends Range>(dateStr: string, appts: 
 }
 
 const hh = (hour: number) => `${String(hour).padStart(2, "0")}:00`;
-
-/** Ponto de cor do cartão na grade semanal, pelo status (o design system não usa borda de um lado só). */
-const WEEK_STATUS_DOT: Record<string, string> = {
-  SCHEDULED: "bg-blue-400",
-  CONFIRMED: "bg-green-500",
-  DONE: "bg-amber-400",
-};
 
 export default async function AgendaPage({
   searchParams,
@@ -347,6 +341,11 @@ export default async function AgendaPage({
           prevHref={`/agenda?view=week&week=${prevWeek}`}
           nextHref={`/agenda?view=week&week=${nextWeek}`}
           clients={clients}
+          preset={
+            novo && /^\d{2}:\d{2}$/.test(novo) && dateParam
+              ? { date: dateParam, time: novo, returnTo: `/agenda?view=week&week=${weekStartStr}` }
+              : undefined
+          }
         />
 
         <div className="-mx-5 overflow-x-auto px-5 pb-2 [contain:paint] md:mx-0 md:px-0">
@@ -414,29 +413,24 @@ export default async function AgendaPage({
                         </div>
                       )}
                       {appts.map((appt) => (
-                        <Link
+                        <WeekAppointmentCard
                           key={appt.id}
-                          href={`/agenda?date=${key}`}
-                          className={`flex min-h-11 flex-col justify-center rounded-lg border border-gray-200 bg-white px-2 py-1 hover:bg-gray-50 ${
-                            appt.status === "DONE" ? "opacity-70" : ""
-                          }`}
-                        >
-                          <span className="flex items-center gap-1 text-[11px] tabular-nums text-gray-500">
-                            <span
-                              aria-hidden
-                              className={`size-1.5 shrink-0 rounded-full ${WEEK_STATUS_DOT[appt.status] ?? "bg-gray-400"}`}
-                            />
-                            {formatTimeBR(appt.startTime)}
-                            <span className="sr-only"> · {APPOINTMENT_STATUS[appt.status]?.label}</span>
-                          </span>
-                          <span className="truncate text-xs font-medium text-gray-900">
-                            {appt.client?.name ?? appt.title}
-                          </span>
-                        </Link>
+                          appointmentId={appt.id}
+                          status={appt.status as "SCHEDULED" | "CONFIRMED" | "DONE" | "CANCELLED"}
+                          startTime={appt.startTime.toISOString()}
+                          endTime={appt.endTime.toISOString()}
+                          serverNow={renderedAt}
+                          defaultAmount={suggestedAmount(appt)}
+                          clientId={appt.clientId}
+                          clientName={appt.client?.name ?? appt.title.split(" - ")[0].trim()}
+                          serviceType={appt.serviceType}
+                          notes={appt.notes}
+                        />
                       ))}
                       {working && appts.length === 0 && blocked.length === 0 && (
                         <Link
-                          href={`/agenda?date=${key}&novo=${hh(hour)}`}
+                          href={`/agenda?view=week&week=${weekStartStr}&date=${key}&novo=${hh(hour)}`}
+                          scroll={false}
                           aria-label={`Agendar em ${format(parseISO(key), "d/MM")} às ${hh(hour)}`}
                           className="flex min-h-11 flex-1 items-center justify-center rounded-lg text-xs text-gray-300 transition-colors hover:bg-violet-50 hover:text-violet-700"
                         >
@@ -463,7 +457,15 @@ export default async function AgendaPage({
           </span>
         </div>
 
-        <div className="flex items-center justify-end gap-1 border-t border-gray-200 pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-4">
+          <BlockSlotModal
+            currentDate={days.includes(todayStr) ? todayStr : weekStartStr}
+            blockedSlots={blockedSlots.map((s) => ({
+              ...s,
+              startTime: s.startTime.toISOString(),
+              endTime: s.endTime.toISOString(),
+            }))}
+          />
           {jornadaLink}
         </div>
       </div>
@@ -490,7 +492,7 @@ function AgendaHeader({
   prevHref: string;
   nextHref: string;
   clients: { id: string; name: string; phone: string }[];
-  preset?: { date: string; time: string };
+  preset?: { date: string; time: string; returnTo?: string };
 }) {
   const tab = (active: boolean) =>
     `inline-flex min-h-11 items-center rounded-full px-4 text-sm font-medium transition-colors ${

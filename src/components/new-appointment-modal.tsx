@@ -28,7 +28,8 @@ export function NewAppointmentModal({
   preset,
 }: {
   clients: Client[];
-  preset?: { date: string; time: string };
+  /** returnTo: para onde voltar ao fechar (padrão: o dia na agenda). */
+  preset?: { date: string; time: string; returnTo?: string };
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(Boolean(preset));
@@ -91,7 +92,7 @@ export function NewAppointmentModal({
   // Fechar tira o ?novo= da URL, senão o formulário reabriria ao atualizar a página.
   function handleClose() {
     setOpen(false);
-    if (preset) router.replace(`/agenda?date=${preset.date}`, { scroll: false });
+    if (preset) router.replace(preset.returnTo ?? `/agenda?date=${preset.date}`, { scroll: false });
   }
 
   async function handleSubmit() {
@@ -121,7 +122,7 @@ export function NewAppointmentModal({
       }
 
       setOpen(false);
-      if (preset) router.replace(`/agenda?date=${preset.date}`, { scroll: false });
+      if (preset) router.replace(preset.returnTo ?? `/agenda?date=${preset.date}`, { scroll: false });
       else router.refresh();
     } catch {
       setError("Erro ao criar agendamento");
