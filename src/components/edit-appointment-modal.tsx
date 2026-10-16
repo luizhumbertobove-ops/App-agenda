@@ -1,0 +1,214 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Clock, X } from "lucide-react";
+import { useSlots } from "@/hooks/use-slots";
+import { Modal } from "@/components/modal";
+import { Button } from "@/components/button";
+import { Input, Textarea } from "@/components/input";
+
+type Service = { id: string; name: string; durationMins: number; price: number };
+type Slot = { start: string; end: string; available: boolean };
+
+function dataBR(iso: string) {
+  return new Date(iso).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+}
+
+function horaBR(iso: string) {
+  return new Date(iso).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  });
+}
+
+/** Folha para mudar serviço, data, horário e observações de um atendimento já marcado. */
+export function EditAppointmentModal({
+  appointmentId,
+  clientName,
+  serviceType,
+  startTime,
+  notes: initialNotes,
+  onClose,
+}: {
+  appointmentId: string;
+  clientName: string;
+  serviceType: string;
+  startTime: string;
+  notes: string | null;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const [services, setServices] = useState<Service[]>([]);
+  const [serviceName, setServiceName] = useState(serviceType);
+  const [date, setDate] = useState(dataBR(startTime));
+  const [selected, setSelected] = useState<Slot | null>(null);
+  const [notes, setNotes] = useState(initialNotes ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  // Todos os serviços (inclusive os fora da vitrine), para o atual sempre aparecer na lista.
+  useEffect(() => {
+    fetch("/api/servicos?all=1")
+      .then((r) => r.json())
+      .then(setServices)
+      .catch(() => setServices([]));
+  }, []);
+
+  const service = services.find((s) => s.name === serviceName);
+  const duration = service?.durationMins ?? 60;
+  const slotsUrl = date
+    ? `/api/availability?date=${date}&duration=${duration}&exclude=${appointmentId}`
+    : null;
+  const { data: fetchedSlots, loading: loadingSlots } = useSlots<Slot[]>(slotsUrl);
+  const slots = slotsUrl ? fetchedSlots ?? [] : [];
+
+  // Sem escolha nova, fica o horário atual (se ainda existir na lista desse dia).
+  const slot =
+    selected ?? slots.find((s) => horaBR(s.start) === horaBR(startTime) && date === dataBR(startTime)) ?? null;
+
+  async function handleSave() {
+    if (!slot) return;
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/appointments/${appointmentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          serviceType: serviceName,
+          startTime: slot.start,
+          endTime: slot.end,
+          notes: notes.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(typeof data.error === "string" ? data.error : "Não foi possível salvar.");
+        return;
+      }
+      onClose();
+      router.refresh();
+    } catch {
+      setError("Erro de conexão ao salvar.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal onClose={onClose} maxWidth="lg">
+      <div className="flex items-start justify-between gap-3 px-6 pt-5">
+        <div className="min-w-0">
+          <h3 className="font-display text-xl text-gray-900">Editar atendimento</h3>
+          <p className="truncate text-sm text-gray-500">{clientName}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Fechar"
+          className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+        >
+          <X size={18} />
+        </button>
+      </div>
+
+      <div className="space-y-5 p-6">
+        <div>
+          <label htmlFor={`servico-${appointmentId}`} className="mb-1.5 block text-sm font-medium text-gray-700">
+            Serviço
+          </label>
+          <select
+            id={`servico-${appointmentId}`}
+            value={serviceName}
+            onChange={(e) => {
+              setServiceName(e.target.value);
+              setSelected(null);
+            }}
+            className="min-h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-[15px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-200"
+          >
+            {!service && <option value={serviceName}>{serviceName}</option>}
+            {services.map((s) => (
+              <option key={s.id} value={s.name}>
+                {s.name} — {s.durationMins} min
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor={`data-${appointmentId}`} className="mb-1.5 block text-sm font-medium text-gray-700">
+            Data
+          </label>
+          <Input
+            id={`data-${appointmentId}`}
+            type="date"
+            value={date}
+            onChange={(e) => {
+              setDate(e.target.value);
+              setSelected(null);
+            }}
+            className="min-h-11"
+          />
+        </div>
+
+        {date && (
+          <div>
+            <p className="mb-2 flex items-center gap-1 text-sm font-medium text-gray-700">
+              <Clock size={13} aria-hidden />
+              Horário
+            </p>
+            {loadingSlots ? (
+              <p className="text-sm text-gray-400">Carregando horários...</p>
+            ) : slots.length === 0 ? (
+              <p className="text-sm text-gray-400">Nenhum horário nesta data.</p>
+            ) : (
+              <div className="grid grid-cols-4 gap-2">
+                {slots.map((s) => {
+                  const on = slot?.start === s.start;
+                  return (
+                    <button
+                      key={s.start}
+                      type="button"
+                      disabled={!s.available}
+                      onClick={() => setSelected(s)}
+                      aria-pressed={on}
+                      className={`min-h-11 rounded-full border text-sm font-medium transition-colors ${
+                        !s.available
+                          ? "cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300"
+                          : on
+                            ? "border-violet-600 bg-violet-600 text-white"
+                            : "border-gray-200 text-gray-700 hover:border-violet-300 hover:bg-violet-50"
+                      }`}
+                    >
+                      {horaBR(s.start)}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div>
+          <label htmlFor={`obs-${appointmentId}`} className="mb-1.5 block text-sm font-medium text-gray-700">
+            Observações <span className="font-normal text-gray-400">(opcional)</span>
+          </label>
+          <Textarea id={`obs-${appointmentId}`} rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+        </div>
+
+        {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={onClose} className="flex-1">
+            Cancelar
+          </Button>
+          <Button onClick={handleSave} disabled={saving || !slot} className="flex-1">
+            {saving ? "Salvando..." : "Salvar"}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}

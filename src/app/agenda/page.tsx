@@ -294,6 +294,9 @@ export default async function AgendaPage({
                             startTime={appt.startTime.toISOString()}
                             serverNow={renderedAt}
                             defaultAmount={suggestedAmount(appt)}
+                            clientName={appt.client?.name ?? appt.title}
+                            serviceType={appt.serviceType}
+                            notes={appt.notes}
                           />
                         </div>
                       </article>

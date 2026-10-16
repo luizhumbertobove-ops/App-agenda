@@ -7,6 +7,8 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const dateStr = searchParams.get("date"); // YYYY-MM-DD (horário Brasil)
   const durationMins = parseInt(searchParams.get("duration") ?? "60");
+  // Ao editar um atendimento, o horário dele mesmo conta como livre.
+  const excludeId = searchParams.get("exclude");
 
   if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     return NextResponse.json({ error: "Parâmetro date obrigatório (YYYY-MM-DD)" }, { status: 400 });
@@ -21,7 +23,11 @@ export async function GET(req: NextRequest) {
   const range = { startTime: { lt: businessEnd }, endTime: { gt: businessStart } };
   const [appointments, blocked] = await Promise.all([
     prisma.appointment.findMany({
-      where: { status: { not: "CANCELLED" }, ...range },
+      where: {
+        status: { not: "CANCELLED" },
+        ...range,
+        ...(excludeId ? { id: { not: excludeId } } : {}),
+      },
       select: { startTime: true, endTime: true },
     }),
     prisma.blockedSlot.findMany({ where: range, select: { startTime: true, endTime: true } }),

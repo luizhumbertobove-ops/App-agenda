@@ -6,6 +6,7 @@ import { MoreHorizontal, X } from "lucide-react";
 import { Modal } from "@/components/modal";
 import { Input } from "@/components/input";
 import { Button } from "@/components/button";
+import { EditAppointmentModal } from "@/components/edit-appointment-modal";
 
 type Status = "SCHEDULED" | "CONFIRMED" | "DONE" | "CANCELLED";
 type ChargeMode = "paid" | "pending" | "none";
@@ -27,12 +28,18 @@ export function AppointmentActions({
   startTime,
   serverNow,
   defaultAmount,
+  clientName,
+  serviceType,
+  notes,
 }: {
   appointmentId: string;
   status: Status;
   startTime: string;
   /** Valor sugerido ao concluir: cobrança em aberto do atendimento ou preço do serviço. */
   defaultAmount?: number | null;
+  clientName: string;
+  serviceType: string;
+  notes: string | null;
   /** Horário do render no servidor: o primeiro render do navegador usa o mesmo valor, sem erro de hidratação. */
   serverNow: number;
 }) {
@@ -47,6 +54,7 @@ export function AppointmentActions({
   const [chargeMode, setChargeMode] = useState<ChargeMode>("paid");
   const [reopening, setReopening] = useState(false);
   const [notice, setNotice] = useState("");
+  const [editing, setEditing] = useState(false);
 
   // Relógio atualizado a cada minuto: troca "Confirmar" por "Concluiu/Faltou" quando o horário chega.
   useEffect(() => {
@@ -261,6 +269,17 @@ export function AppointmentActions({
         </Modal>
       )}
 
+      {editing && (
+        <EditAppointmentModal
+          appointmentId={appointmentId}
+          clientName={clientName}
+          serviceType={serviceType}
+          startTime={startTime}
+          notes={notes}
+          onClose={() => setEditing(false)}
+        />
+      )}
+
       <div className="relative ml-auto">
         <button
           type="button"
@@ -287,6 +306,17 @@ export function AppointmentActions({
               role="menu"
               className="absolute right-0 z-20 mt-2 w-56 rounded-xl border border-gray-200 bg-white p-1 shadow-md"
             >
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setEditing(true);
+                }}
+                className="flex min-h-11 md:min-h-9 w-full items-center rounded-lg px-3 text-left text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Editar atendimento
+              </button>
               <button
                 type="button"
                 role="menuitem"
