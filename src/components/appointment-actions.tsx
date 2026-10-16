@@ -32,6 +32,7 @@ export function AppointmentActions({
   clientName,
   serviceType,
   notes,
+  menuUp = false,
 }: {
   appointmentId: string;
   status: Status;
@@ -44,6 +45,8 @@ export function AppointmentActions({
   notes: string | null;
   /** Horário do render no servidor: o primeiro render do navegador usa o mesmo valor, sem erro de hidratação. */
   serverNow: number;
+  /** Abre o menu "Mais" para cima: dentro da folha da Semana o espaço abaixo é cortado. */
+  menuUp?: boolean;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -307,7 +310,9 @@ export function AppointmentActions({
             />
             <div
               role="menu"
-              className="absolute right-0 z-20 mt-2 w-56 rounded-xl border border-gray-200 bg-white p-1 shadow-md"
+              className={`absolute right-0 z-20 w-56 rounded-xl border border-gray-200 bg-white p-1 shadow-md ${
+                menuUp ? "bottom-full mb-2" : "mt-2"
+              }`}
             >
               <button
                 type="button"

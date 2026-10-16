@@ -128,6 +128,7 @@ export function WeekAppointmentCard({
               clientName={clientName}
               serviceType={serviceType}
               notes={notes}
+              menuUp
             />
           </div>
         </Modal>
