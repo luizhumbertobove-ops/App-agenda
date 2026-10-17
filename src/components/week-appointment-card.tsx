@@ -72,17 +72,17 @@ export function WeekAppointmentCard({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`flex min-h-11 w-full flex-col justify-center rounded-lg border border-gray-200 bg-white px-2 py-1 text-left hover:bg-gray-50 ${
+        className={`flex min-h-11 w-full min-w-0 flex-col justify-center rounded-lg border border-gray-200 bg-white px-1 py-1 text-left hover:bg-gray-50 md:px-2 ${
           status === "DONE" ? "opacity-70" : ""
         }`}
       >
-        <span className="flex items-center gap-1 text-[11px] tabular-nums text-gray-500">
+        <span className="flex items-center gap-1 text-[9px] tabular-nums text-gray-500 md:text-[11px]">
           <span aria-hidden className={`size-1.5 shrink-0 rounded-full ${STATUS_DOT[status] ?? "bg-gray-400"}`} />
           {horaBR(startTime)}
           <span className="sr-only"> · {APPOINTMENT_STATUS[status]?.label}</span>
         </span>
-        <span className="truncate text-xs font-medium text-gray-900">{clientName}</span>
-        {isPartner && <span className="text-[10px] font-medium text-amber-700">Parceria</span>}
+        <span className="truncate text-[10px] font-medium leading-tight text-gray-900 md:text-xs">{clientName}</span>
+        {isPartner && <span className="truncate text-[9px] font-medium text-amber-700 md:text-[10px]">Parceria</span>}
       </button>
 
       {open && (

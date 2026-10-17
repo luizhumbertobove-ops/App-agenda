@@ -20,6 +20,26 @@ function formatPhone(phone: string): string {
   return `55${digits}`;
 }
 
+/**
+ * O servidor de WhatsApp (Evolution API) está no ar e com o número conectado?
+ * Responde em até 4s, para a tela não ficar presa quando o servidor cai.
+ */
+export async function isWhatsappOnline(): Promise<boolean> {
+  if (!process.env.EVOLUTION_API_URL) return false;
+  try {
+    const res = await api.get(`/instance/connectionState/${INSTANCE}`, { timeout: 4000 });
+    const state = res.data?.instance?.state ?? res.data?.state;
+    return state === "open";
+  } catch {
+    return false;
+  }
+}
+
+/** Link que abre o WhatsApp do aparelho com a mensagem pronta (envio manual, sem servidor). */
+export function whatsappManualLink(phone: string, message: string): string {
+  return `https://wa.me/${formatPhone(phone)}?text=${encodeURIComponent(message)}`;
+}
+
 export async function sendText(phone: string, message: string) {
   const number = formatPhone(phone);
   const res = await api.post(`/message/sendText/${INSTANCE}`, {

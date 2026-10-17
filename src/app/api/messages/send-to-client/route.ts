@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import {
+  isWhatsappOnline,
+  whatsappManualLink,
   sendText,
   buildConfirmationMessage,
   buildReengagementMessage,
@@ -41,12 +43,22 @@ export async function POST(req: NextRequest) {
     message = buildReengagementMessage(client.name, settings.reengagementTemplate);
   }
 
+  const logType = type === "confirmation" ? "CONFIRMATION" : "REENGAGEMENT";
+
+  // Servidor fora do ar: devolve o link para enviar pelo WhatsApp do aparelho.
+  if (!(await isWhatsappOnline())) {
+    return NextResponse.json(
+      { offline: true, link: whatsappManualLink(client.phone, message), message, logType },
+      { status: 503 }
+    );
+  }
+
   await sendText(client.phone, message);
 
   await prisma.whatsappLog.create({
     data: {
       clientId: client.id,
-      type: type === "custom" ? "REENGAGEMENT" : type === "confirmation" ? "CONFIRMATION" : "REENGAGEMENT",
+      type: logType,
       message,
       status: "sent",
     },

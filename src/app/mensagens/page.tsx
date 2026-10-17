@@ -8,6 +8,7 @@ import { MessageTriggerButtons } from "@/components/message-trigger-buttons";
 import { StatusBadge } from "@/components/status-badge";
 import { MESSAGE_TYPE } from "@/lib/status-labels";
 import { EmptyState } from "@/components/empty-state";
+import { WhatsappStatus } from "@/components/whatsapp-status";
 
 /** Primeiro instante do mês atual em horário de Brasília (00:00 BRT = 03:00 UTC). */
 function inicioDoMesBR(): Date {
@@ -45,6 +46,8 @@ export default async function MensagensPage() {
         <p className="text-xs font-medium uppercase tracking-[0.14em] text-amber-700">WhatsApp</p>
         <h1 className="font-display text-3xl text-gray-900">Mensagens</h1>
       </header>
+
+      <WhatsappStatus />
 
       <section className="space-y-3">
         <p className="text-sm text-gray-500">Neste mês</p>

@@ -1,9 +1,18 @@
 import { prisma } from "@/lib/prisma";
-import { sendText, buildConfirmationMessage } from "@/lib/evolution";
+import { sendText, isWhatsappOnline, buildConfirmationMessage } from "@/lib/evolution";
 import { startOfTodayBR } from "@/lib/date";
 import { getSettings } from "@/lib/settings";
 
-export async function runConfirmationSends() {
+export type MessageTarget = {
+  clientId: string;
+  clientName: string;
+  phone: string;
+  message: string;
+  appointmentId?: string;
+};
+
+/** Quem deve receber a confirmação (atendimentos do dia-alvo ainda sem confirmação enviada). */
+export async function listConfirmationTargets(): Promise<MessageTarget[]> {
   const settings = await getSettings();
   const daysBefore = settings.confirmationDaysBefore;
 
@@ -17,30 +26,38 @@ export async function runConfirmationSends() {
       confirmationSentAt: null,
     },
     include: { client: true },
+    orderBy: { startTime: "asc" },
   });
 
+  return appointments
+    .filter((a) => a.client?.phone && a.client.phone !== "00000000000")
+    .map((a) => ({
+      clientId: a.client!.id,
+      clientName: a.client!.name,
+      phone: a.client!.phone,
+      appointmentId: a.id,
+      message: buildConfirmationMessage(a.client!.name, a.startTime, settings.confirmationTemplate),
+    }));
+}
+
+export async function runConfirmationSends() {
+  // Servidor fora do ar: não tenta (cada tentativa esperaria o limite de 15s).
+  if (!(await isWhatsappOnline())) return { sent: 0, offline: true };
   let sent = 0;
-  for (const appt of appointments) {
-    if (!appt.client?.phone || appt.client.phone === "00000000000") continue;
-
+  for (const t of await listConfirmationTargets()) {
     try {
-      const message = buildConfirmationMessage(appt.client.name, appt.startTime, settings.confirmationTemplate);
-      await sendText(appt.client.phone, message);
-
+      await sendText(t.phone, t.message);
       await prisma.appointment.update({
-        where: { id: appt.id },
+        where: { id: t.appointmentId },
         data: { confirmationSentAt: new Date() },
       });
-
       await prisma.whatsappLog.create({
-        data: { clientId: appt.client.id, type: "CONFIRMATION", message },
+        data: { clientId: t.clientId, type: "CONFIRMATION", message: t.message },
       });
-
       sent++;
     } catch {
       // Continua para os próximos mesmo se um falhar
     }
   }
-
   return { sent };
 }

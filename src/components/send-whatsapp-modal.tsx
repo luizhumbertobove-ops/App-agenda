@@ -27,6 +27,8 @@ export function SendWhatsappModal({
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  // Servidor fora do ar: link para enviar pelo WhatsApp do aparelho.
+  const [manual, setManual] = useState<{ link: string; message: string; logType: string } | null>(null);
 
   async function handleSend() {
     setLoading(true);
@@ -39,6 +41,10 @@ export function SendWhatsappModal({
       });
       if (!res.ok) {
         const data = await res.json();
+        if (data.offline) {
+          setManual({ link: data.link, message: data.message, logType: data.logType });
+          return;
+        }
         setError(data.error ?? "Erro ao enviar mensagem");
         return;
       }
@@ -124,6 +130,32 @@ export function SendWhatsappModal({
                   rows={4}
                   placeholder={`Olá ${clientName}! ...`}
                 />
+              </div>
+            )}
+
+            {manual && (
+              <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                <p className="text-sm text-gray-800">
+                  O envio automático está fora do ar. Abra o WhatsApp com a mensagem pronta e envie por lá.
+                </p>
+                <a
+                  href={manual.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => {
+                    fetch("/api/messages/manual-log", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ clientId, type: manual.logType, message: manual.message }),
+                    }).catch(() => {});
+                    setOpen(false);
+                    setManual(null);
+                  }}
+                  className="flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-violet-600 text-sm font-medium text-white hover:bg-violet-700"
+                >
+                  <MessageSquare size={16} aria-hidden />
+                  Abrir no WhatsApp
+                </a>
               </div>
             )}
 

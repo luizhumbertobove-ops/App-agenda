@@ -394,11 +394,12 @@ export default async function AgendaPage({
           }
         />
 
-        <div className="-mx-5 overflow-x-auto px-5 pb-2 [contain:paint] md:mx-0 md:px-0">
+        {/* Os 7 dias cabem na tela também no celular (colunas estreitas, cartões compactos). */}
+        <div className="-mx-3 md:mx-0">
           <div
             role="grid"
             aria-label="Semana de hora em hora"
-            className="grid w-max grid-cols-[3rem_repeat(7,6.25rem)] overflow-hidden rounded-xl border border-gray-200 bg-white md:w-auto md:grid-cols-[3rem_repeat(7,minmax(0,1fr))]"
+            className="grid grid-cols-[2.25rem_repeat(7,minmax(0,1fr))] overflow-hidden rounded-xl border border-gray-200 bg-white md:grid-cols-[3rem_repeat(7,minmax(0,1fr))]"
           >
             {/* Cabeçalho: dias */}
             <div className="sticky left-0 z-10 border-b border-gray-200 bg-white" />
@@ -410,23 +411,25 @@ export default async function AgendaPage({
                 <Link
                   key={key}
                   href={`/agenda?date=${key}`}
-                  className={`flex flex-col items-center justify-center gap-0.5 border-b border-l border-gray-200 py-2 text-center hover:bg-gray-50 ${
+                  className={`flex min-w-0 flex-col items-center justify-center gap-0.5 border-b border-l border-gray-200 py-2 text-center hover:bg-gray-50 ${
                     isDayToday ? "bg-amber-50" : ""
                   }`}
                 >
                   <span
-                    className={`text-xs capitalize ${isDayToday ? "text-violet-700" : "text-gray-500"}`}
+                    className={`text-[11px] capitalize md:text-xs ${isDayToday ? "text-violet-700" : "text-gray-500"}`}
                   >
-                    {format(d, "EEE", { locale: ptBR })}
+                    {/* No celular só as 3 primeiras letras ("seg"), para caber a semana inteira. */}
+                    <span className="md:hidden">{format(d, "EEE", { locale: ptBR }).slice(0, 3)}</span>
+                    <span className="hidden md:inline">{format(d, "EEE", { locale: ptBR })}</span>
                   </span>
                   <span
-                    className={`text-lg font-medium leading-none tabular-nums ${
+                    className={`text-base font-medium leading-none tabular-nums md:text-lg ${
                       isDayToday ? "text-violet-700" : "text-gray-900"
                     }`}
                   >
                     {format(d, "d")}
                   </span>
-                  {off && <span className="text-[11px] text-gray-400">Folga</span>}
+                  {off && <span className="text-[10px] text-gray-400 md:text-[11px]">Folga</span>}
                 </Link>
               );
             })}
@@ -434,7 +437,7 @@ export default async function AgendaPage({
             {/* Linhas de hora */}
             {hourList.map((hour) => (
               <div key={hour} role="row" className="contents">
-                <div className="sticky left-0 z-10 border-t border-gray-100 bg-white pr-2 pt-2 text-right text-xs tabular-nums text-gray-500">
+                <div className="border-t border-gray-100 bg-white pr-1 pt-2 text-right text-[10px] tabular-nums text-gray-500 md:pr-2 md:text-xs">
                   {hh(hour)}
                 </div>
                 {days.map((key) => {
@@ -446,17 +449,17 @@ export default async function AgendaPage({
                     <div
                       key={key}
                       role="gridcell"
-                      className={`flex min-h-14 flex-col gap-1 border-l border-t border-gray-100 p-1 ${
+                      className={`flex min-h-14 min-w-0 flex-col gap-1 border-l border-t border-gray-100 p-0.5 md:p-1 ${
                         working ? "" : "bg-gray-50"
                       }`}
                     >
                       {blocked.length > 0 && (
                         <div
-                          className="flex min-h-11 flex-1 items-center gap-1 rounded-lg bg-gray-100 px-2 text-xs text-gray-500"
-                          title={blocked[0].reason ?? undefined}
+                          className="flex min-h-11 flex-1 items-center justify-center gap-1 rounded-lg bg-gray-100 px-1 text-xs text-gray-500 md:justify-start md:px-2"
+                          title={blocked[0].reason ?? "Bloqueado"}
                         >
                           <Lock size={12} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />
-                          Bloqueado
+                          <span className="sr-only md:not-sr-only">Bloqueado</span>
                         </div>
                       )}
                       {appts.map((appt) => (
@@ -479,7 +482,7 @@ export default async function AgendaPage({
                       {cont.map((appt) => (
                         <div
                           key={appt.id}
-                          className="flex min-h-11 flex-1 items-center truncate rounded-lg bg-violet-50 px-2 text-xs text-violet-700"
+                          className="flex min-h-11 min-w-0 flex-1 items-center truncate rounded-lg bg-violet-50 px-1 text-[10px] text-violet-700 md:px-2 md:text-xs"
                         >
                           {appt.client?.name ?? appt.title.split(" - ")[0].trim()}
                         </div>
@@ -489,7 +492,7 @@ export default async function AgendaPage({
                           href={`/agenda?view=week&week=${weekStartStr}&date=${key}&novo=${hh(hour)}`}
                           scroll={false}
                           aria-label={`Agendar em ${format(parseISO(key), "d/MM")} às ${hh(hour)}`}
-                          className="flex min-h-11 flex-1 items-center justify-center rounded-lg text-xs text-gray-300 transition-colors hover:bg-violet-50 hover:text-violet-700"
+                          className="flex min-h-11 flex-1 items-center justify-center rounded-lg text-[10px] text-gray-300 transition-colors hover:bg-violet-50 hover:text-violet-700 md:text-xs"
                         >
                           Livre
                         </Link>

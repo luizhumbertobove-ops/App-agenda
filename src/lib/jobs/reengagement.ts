@@ -1,8 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { sendText, buildReengagementMessage } from "@/lib/evolution";
+import { sendText, isWhatsappOnline, buildReengagementMessage } from "@/lib/evolution";
 import { getSettings } from "@/lib/settings";
+import type { MessageTarget } from "@/lib/jobs/confirmations";
 
-export async function runReengagementSends() {
+/** Clientes sem atendimento há mais de N dias e fora do intervalo entre lembretes. */
+export async function listReengagementTargets(): Promise<MessageTarget[]> {
   const settings = await getSettings();
   const inactivityDays = settings.reengagementInactivityDays;
   const cooldownDays = settings.reengagementCooldownDays;
@@ -33,30 +35,37 @@ export async function runReengagementSends() {
         take: 1,
       },
     },
+    orderBy: { name: "asc" },
   });
 
+  return clients
+    .filter((client) => {
+      // Não envia de novo se já enviou dentro do período de cooldown
+      const lastMsg = client.whatsappLogs[0];
+      return !lastMsg || (Date.now() - lastMsg.sentAt.getTime()) / 86400000 >= cooldownDays;
+    })
+    .map((client) => ({
+      clientId: client.id,
+      clientName: client.name,
+      phone: client.phone,
+      message: buildReengagementMessage(client.name, settings.reengagementTemplate),
+    }));
+}
+
+export async function runReengagementSends() {
+  // Servidor fora do ar: não tenta (cada tentativa esperaria o limite de 15s).
+  if (!(await isWhatsappOnline())) return { sent: 0, offline: true };
   let sent = 0;
-  for (const client of clients) {
-    // Não envia de novo se já enviou dentro do período de cooldown
-    const lastMsg = client.whatsappLogs[0];
-    if (lastMsg) {
-      const daysSince = (Date.now() - lastMsg.sentAt.getTime()) / 86400000;
-      if (daysSince < cooldownDays) continue;
-    }
-
+  for (const t of await listReengagementTargets()) {
     try {
-      const message = buildReengagementMessage(client.name, settings.reengagementTemplate);
-      await sendText(client.phone, message);
-
+      await sendText(t.phone, t.message);
       await prisma.whatsappLog.create({
-        data: { clientId: client.id, type: "REENGAGEMENT", message },
+        data: { clientId: t.clientId, type: "REENGAGEMENT", message: t.message },
       });
-
       sent++;
     } catch {
       // Continua
     }
   }
-
   return { sent };
 }
