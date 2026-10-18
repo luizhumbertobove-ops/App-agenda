@@ -35,6 +35,36 @@ export async function isWhatsappOnline(): Promise<boolean> {
   }
 }
 
+/**
+ * Prepara a conexão do número: cria a instância se ainda não existir e devolve o QR code
+ * para ler no celular (WhatsApp › Aparelhos conectados). Se já estiver conectado, só avisa.
+ * Lança erro se o servidor não responder.
+ */
+export async function getWhatsappQr(): Promise<{ connected: boolean; qr?: string }> {
+  const opts = { timeout: 15_000 };
+  const state = await api
+    .get(`/instance/connectionState/${INSTANCE}`, opts)
+    .then((r) => (r.data?.instance?.state ?? r.data?.state) as string)
+    .catch((err) => {
+      if (axios.isAxiosError(err) && err.response?.status === 404) return "missing";
+      throw err;
+    });
+
+  if (state === "open") return { connected: true };
+
+  if (state === "missing") {
+    const created = await api.post(
+      "/instance/create",
+      { instanceName: INSTANCE, qrcode: true, integration: "WHATSAPP-BAILEYS" },
+      opts
+    );
+    return { connected: false, qr: created.data?.qrcode?.base64 };
+  }
+
+  const res = await api.get(`/instance/connect/${INSTANCE}`, opts);
+  return { connected: false, qr: res.data?.base64 };
+}
+
 /** Link que abre o WhatsApp do aparelho com a mensagem pronta (envio manual, sem servidor). */
 export function whatsappManualLink(phone: string, message: string): string {
   return `https://wa.me/${formatPhone(phone)}?text=${encodeURIComponent(message)}`;

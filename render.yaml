@@ -1,0 +1,64 @@
+# Blueprint do Render para o servidor de WhatsApp (Evolution API).
+# Só a Evolution roda no Render; o app continua na Vercel.
+# Passo a passo completo: docs/whatsapp-render.md
+services:
+  - type: web
+    name: evolution-beto
+    runtime: image
+    image:
+      # Confira a versão mais recente da v2 no Docker Hub antes de subir.
+      url: docker.io/atendai/evolution-api:v2.2.3
+    # Plano pago: o grátis "dorme" sem uso e derruba a conexão com o WhatsApp.
+    plan: starter
+    region: virginia
+    healthCheckPath: /
+    envVars:
+      - key: SERVER_TYPE
+        value: http
+      - key: SERVER_PORT
+        value: "8080"
+      # Endereço público do serviço (ex.: https://evolution-beto.onrender.com). Preencher após criar.
+      - key: SERVER_URL
+        sync: false
+      # Chave que o app usa para falar com a Evolution (vai também em EVOLUTION_API_KEY na Vercel).
+      - key: AUTHENTICATION_API_KEY
+        generateValue: true
+      - key: LANGUAGE
+        value: pt-BR
+      - key: DEL_INSTANCE
+        value: "false"
+      - key: CONFIG_SESSION_PHONE_CLIENT
+        value: Humberto Bove
+      - key: CONFIG_SESSION_PHONE_NAME
+        value: Chrome
+
+      # Sessão do WhatsApp guardada no Postgres: se o Render reiniciar, o número continua conectado.
+      - key: DATABASE_ENABLED
+        value: "true"
+      - key: DATABASE_PROVIDER
+        value: postgresql
+      # Supabase › Connect › "Session pooler" (porta 5432), com ?schema=evolution no fim.
+      - key: DATABASE_CONNECTION_URI
+        sync: false
+      - key: DATABASE_CONNECTION_CLIENT_NAME
+        value: evolution_beto
+      - key: DATABASE_SAVE_DATA_INSTANCE
+        value: "true"
+      # O app não lê mensagens recebidas: não precisa guardar conversas nem contatos.
+      - key: DATABASE_SAVE_DATA_NEW_MESSAGE
+        value: "false"
+      - key: DATABASE_SAVE_MESSAGE_UPDATE
+        value: "false"
+      - key: DATABASE_SAVE_DATA_CONTACTS
+        value: "false"
+      - key: DATABASE_SAVE_DATA_CHATS
+        value: "false"
+      - key: DATABASE_SAVE_DATA_LABELS
+        value: "false"
+      - key: DATABASE_SAVE_DATA_HISTORIC
+        value: "false"
+
+      - key: CACHE_REDIS_ENABLED
+        value: "false"
+      - key: CACHE_LOCAL_ENABLED
+        value: "true"

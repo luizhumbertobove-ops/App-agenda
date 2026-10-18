@@ -35,7 +35,7 @@ Cada parte é instalável no celular como um app (PWA) separado: ícone roxo par
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | OAuth do Google (Calendar e Contatos) | Google Cloud Console → Credenciais → cliente OAuth |
 | `GOOGLE_REFRESH_TOKEN` | Acesso contínuo ao Google Calendar | Gerado pelo próprio app em `/api/calendar/auth`: depois de autorizar, a página mostra o valor para copiar |
 | `GOOGLE_CALENDAR_ID` | Qual agenda sincronizar | Google Calendar → configurações da agenda |
-| `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`, `EVOLUTION_INSTANCE` | Envio de mensagens por WhatsApp | Servidor Evolution API (auto-hospedado) e a instância ligada ao número do WhatsApp |
+| `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`, `EVOLUTION_INSTANCE` | Envio de mensagens por WhatsApp | Servidor Evolution API no Render (`render.yaml`); passo a passo em `docs/whatsapp-render.md` |
 | `MERCADOPAGO_ACCESS_TOKEN` | Geração de cobranças Pix | Mercado Pago → Suas integrações → credenciais de produção |
 | `SUPABASE_URL` | Endereço da API do Supabase, usado para guardar as fotos da vitrine (Storage) e liberar a exibição delas no `next/image` (`next.config.ts`). Precisa estar definida também no build da Vercel | Supabase → Project Settings → API → *Project URL* |
 | `SUPABASE_SERVICE_ROLE_KEY` | Chave de serviço para enviar as fotos ao bucket `vitrine`. **Segredo**: só o servidor usa, nunca cole em código ou em componente do navegador | Supabase → Project Settings → API → *service_role* (secret) |
@@ -53,7 +53,7 @@ Hoje tudo está nas contas do Leonardo. Para o projeto ficar 100% seu:
 | **Supabase** | Receber a transferência do projeto atual (Supabase → *Project Settings → General → Transfer project*) para não perder os dados. Depois, **resetar a senha do banco** e atualizar `DATABASE_URL` |
 | **Google Cloud** | Criar um cliente OAuth na sua conta (ou receber acesso ao projeto atual), cadastrar o *redirect URI* (ver abaixo) e gerar um `GOOGLE_REFRESH_TOKEN` novo em `/api/calendar/auth` |
 | **Mercado Pago** | Usar o token da conta que vai receber os pagamentos |
-| **Evolution API** | Confirmar onde o servidor roda e se a instância está ligada ao WhatsApp certo |
+| **Evolution API** | Subir no Render e conectar o número pelo QR code: ver `docs/whatsapp-render.md` |
 
 Depois de tudo transferido, **troque todos os segredos**: senha do banco, `APP_PASSWORD`, `CRON_SECRET` e, se possível, o token do Mercado Pago. Os valores atuais passaram por mais de uma pessoa.
 

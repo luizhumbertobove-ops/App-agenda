@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { WifiOff } from "lucide-react";
+import { WhatsappConnect } from "@/components/whatsapp-connect";
 
 /** Aviso quando o envio automático de WhatsApp (servidor Evolution) está fora do ar. */
 export function WhatsappStatus() {
@@ -29,6 +30,7 @@ export function WhatsappStatus() {
           As confirmações automáticas não estão saindo. Use os botões abaixo: eles mostram quem deve
           receber, e você envia pelo WhatsApp do celular com a mensagem pronta.
         </p>
+        <WhatsappConnect />
       </div>
     </div>
   );
