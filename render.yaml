@@ -6,11 +6,12 @@ services:
     name: evolution-beto
     runtime: image
     image:
-      # Confira a versão mais recente da v2 no Docker Hub antes de subir.
-      url: docker.io/atendai/evolution-api:v2.2.3
+      # Imagem oficial atual (o antigo atendai/evolution-api saiu do Docker Hub).
+      url: docker.io/evoapicloud/evolution-api:v2.3.7
     # Plano pago: o grátis "dorme" sem uso e derruba a conexão com o WhatsApp.
     plan: starter
-    region: virginia
+    # Mesma região do banco no Supabase (us-west-2), para ficar perto.
+    region: oregon
     healthCheckPath: /
     envVars:
       - key: SERVER_TYPE
