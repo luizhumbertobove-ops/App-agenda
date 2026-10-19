@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 import { format, startOfWeek, addWeeks, addDays, subDays, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Clock, Lock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import Link from "next/link";
 import { nowBR, formatTimeBR } from "@/lib/date";
 import { getWorkSchedule } from "@/lib/settings";
@@ -11,6 +11,7 @@ import { hoursForDate, toMinutes, type WorkSchedule } from "@/lib/work-schedule"
 import { NewAppointmentModal } from "@/components/new-appointment-modal";
 import { AppointmentActions } from "@/components/appointment-actions";
 import { WeekAppointmentCard } from "@/components/week-appointment-card";
+import { BlockedSlotChip } from "@/components/blocked-slot-chip";
 import { BlockSlotModal } from "@/components/block-slot-modal";
 import { StatusBadge } from "@/components/status-badge";
 import { APPOINTMENT_STATUS } from "@/lib/status-labels";
@@ -257,16 +258,14 @@ export default async function AgendaPage({
                   </span>
                   <div className="flex min-w-0 flex-1 flex-col gap-2 pb-3">
                     {hourBlocked.map((slot) => (
-                      <div
+                      <BlockedSlotChip
                         key={slot.id}
-                        className="flex min-h-12 items-center gap-2 rounded-xl bg-gray-100 px-3 py-2 text-sm text-gray-600"
-                      >
-                        <Lock size={16} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />
-                        <span>
-                          Bloqueado {formatTimeBR(slot.startTime)}–{formatTimeBR(slot.endTime)}
-                          {slot.reason ? ` · ${slot.reason}` : ""}
-                        </span>
-                      </div>
+                        variant="day"
+                        id={slot.id}
+                        startTime={slot.startTime.toISOString()}
+                        endTime={slot.endTime.toISOString()}
+                        reason={slot.reason}
+                      />
                     ))}
 
                     {hourCont.map((appt) => (
@@ -456,15 +455,16 @@ export default async function AgendaPage({
                         working ? "" : "bg-gray-50"
                       }`}
                     >
-                      {blocked.length > 0 && (
-                        <div
-                          className="flex min-h-11 flex-1 items-center justify-center gap-1 rounded-lg bg-gray-100 px-1 text-xs text-gray-500 md:justify-start md:px-2"
-                          title={blocked[0].reason ?? "Bloqueado"}
-                        >
-                          <Lock size={12} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />
-                          <span className="sr-only md:not-sr-only">Bloqueado</span>
-                        </div>
-                      )}
+                      {blocked.map((slot) => (
+                        <BlockedSlotChip
+                          key={slot.id}
+                          variant="week"
+                          id={slot.id}
+                          startTime={slot.startTime.toISOString()}
+                          endTime={slot.endTime.toISOString()}
+                          reason={slot.reason}
+                        />
+                      ))}
                       {appts.map((appt) => (
                         <WeekAppointmentCard
                           key={appt.id}
