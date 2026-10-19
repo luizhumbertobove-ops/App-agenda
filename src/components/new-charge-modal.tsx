@@ -7,12 +7,12 @@ import { Modal } from "@/components/modal";
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import { ClientCombobox } from "@/components/client-combobox";
+import { useClientList } from "@/hooks/use-client-list";
 
-type Client = { id: string; name: string; phone: string };
-
-export function NewChargeModal({ clients }: { clients: Client[] }) {
+export function NewChargeModal() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const clients = useClientList(open);
   const [clientId, setClientId] = useState("");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
@@ -72,7 +72,11 @@ export function NewChargeModal({ clients }: { clients: Client[] }) {
       <div className="p-6 space-y-4">
         <div>
           <label className="text-sm font-medium text-gray-700 block mb-1.5">Cliente</label>
-          <ClientCombobox clients={clients} value={clientId} onChange={(id) => setClientId(id)} />
+          {clients === null ? (
+            <p className="text-sm text-gray-400">Carregando clientes...</p>
+          ) : (
+            <ClientCombobox clients={clients} value={clientId} onChange={(id) => setClientId(id)} />
+          )}
         </div>
 
         <div>

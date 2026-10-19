@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { UserPlus } from "lucide-react";
 import { Input } from "@/components/input";
+import { addToClientList } from "@/hooks/use-client-list";
 
 type Client = { id: string; name: string; phone: string };
 
@@ -74,6 +75,7 @@ export function ClientCombobox({
 
       const created: Client = await res.json();
       setClients((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+      addToClientList(created);
       onChange(created.id, created.name);
       setSearch(created.name);
       setShowNewClient(false);

@@ -98,7 +98,7 @@ export default async function AgendaPage({
   const rangeStart = new Date(dayStartMs(view === "week" ? weekStartStr : currentDateStr));
   const rangeEnd = new Date(rangeStart.getTime() + (view === "week" ? 7 : 1) * 24 * HOUR_MS);
 
-  const [appointments, clients, blockedSlots, services, schedule] = await Promise.all([
+  const [appointments, blockedSlots, services, schedule] = await Promise.all([
     prisma.appointment.findMany({
       where: {
         startTime: { gte: rangeStart, lt: rangeEnd },
@@ -119,11 +119,14 @@ export default async function AgendaPage({
       },
       orderBy: { startTime: "asc" },
     }),
-    prisma.client.findMany({
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, phone: true },
+    // Só os bloqueios que tocam o período em tela (+1 semana, para o "Já bloqueado" do formulário).
+    prisma.blockedSlot.findMany({
+      where: {
+        startTime: { lt: new Date(rangeEnd.getTime() + 7 * 24 * HOUR_MS) },
+        endTime: { gt: rangeStart },
+      },
+      orderBy: { startTime: "asc" },
     }),
-    prisma.blockedSlot.findMany({ orderBy: { startTime: "asc" } }),
     prisma.service.findMany({ select: { name: true, price: true } }),
     getWorkSchedule(),
   ]);
@@ -198,7 +201,6 @@ export default async function AgendaPage({
             todayHref="/agenda"
             prevHref={`/agenda?date=${prevDate}`}
             nextHref={`/agenda?date=${nextDate}`}
-            clients={clients}
             preset={
               novo && /^\d{2}:\d{2}$/.test(novo) ? { date: currentDateStr, time: novo } : undefined
             }
@@ -386,7 +388,6 @@ export default async function AgendaPage({
           todayHref="/agenda?view=week"
           prevHref={`/agenda?view=week&week=${prevWeek}`}
           nextHref={`/agenda?view=week&week=${nextWeek}`}
-          clients={clients}
           preset={
             novo && /^\d{2}:\d{2}$/.test(novo) && dateParam
               ? { date: dateParam, time: novo, returnTo: `/agenda?view=week&week=${weekStartStr}` }
@@ -395,11 +396,12 @@ export default async function AgendaPage({
         />
 
         {/* Os 7 dias cabem na tela também no celular (colunas estreitas, cartões compactos). */}
-        <div className="-mx-3 md:mx-0">
+        {/* No celular a grade vai de ponta a ponta: cada dia ganha largura para o nome. */}
+        <div className="-mx-5 md:mx-0">
           <div
             role="grid"
             aria-label="Semana de hora em hora"
-            className="grid grid-cols-[2.25rem_repeat(7,minmax(0,1fr))] overflow-hidden rounded-xl border border-gray-200 bg-white md:grid-cols-[3rem_repeat(7,minmax(0,1fr))]"
+            className="grid grid-cols-[1.75rem_repeat(7,minmax(0,1fr))] overflow-hidden border-y border-gray-200 bg-white md:grid-cols-[3rem_repeat(7,minmax(0,1fr))] md:rounded-xl md:border"
           >
             {/* Cabeçalho: dias */}
             <div className="sticky left-0 z-10 border-b border-gray-200 bg-white" />
@@ -411,8 +413,9 @@ export default async function AgendaPage({
                 <Link
                   key={key}
                   href={`/agenda?date=${key}`}
+                  aria-label={off ? `${format(d, "EEEE, d", { locale: ptBR })} (folga)` : undefined}
                   className={`flex min-w-0 flex-col items-center justify-center gap-0.5 border-b border-l border-gray-200 py-2 text-center hover:bg-gray-50 ${
-                    isDayToday ? "bg-amber-50" : ""
+                    isDayToday ? "bg-amber-50" : off ? "bg-gray-50 opacity-60" : ""
                   }`}
                 >
                   <span
@@ -429,7 +432,6 @@ export default async function AgendaPage({
                   >
                     {format(d, "d")}
                   </span>
-                  {off && <span className="text-[10px] text-gray-400 md:text-[11px]">Folga</span>}
                 </Link>
               );
             })}
@@ -438,7 +440,8 @@ export default async function AgendaPage({
             {hourList.map((hour) => (
               <div key={hour} role="row" className="contents">
                 <div className="border-t border-gray-100 bg-white pr-1 pt-2 text-right text-[10px] tabular-nums text-gray-500 md:pr-2 md:text-xs">
-                  {hh(hour)}
+                  <span className="md:hidden">{hour}h</span>
+                  <span className="hidden md:inline">{hh(hour)}</span>
                 </div>
                 {days.map((key) => {
                   const appts = buckets[key].apptsByHour[hour] ?? [];
@@ -492,9 +495,10 @@ export default async function AgendaPage({
                           href={`/agenda?view=week&week=${weekStartStr}&date=${key}&novo=${hh(hour)}`}
                           scroll={false}
                           aria-label={`Agendar em ${format(parseISO(key), "d/MM")} às ${hh(hour)}`}
-                          className="flex min-h-11 flex-1 items-center justify-center rounded-lg text-[10px] text-gray-300 transition-colors hover:bg-violet-50 hover:text-violet-700 md:text-xs"
+                          className="flex min-h-11 flex-1 items-center justify-center rounded-lg text-xs text-gray-300 transition-colors hover:bg-violet-50 hover:text-violet-700 active:bg-violet-50"
                         >
-                          Livre
+                          {/* No celular a célula vazia fica limpa (continua tocável para agendar). */}
+                          <span className="hidden md:inline">Livre</span>
                         </Link>
                       )}
                     </div>
@@ -541,7 +545,6 @@ function AgendaHeader({
   todayHref,
   prevHref,
   nextHref,
-  clients,
   preset,
 }: {
   view: "day" | "week";
@@ -551,7 +554,6 @@ function AgendaHeader({
   todayHref: string;
   prevHref: string;
   nextHref: string;
-  clients: { id: string; name: string; phone: string }[];
   preset?: { date: string; time: string; returnTo?: string };
 }) {
   const tab = (active: boolean) =>
@@ -573,7 +575,6 @@ function AgendaHeader({
         </div>
         <NewAppointmentModal
           key={preset ? `${preset.date}-${preset.time}` : "novo"}
-          clients={clients}
           preset={preset}
         />
       </div>

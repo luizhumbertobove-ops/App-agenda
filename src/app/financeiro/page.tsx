@@ -50,7 +50,7 @@ export default async function FinanceiroPage({
   // Últimos 6 meses para o gráfico
   const chartMonths = Array.from({ length: 6 }, (_, i) => monthBR(i - 5));
 
-  const [payments, monthStats, settings, clients, chartData] = await Promise.all([
+  const [payments, monthStats, settings, chartData] = await Promise.all([
     prisma.payment.findMany({
       include: { client: true, appointment: true },
       orderBy: { createdAt: "desc" },
@@ -61,10 +61,6 @@ export default async function FinanceiroPage({
       _sum: { amount: true },
     }),
     getSettings(),
-    prisma.client.findMany({
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, phone: true },
-    }),
     Promise.all(
       chartMonths.map(async (m) => {
         const agg = await prisma.payment.aggregate({
@@ -133,7 +129,7 @@ export default async function FinanceiroPage({
           >
             <FileDown size={18} aria-hidden />
           </Link>
-          <NewChargeModal clients={clients} />
+          <NewChargeModal />
         </div>
       </header>
 

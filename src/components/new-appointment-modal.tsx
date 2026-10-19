@@ -9,10 +9,10 @@ import { Modal } from "@/components/modal";
 import { Button } from "@/components/button";
 import { Input, Textarea } from "@/components/input";
 import { ClientCombobox } from "@/components/client-combobox";
+import { useClientList } from "@/hooks/use-client-list";
 import { PartnerToggle } from "@/components/partner-toggle";
 import { SessionHoursPicker, sessionMinutes } from "@/components/session-hours-picker";
 
-type Client = { id: string; name: string; phone: string };
 type Service = { id: string; name: string; durationMins: number; price: number };
 type Slot = { start: string; end: string; available: boolean };
 
@@ -26,15 +26,15 @@ function horaBR(iso: string) {
 
 /** `preset`: aberto a partir de um horário "Livre" da Agenda, já com data e hora escolhidas. */
 export function NewAppointmentModal({
-  clients,
   preset,
 }: {
-  clients: Client[];
   /** returnTo: para onde voltar ao fechar (padrão: o dia na agenda). */
   preset?: { date: string; time: string; returnTo?: string };
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(Boolean(preset));
+  // Clientes só são buscados quando o formulário abre (não vão junto com a página).
+  const clients = useClientList(open);
 
   // Campos do formulário
   const [clientId, setClientId] = useState("");
@@ -182,7 +182,11 @@ export function NewAppointmentModal({
               aria-label="Nome do cliente da parceria"
             />
           ) : (
-            <ClientCombobox clients={clients} value={clientId} onChange={(id) => setClientId(id)} allowCreate />
+            clients === null ? (
+              <p className="text-sm text-gray-400">Carregando clientes...</p>
+            ) : (
+              <ClientCombobox clients={clients} value={clientId} onChange={(id) => setClientId(id)} allowCreate />
+            )
           )}
         </div>
 

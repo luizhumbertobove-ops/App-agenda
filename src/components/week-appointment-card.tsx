@@ -10,6 +10,13 @@ import { APPOINTMENT_STATUS } from "@/lib/status-labels";
 
 type Status = "SCHEDULED" | "CONFIRMED" | "DONE" | "CANCELLED";
 
+/** Fundo do cartão no celular pelo status (no PC o status é o ponto de cor). */
+const STATUS_BG_MOBILE: Record<string, string> = {
+  SCHEDULED: "bg-blue-50",
+  CONFIRMED: "bg-green-50",
+  DONE: "bg-amber-50",
+};
+
 /** Ponto de cor pelo status (o design system não usa borda de um lado só). */
 const STATUS_DOT: Record<string, string> = {
   SCHEDULED: "bg-blue-400",
@@ -66,22 +73,36 @@ export function WeekAppointmentCard({
   isPartner?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const onTheHour = horaBR(startTime).endsWith(":00");
 
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`flex min-h-11 w-full min-w-0 flex-col justify-center rounded-lg border border-gray-200 bg-white px-1 py-1 text-left hover:bg-gray-50 md:px-2 ${
+        className={`flex min-h-11 w-full min-w-0 flex-col justify-center rounded-md border border-gray-200 px-[3px] py-1 text-left hover:bg-gray-50 md:rounded-lg md:bg-white md:px-2 ${
+          STATUS_BG_MOBILE[status] ?? "bg-white"
+        } ${
           status === "DONE" ? "opacity-70" : ""
         }`}
       >
-        <span className="flex items-center gap-1 text-[9px] tabular-nums text-gray-500 md:text-[11px]">
+        {/* No celular a hora só aparece se não for cheia (a linha da grade já diz a hora). */}
+        <span
+          className={`items-center gap-1 text-[9px] tabular-nums text-gray-500 md:flex md:text-[11px] ${
+            onTheHour ? "hidden" : "flex"
+          }`}
+        >
           <span aria-hidden className={`size-1.5 shrink-0 rounded-full ${STATUS_DOT[status] ?? "bg-gray-400"}`} />
           {horaBR(startTime)}
-          <span className="sr-only"> · {APPOINTMENT_STATUS[status]?.label}</span>
         </span>
-        <span className="truncate text-[10px] font-medium leading-tight text-gray-900 md:text-xs">{clientName}</span>
+        <span className="flex min-w-0 items-start gap-1">
+          <span className="line-clamp-2 break-words hyphens-auto text-[10px] font-medium leading-tight text-gray-900 md:line-clamp-1 md:text-xs">
+            {clientName}
+          </span>
+        </span>
+        <span className="sr-only">
+          {horaBR(startTime)} · {APPOINTMENT_STATUS[status]?.label}
+        </span>
         {isPartner && <span className="truncate text-[9px] font-medium text-amber-700 md:text-[10px]">Parceria</span>}
       </button>
 

@@ -39,6 +39,9 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [moreOpen, setMoreOpen] = useState(false);
+  // Destaque imediato no toque: vale até a tela trocar (aí o pathname assume).
+  const [tapped, setTapped] = useState<{ href: string; from: string } | null>(null);
+  const pendingHref = tapped && tapped.from === pathname ? tapped.href : null;
 
   if (pathname === "/login" || pathname.startsWith("/vitrine")) return null;
 
@@ -47,7 +50,9 @@ export function Sidebar() {
     router.push("/login");
   }
 
-  const moreActive = mobileMore.some((l) => isActive(pathname, l.href));
+  const moreActive = pendingHref
+    ? mobileMore.some((l) => l.href === pendingHref)
+    : mobileMore.some((l) => isActive(pathname, l.href));
 
   return (
     <>
@@ -103,16 +108,19 @@ export function Sidebar() {
       {/* Celular: barra inferior com alvos de 56px */}
       <nav
         data-mobile-nav
-        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-gray-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden"
       >
         {mobileMain.map(({ href, label, icon: Icon }) => {
-          const active = isActive(pathname, href);
+          const active = pendingHref ? pendingHref === href : isActive(pathname, href);
           return (
             <Link
               key={href}
               href={href}
-              onClick={() => setMoreOpen(false)}
-              className={`flex h-16 flex-col items-center justify-center gap-1 text-[11px] ${
+              onClick={() => {
+                setMoreOpen(false);
+                if (!isActive(pathname, href)) setTapped({ href, from: pathname });
+              }}
+              className={`flex h-16 touch-manipulation flex-col items-center justify-center gap-1 text-[11px] ${
                 active ? "font-semibold text-violet-700" : "text-gray-500"
               }`}
             >
@@ -126,7 +134,7 @@ export function Sidebar() {
         <button
           onClick={() => setMoreOpen((v) => !v)}
           aria-expanded={moreOpen}
-          className={`flex h-16 flex-col items-center justify-center gap-1 text-[11px] ${
+          className={`flex h-16 touch-manipulation flex-col items-center justify-center gap-1 text-[11px] ${
             moreActive || moreOpen ? "font-semibold text-violet-700" : "text-gray-500"
           }`}
         >
@@ -160,8 +168,11 @@ export function Sidebar() {
                 <Link
                   key={href}
                   href={href}
-                  onClick={() => setMoreOpen(false)}
-                  className="flex min-h-14 items-center gap-3 border-b border-gray-200 px-4 text-base text-gray-800"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    if (!isActive(pathname, href)) setTapped({ href, from: pathname });
+                  }}
+                  className="flex min-h-14 touch-manipulation items-center gap-3 border-b border-gray-200 px-4 text-base text-gray-800"
                 >
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
                     <Icon size={20} strokeWidth={1.75} />

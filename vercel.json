@@ -12,5 +12,8 @@
       "path": "/api/calendar/sync",
       "schedule": "0 11 * * *"
     }
+  ],
+  "regions": [
+    "pdx1"
   ]
 }
