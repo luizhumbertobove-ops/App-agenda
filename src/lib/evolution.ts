@@ -40,7 +40,10 @@ export async function isWhatsappOnline(): Promise<boolean> {
  * para ler no celular (WhatsApp › Aparelhos conectados). Se já estiver conectado, só avisa.
  * Lança erro se o servidor não responder.
  */
-export async function getWhatsappQr(): Promise<{ connected: boolean; qr?: string }> {
+export async function getWhatsappQr(
+  /** Com o número (ex.: 5516...), também devolve o código de 8 letras para conectar sem câmera. */
+  phone?: string
+): Promise<{ connected: boolean; qr?: string; pairingCode?: string }> {
   const opts = { timeout: 15_000 };
   const state = await api
     .get(`/instance/connectionState/${INSTANCE}`, opts)
@@ -55,14 +58,24 @@ export async function getWhatsappQr(): Promise<{ connected: boolean; qr?: string
   if (state === "missing") {
     const created = await api.post(
       "/instance/create",
-      { instanceName: INSTANCE, qrcode: true, integration: "WHATSAPP-BAILEYS" },
+      {
+        instanceName: INSTANCE,
+        qrcode: true,
+        integration: "WHATSAPP-BAILEYS",
+        ...(phone ? { number: formatPhone(phone) } : {}),
+      },
       opts
     );
-    return { connected: false, qr: created.data?.qrcode?.base64 };
+    return {
+      connected: false,
+      qr: created.data?.qrcode?.base64,
+      pairingCode: created.data?.qrcode?.pairingCode ?? undefined,
+    };
   }
 
-  const res = await api.get(`/instance/connect/${INSTANCE}`, opts);
-  return { connected: false, qr: res.data?.base64 };
+  const query = phone ? `?number=${formatPhone(phone)}` : "";
+  const res = await api.get(`/instance/connect/${INSTANCE}${query}`, opts);
+  return { connected: false, qr: res.data?.base64, pairingCode: res.data?.pairingCode ?? undefined };
 }
 
 /** Link que abre o WhatsApp do aparelho com a mensagem pronta (envio manual, sem servidor). */

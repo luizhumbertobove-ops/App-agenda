@@ -72,7 +72,7 @@ Atualize também o `.env` local com os mesmos três valores, se for rodar o app 
 ## Depois que estiver funcionando
 
 - **Desligue o servidor antigo:** se ainda existir, desligue a máquina antiga do Google Cloud (`34.74.115.57`), para não pagar por ela nem ter dois servidores ligados ao mesmo número.
-- **Se a conexão cair:** o app volta a mostrar o aviso e o botão **Conectar WhatsApp**. Basta ler o QR de novo. Acontece, por exemplo, se o celular ficar muitos dias sem internet ou se alguém desconectar o aparelho no WhatsApp.
+- **Se a conexão cair:** o Início e a tela Mensagens mostram o aviso com o botão **Reconectar WhatsApp**. Dá para reconectar **só com o celular**, sem outra tela: na aba **Código no celular**, o app gera um código de 8 letras, que se digita em WhatsApp › Aparelhos conectados › Conectar aparelho › *Conectar com número de telefone*. Ou leia o QR code, se houver outra tela por perto. Acontece, por exemplo, se o celular ficar muitos dias sem internet ou se alguém desconectar o aparelho no WhatsApp.
 - **Atualizar a Evolution:** troque a versão da imagem em `render.yaml` (linha `url:`) e faça o deploy de novo no Render.
 
 ## Problemas comuns

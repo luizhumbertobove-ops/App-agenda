@@ -11,6 +11,7 @@ import { formatCurrencyBR } from "@/lib/format";
 import { StatusBadge } from "@/components/status-badge";
 import { APPOINTMENT_STATUS } from "@/lib/status-labels";
 import { whatsappLink } from "@/lib/vitrine";
+import { WhatsappStatus } from "@/components/whatsapp-status";
 
 async function getDashboardData() {
   const today = startOfTodayBR();
@@ -107,6 +108,11 @@ export default async function InicioPage() {
         </div>
         <SyncButton />
       </header>
+
+      {/* Some quando o WhatsApp está conectado. */}
+      <div className="mt-6 empty:hidden">
+        <WhatsappStatus compact />
+      </div>
 
       <div className="mt-6 flex flex-col gap-6 md:grid md:grid-cols-2 md:items-start">
         {nextAppointment && (
