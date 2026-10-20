@@ -1,5 +1,4 @@
 import { google } from "googleapis";
-import { startOfTodayBR, endOfTodayBR } from "./date";
 
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
@@ -24,12 +23,6 @@ export function parseEventTitle(title: string): { clientName: string; serviceTyp
 
 // ─── Leitura ────────────────────────────────────────────────
 
-export async function listUpcomingEvents(daysAhead = 30) {
-  const future = new Date();
-  future.setDate(future.getDate() + daysAhead);
-  return listEventsBetween(new Date(), future);
-}
-
 /** Eventos com início entre `from` e `to` (passado incluído), já com as recorrências expandidas. */
 export async function listEventsBetween(from: Date, to: Date) {
   const items = [];
@@ -49,31 +42,6 @@ export async function listEventsBetween(from: Date, to: Date) {
     pageToken = res.data.nextPageToken ?? undefined;
   } while (pageToken);
   return items;
-}
-
-export async function listTodayEvents() {
-  const res = await calendar.events.list({
-    calendarId: CALENDAR_ID(),
-    timeMin: startOfTodayBR().toISOString(),
-    timeMax: endOfTodayBR().toISOString(),
-    singleEvents: true,
-    orderBy: "startTime",
-  });
-  return res.data.items ?? [];
-}
-
-export async function listTomorrowEvents() {
-  const start = new Date(startOfTodayBR().getTime() + 24 * 60 * 60 * 1000);
-  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
-
-  const res = await calendar.events.list({
-    calendarId: CALENDAR_ID(),
-    timeMin: start.toISOString(),
-    timeMax: end.toISOString(),
-    singleEvents: true,
-    orderBy: "startTime",
-  });
-  return res.data.items ?? [];
 }
 
 // ─── Escrita ─────────────────────────────────────────────────

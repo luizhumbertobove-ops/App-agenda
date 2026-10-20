@@ -22,7 +22,7 @@ A Evolution guarda a sessão do WhatsApp no Postgres. Assim, se o Render reinici
 3. Copie o endereço, troque `[YOUR-PASSWORD]` pela senha do banco e acrescente `?schema=evolution` no final. Fica assim:
 
    ```
-   postgresql://postgres.xxxx:SENHA@aws-0-sa-east-1.pooler.supabase.com:5432/postgres?schema=evolution
+   postgresql://postgres.xxxx:SENHA@aws-1-us-west-2.pooler.supabase.com:5432/postgres?schema=evolution
    ```
 
 Guarde esse endereço para o passo 2. Ele contém a senha do banco: não mande por mensagem nem cole em lugar público.

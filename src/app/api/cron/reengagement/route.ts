@@ -1,3 +1,6 @@
+// Envia uma mensagem por vez (até 15s cada): dá folga para dias cheios.
+export const maxDuration = 60;
+
 import { NextResponse } from "next/server";
 import { isCronRequest } from "@/lib/auth";
 import { runReengagementSends } from "@/lib/jobs/reengagement";

@@ -14,7 +14,7 @@ const updateSchema = z.object({
   paymentTemplate: z.string().optional().nullable(),
   reengagementTemplate: z.string().optional().nullable(),
   noShowTemplate: z.string().optional().nullable(),
-  confirmationDaysBefore: z.number().int().min(0).max(30).optional(),
+  confirmationDaysBefore: z.number().int().min(1).max(30).optional(),
   confirmationSendHour: z.number().int().min(0).max(23).optional(),
   reengagementInactivityDays: z.number().int().min(1).max(365).optional(),
   reengagementCooldownDays: z.number().int().min(1).max(365).optional(),

@@ -217,16 +217,15 @@ export function MessageSettingsForm({ settings }: { settings: Settings }) {
               id="confirmationDaysBefore"
               label="Confirmar com quantos dias de antecedência"
               value={form.confirmationDaysBefore}
+              min={1}
+              max={30}
               onChange={(v) => setForm((f) => ({ ...f, confirmationDaysBefore: v }))}
             />
-            <CampoNumero
-              id="confirmationSendHour"
-              label="Hora do envio das confirmações (0 a 23)"
-              value={form.confirmationSendHour}
-              min={0}
-              max={23}
-              onChange={(v) => setForm((f) => ({ ...f, confirmationSendHour: v }))}
-            />
+            {/* O envio automático roda uma vez por dia (agendamento fixo da Vercel, vercel.json). */}
+            <div className="rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600">
+              <p className="font-medium text-gray-900">Horário do envio automático</p>
+              <p className="mt-0.5">As confirmações saem todo dia às 18h (horário de Brasília).</p>
+            </div>
             <CampoNumero
               id="reengagementInactivityDays"
               label="Mandar saudade depois de quantos dias sem vir"
