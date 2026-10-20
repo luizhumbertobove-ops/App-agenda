@@ -39,7 +39,12 @@ export function MessageTriggerButtons() {
         body: JSON.stringify({ type }),
       });
       const data = await res.json();
-      if (data.offline) {
+      if (data.disabled) {
+        setResult({
+          ok: false,
+          text: "Esta mensagem está desativada. Ative em Modelos de mensagem, mais abaixo.",
+        });
+      } else if (data.offline) {
         if (data.targets.length === 0) {
           setResult({ ok: true, text: "Ninguém para receber agora." });
         } else {

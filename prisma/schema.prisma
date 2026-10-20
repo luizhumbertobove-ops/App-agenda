@@ -136,6 +136,11 @@ model Settings {
   paymentTemplate            String?
   reengagementTemplate       String?
   noShowTemplate             String?
+  /// Liga/desliga de cada mensagem automática
+  confirmationEnabled         Boolean  @default(true)
+  paymentEnabled              Boolean  @default(true)
+  reengagementEnabled         Boolean  @default(true)
+  noShowEnabled               Boolean  @default(true)
   confirmationDaysBefore     Int      @default(1)
   confirmationSendHour       Int      @default(9)
   reengagementInactivityDays Int      @default(15)

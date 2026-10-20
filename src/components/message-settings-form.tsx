@@ -20,15 +20,29 @@ type Settings = {
   reengagementInactivityDays: number;
   reengagementCooldownDays: number;
   monthlyGoal: number | null;
+  confirmationEnabled: boolean;
+  paymentEnabled: boolean;
+  reengagementEnabled: boolean;
+  noShowEnabled: boolean;
+};
+
+type CampoAtivo = "confirmationEnabled" | "paymentEnabled" | "reengagementEnabled" | "noShowEnabled";
+
+/** O que deixa de acontecer quando o modelo é desativado (texto do liga/desliga). */
+const EFEITO_DESATIVADO: Record<CampoAtivo, string> = {
+  confirmationEnabled: "Nenhuma confirmação é enviada, nem a automática do dia.",
+  paymentEnabled: "As cobranças continuam sendo geradas, mas o Pix não vai pelo WhatsApp.",
+  reengagementEnabled: "Ninguém recebe a mensagem de saudade.",
+  noShowEnabled: "O \"Faltou\" só marca a falta, sem mandar mensagem.",
 };
 
 type CampoModelo = "confirmationTemplate" | "paymentTemplate" | "reengagementTemplate" | "noShowTemplate";
 
-const MODELOS: { campo: CampoModelo; titulo: string; variaveis: string[]; padrao: string }[] = [
-  { campo: "confirmationTemplate", titulo: "Confirmação", variaveis: ["nome", "hora"], padrao: DEFAULT_CONFIRMATION_TEMPLATE },
-  { campo: "paymentTemplate", titulo: "Link de pagamento", variaveis: ["nome", "valor", "pix"], padrao: DEFAULT_PAYMENT_TEMPLATE },
-  { campo: "reengagementTemplate", titulo: "Reengajamento", variaveis: ["nome"], padrao: DEFAULT_REENGAGEMENT_TEMPLATE },
-  { campo: "noShowTemplate", titulo: "Não compareceu", variaveis: ["nome"], padrao: DEFAULT_NO_SHOW_TEMPLATE },
+const MODELOS: { campo: CampoModelo; ativo: CampoAtivo; titulo: string; variaveis: string[]; padrao: string }[] = [
+  { campo: "confirmationTemplate", ativo: "confirmationEnabled", titulo: "Confirmação", variaveis: ["nome", "hora"], padrao: DEFAULT_CONFIRMATION_TEMPLATE },
+  { campo: "paymentTemplate", ativo: "paymentEnabled", titulo: "Link de pagamento", variaveis: ["nome", "valor", "pix"], padrao: DEFAULT_PAYMENT_TEMPLATE },
+  { campo: "reengagementTemplate", ativo: "reengagementEnabled", titulo: "Reengajamento", variaveis: ["nome"], padrao: DEFAULT_REENGAGEMENT_TEMPLATE },
+  { campo: "noShowTemplate", ativo: "noShowEnabled", titulo: "Não compareceu", variaveis: ["nome"], padrao: DEFAULT_NO_SHOW_TEMPLATE },
 ];
 
 const EXEMPLOS: Record<string, string> = {
@@ -69,6 +83,24 @@ export function MessageSettingsForm({ settings }: { settings: Settings }) {
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  // Liga/desliga salva na hora (não depende do botão Salvar dos textos).
+  const [ativos, setAtivos] = useState<Record<CampoAtivo, boolean>>({
+    confirmationEnabled: settings.confirmationEnabled,
+    paymentEnabled: settings.paymentEnabled,
+    reengagementEnabled: settings.reengagementEnabled,
+    noShowEnabled: settings.noShowEnabled,
+  });
+
+  async function alternar(campo: CampoAtivo) {
+    const valor = !ativos[campo];
+    setAtivos((a) => ({ ...a, [campo]: valor }));
+    const res = await fetch("/api/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [campo]: valor }),
+    }).catch(() => null);
+    if (!res?.ok) setAtivos((a) => ({ ...a, [campo]: !valor }));
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -106,9 +138,37 @@ export function MessageSettingsForm({ settings }: { settings: Settings }) {
       <section className="space-y-4">
         <h2 className="font-display text-2xl text-gray-900">Modelos de mensagem</h2>
         <div className="grid gap-4 md:grid-cols-2">
-          {MODELOS.map(({ campo, titulo, variaveis, padrao }) => (
+          {MODELOS.map(({ campo, ativo, titulo, variaveis, padrao }) => (
             <div key={campo} className="space-y-3 rounded-xl border border-gray-200 bg-white p-4">
-              <h3 className="font-semibold text-gray-900">{titulo}</h3>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-gray-900">{titulo}</h3>
+                  <p className={`text-xs ${ativos[ativo] ? "text-green-700" : "text-gray-500"}`}>
+                    {ativos[ativo] ? "Ativa: enviada automaticamente" : `Desativada. ${EFEITO_DESATIVADO[ativo]}`}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={ativos[ativo]}
+                  aria-label={`${titulo}: ${ativos[ativo] ? "ativa" : "desativada"}`}
+                  onClick={() => alternar(ativo)}
+                  className="flex min-h-11 shrink-0 items-center"
+                >
+                  <span
+                    aria-hidden
+                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
+                      ativos[ativo] ? "bg-violet-600" : "bg-gray-300"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block size-5 rounded-full bg-white shadow transition-transform ${
+                        ativos[ativo] ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </span>
+                </button>
+              </div>
 
               <div className="flex flex-wrap gap-2" aria-label={`Variáveis de ${titulo}`}>
                 {variaveis.map((v) => (

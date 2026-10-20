@@ -67,8 +67,9 @@ export async function POST(req: NextRequest) {
         data: { clientId: client.id, appointmentId, ...paymentData },
       });
 
-  if (client.phone && client.phone !== "00000000000") {
-    const settings = await getSettings();
+  // Link de pagamento desativado em Mensagens: a cobrança é criada, mas o WhatsApp não sai.
+  const settings = await getSettings();
+  if (settings.paymentEnabled && client.phone && client.phone !== "00000000000") {
     const message = buildPaymentMessage(client.name, amount, pix.pixCode, settings.paymentTemplate);
     await sendText(client.phone, message);
 

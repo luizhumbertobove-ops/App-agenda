@@ -17,6 +17,12 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   if (!payment) {
     return NextResponse.json({ error: "Cobrança não encontrada" }, { status: 404 });
   }
+  if (!(await getSettings()).paymentEnabled) {
+    return NextResponse.json(
+      { error: "O link de pagamento está desativado (tela Mensagens)" },
+      { status: 409 }
+    );
+  }
   if (payment.status === "PAID") {
     return NextResponse.json({ error: "Esta cobrança já foi paga" }, { status: 409 });
   }

@@ -6,6 +6,8 @@ import type { MessageTarget } from "@/lib/jobs/confirmations";
 /** Clientes sem atendimento há mais de N dias e fora do intervalo entre lembretes. */
 export async function listReengagementTargets(): Promise<MessageTarget[]> {
   const settings = await getSettings();
+  // Reengajamento desativado em Mensagens: ninguém recebe.
+  if (!settings.reengagementEnabled) return [];
   const inactivityDays = settings.reengagementInactivityDays;
   const cooldownDays = settings.reengagementCooldownDays;
 
@@ -53,6 +55,7 @@ export async function listReengagementTargets(): Promise<MessageTarget[]> {
 }
 
 export async function runReengagementSends() {
+  if (!(await getSettings()).reengagementEnabled) return { sent: 0, disabled: true };
   // Servidor fora do ar: não tenta (cada tentativa esperaria o limite de 15s).
   if (!(await isWhatsappOnline())) return { sent: 0, offline: true };
   let sent = 0;

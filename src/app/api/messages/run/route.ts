@@ -5,6 +5,7 @@ import { z } from "zod";
 import { isWhatsappOnline, whatsappManualLink } from "@/lib/evolution";
 import { listConfirmationTargets, runConfirmationSends } from "@/lib/jobs/confirmations";
 import { listReengagementTargets, runReengagementSends } from "@/lib/jobs/reengagement";
+import { getSettings } from "@/lib/settings";
 
 const schema = z.object({ type: z.enum(["confirmations", "reengagement"]) });
 
@@ -17,6 +18,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: body.error.flatten() }, { status: 400 });
   }
   const type = body.data.type;
+
+  // Modelo desativado em Mensagens: não envia nem monta a lista.
+  const settings = await getSettings();
+  const enabled = type === "confirmations" ? settings.confirmationEnabled : settings.reengagementEnabled;
+  if (!enabled) {
+    return NextResponse.json({ ok: false, disabled: true });
+  }
 
   if (!(await isWhatsappOnline())) {
     const targets =

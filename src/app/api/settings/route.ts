@@ -20,6 +20,10 @@ const updateSchema = z.object({
   reengagementCooldownDays: z.number().int().min(1).max(365).optional(),
   monthlyGoal: z.number().min(0).optional().nullable(),
   workSchedule: workScheduleSchema.optional(),
+  confirmationEnabled: z.boolean().optional(),
+  paymentEnabled: z.boolean().optional(),
+  reengagementEnabled: z.boolean().optional(),
+  noShowEnabled: z.boolean().optional(),
 });
 
 export async function PATCH(req: NextRequest) {

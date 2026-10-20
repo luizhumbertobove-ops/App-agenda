@@ -14,6 +14,8 @@ export type MessageTarget = {
 /** Quem deve receber a confirmação (atendimentos do dia-alvo ainda sem confirmação enviada). */
 export async function listConfirmationTargets(): Promise<MessageTarget[]> {
   const settings = await getSettings();
+  // Confirmação desativada em Mensagens: ninguém recebe.
+  if (!settings.confirmationEnabled) return [];
   const daysBefore = settings.confirmationDaysBefore;
 
   const target = new Date(startOfTodayBR().getTime() + daysBefore * 24 * 60 * 60 * 1000);
@@ -41,6 +43,7 @@ export async function listConfirmationTargets(): Promise<MessageTarget[]> {
 }
 
 export async function runConfirmationSends() {
+  if (!(await getSettings()).confirmationEnabled) return { sent: 0, disabled: true };
   // Servidor fora do ar: não tenta (cada tentativa esperaria o limite de 15s).
   if (!(await isWhatsappOnline())) return { sent: 0, offline: true };
   let sent = 0;
