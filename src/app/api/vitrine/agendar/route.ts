@@ -13,12 +13,20 @@ import {
 } from "@/lib/vitrine";
 
 const bookingSchema = z.object({
-  name: z.string().trim().min(2),
-  phone: z.string().trim().min(10),
+  name: z.string().trim().min(2).max(80),
+  phone: z.string().trim().min(10).max(20),
   serviceId: z.string(),
   startTime: z.string().datetime(),
   notes: z.string().trim().max(300).optional(),
+  // Campo-isca: invisível para pessoas; robôs costumam preencher.
+  website: z.string().optional(),
 });
+
+/** Reservas pelo site: até 60 dias à frente, 2 por telefone a cada 24h e 10 por hora no total. */
+const MAX_DAYS_AHEAD = 60;
+const MAX_PER_PHONE_PER_DAY = 2;
+const MAX_PER_HOUR = 10;
+const SITE_NOTE = "Agendado pelo site";
 
 function normalizePhone(phone: string): string {
   const digits = phone.replace(/\D/g, "");
@@ -26,9 +34,9 @@ function normalizePhone(phone: string): string {
 }
 
 export async function POST(req: NextRequest) {
-  const body = bookingSchema.safeParse(await req.json());
-  if (!body.success) {
-    return NextResponse.json({ error: body.error.flatten() }, { status: 400 });
+  const body = bookingSchema.safeParse(await req.json().catch(() => null));
+  if (!body.success || body.data.website) {
+    return NextResponse.json({ error: "Não foi possível reservar. Confira os dados." }, { status: 400 });
   }
   const { name, serviceId, startTime, notes } = body.data;
   const phone = normalizePhone(body.data.phone);
@@ -49,49 +57,90 @@ export async function POST(req: NextRequest) {
   // A vitrine só oferece horas cheias (7h, 8h, 9h...).
   const onGrid = start.getTime() === ceilToHour(start);
 
-  if (!work || !onGrid || start < work.start || end > work.end || start < earliestStart) {
+  const latestStart = new Date(Date.now() + MAX_DAYS_AHEAD * 24 * 60 * 60 * 1000);
+
+  if (!work || !onGrid || start < work.start || end > work.end || start < earliestStart || start > latestStart) {
     return NextResponse.json(
       { error: "Esse horário não está mais disponível. Escolha outro." },
       { status: 400 }
     );
   }
 
-  const overlap = { startTime: { lt: end }, endTime: { gt: start } };
-  const [conflictAppt, conflictBlock] = await Promise.all([
-    prisma.appointment.findFirst({ where: { status: { not: "CANCELLED" }, ...overlap } }),
-    prisma.blockedSlot.findFirst({ where: overlap }),
+  // Limites contra abuso (cada reserva manda WhatsApp pelo número do Beto).
+  const now = Date.now();
+  const [byPhone, lastHour] = await Promise.all([
+    prisma.appointment.count({
+      where: {
+        notes: { startsWith: SITE_NOTE },
+        status: { not: "CANCELLED" },
+        createdAt: { gte: new Date(now - 24 * 60 * 60 * 1000) },
+        client: { phone: { in: [`55${phone}`, phone] } },
+      },
+    }),
+    prisma.appointment.count({
+      where: { notes: { startsWith: SITE_NOTE }, createdAt: { gte: new Date(now - 60 * 60 * 1000) } },
+    }),
   ]);
-  const conflict = conflictAppt ?? conflictBlock;
-  if (conflict) {
+  if (byPhone >= MAX_PER_PHONE_PER_DAY || lastHour >= MAX_PER_HOUR) {
+    return NextResponse.json(
+      { error: "Já recebemos reservas suas há pouco. Para mais horários, fale com o Humberto pelo WhatsApp." },
+      { status: 429 }
+    );
+  }
+
+  const noteText = [SITE_NOTE, notes].filter(Boolean).join(" — ");
+
+  // Conferir o horário e reservar numa transação só, com uma trava exclusiva das reservas da
+  // vitrine (uma espera a outra): duas pessoas não ficam com o mesmo horário.
+  type Reserva = { appointment: { id: string; startTime: Date; endTime: Date }; clientName: string; clientPhone: string };
+  let reserva: Reserva | null;
+  try {
+    reserva = await prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(424242)`;
+        const overlap = { startTime: { lt: end }, endTime: { gt: start } };
+        const [conflictAppt, conflictBlock] = await Promise.all([
+          tx.appointment.findFirst({ where: { status: { not: "CANCELLED" }, ...overlap } }),
+          tx.blockedSlot.findFirst({ where: overlap }),
+        ]);
+        if (conflictAppt ?? conflictBlock) return null;
+
+        // O cliente é reconhecido pelo WhatsApp, com ou sem o 55 (a base guarda com 55).
+        // Cliente que já existe mantém o nome cadastrado pelo Beto, mesmo se digitar outro.
+        const client =
+          (await tx.client.findFirst({ where: { phone: { in: [`55${phone}`, phone] } } })) ??
+          (await tx.client.create({ data: { name, phone: `55${phone}` } }));
+
+        const appointment = await tx.appointment.create({
+          data: {
+            clientId: client.id,
+            serviceType: service.name,
+            title: `${client.name} - ${service.name}`,
+            startTime: start,
+            endTime: end,
+            notes: noteText,
+          },
+        });
+        return { appointment, clientName: client.name, clientPhone: client.phone };
+      },
+      { timeout: 15_000 }
+    );
+  } catch (err) {
+    console.error("[vitrine/agendar] falha ao reservar:", err);
+    return NextResponse.json(
+      { error: "Não foi possível reservar agora. Tente de novo em instantes." },
+      { status: 500 }
+    );
+  }
+  if (!reserva) {
     return NextResponse.json(
       { error: "Esse horário acabou de ser reservado. Escolha outro." },
       { status: 409 }
     );
   }
-
-  // O cliente é reconhecido pelo WhatsApp, com ou sem o 55 (a base guarda com 55).
-  // Cliente que já existe mantém o nome cadastrado pelo Beto, mesmo se digitar outro.
-  const client =
-    (await prisma.client.findFirst({ where: { phone: { in: [`55${phone}`, phone] } } })) ??
-    (await prisma.client.create({ data: { name, phone: `55${phone}` } }));
-  const priorAppointments = await prisma.appointment.count({
-    where: { clientId: client.id, status: { not: "CANCELLED" } },
-  });
-  const isFirstSession = priorAppointments === 0;
-
+  const { appointment } = reserva;
+  const client = { name: reserva.clientName, phone: reserva.clientPhone };
   const title = `${client.name} - ${service.name}`;
-  const noteText = ["Agendado pelo site", notes].filter(Boolean).join(" — ");
-
-  const appointment = await prisma.appointment.create({
-    data: {
-      clientId: client.id,
-      serviceType: service.name,
-      title,
-      startTime: start,
-      endTime: end,
-      notes: noteText,
-    },
-  });
 
   // Google Agenda e WhatsApp rodam depois da resposta: o cliente vê a confirmação na hora,
   // mesmo se algum desses serviços estiver lento ou fora do ar.
@@ -140,7 +189,6 @@ export async function POST(req: NextRequest) {
       startTime: appointment.startTime,
       endTime: appointment.endTime,
       serviceName: service.name,
-      isFirstSession,
     },
     { status: 201 }
   );

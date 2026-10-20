@@ -63,6 +63,8 @@ export function AgendarForm({
   const [name, setName] = useState(() => lembrado?.name ?? "");
   const [phone, setPhone] = useState(() => lembrado?.phone ?? "");
   const [notes, setNotes] = useState("");
+  // Campo-isca contra robôs (fica escondido; pessoas não preenchem).
+  const [website, setWebsite] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -115,6 +117,7 @@ export function AgendarForm({
           serviceId: service.id,
           startTime: selectedSlot.start,
           notes: notes.trim() || undefined,
+          website: website || undefined,
         }),
       });
 
@@ -129,6 +132,9 @@ export function AgendarForm({
         return;
       }
 
+      // Dicas de primeira sessão: quando este aparelho nunca reservou antes (a API não diz
+      // se o número já é cliente, para não expor isso a qualquer um).
+      const primeiraVez = !clienteSalvo();
       try {
         localStorage.setItem(CLIENTE_KEY, JSON.stringify({ name: name.trim(), phone: phone.trim() }));
       } catch {
@@ -144,7 +150,7 @@ export function AgendarForm({
           timeZone: "America/Sao_Paulo",
         }),
         serviceName: data.serviceName,
-        isFirstSession: Boolean(data.isFirstSession),
+        isFirstSession: primeiraVez,
       });
     } catch {
       setError("Não foi possível enviar sua reserva. Tente novamente.");
@@ -316,6 +322,16 @@ export function AgendarForm({
                 />
               </>
             )}
+            <input
+              type="text"
+              name="website"
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0 }}
+            />
             <Textarea
               label="Observações (opcional)"
               value={notes}

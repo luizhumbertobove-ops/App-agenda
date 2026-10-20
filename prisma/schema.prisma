@@ -106,6 +106,9 @@ model Payment {
   fromCompletion Boolean       @default(false)
   /// Pagamento de um pacote de sessões
   planSubscriptionId String?
+  /// Como estava antes do "Concluir" (o "Reabrir" restaura)
+  preCompletionStatus String?
+  preCompletionAmount Float?
   createdAt      DateTime      @default(now())
 
   client      Client?      @relation(fields: [clientId], references: [id])
@@ -169,6 +172,8 @@ enum PaymentStatus {
   SENT
   PAID
   OVERDUE
+  /// Cancelada: fica no histórico, fora dos totais e das listas
+  CANCELLED
 }
 
 enum MessageType {

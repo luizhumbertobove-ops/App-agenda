@@ -5,6 +5,8 @@ import { sendText, buildNoShowMessage } from "@/lib/evolution";
 import { getSettings } from "@/lib/settings";
 import { z } from "zod";
 
+const OPEN_STATUSES = ["PENDING", "SENT", "OVERDUE"] as const;
+
 const updateSchema = z.object({
   status: z.enum(["SCHEDULED", "CONFIRMED", "DONE", "CANCELLED"]).optional(),
   serviceType: z.string().optional(),
@@ -16,7 +18,7 @@ const updateSchema = z.object({
   sessionNotes: z.string().optional().nullable(),
   cancelReason: z.string().optional(),
   noShow: z.string().optional(),
-  // Só junto com status DONE: lançamento no Financeiro (null = não cobrar, ex.: plano ou cortesia).
+  // Só junto com status DONE: lançamento no Financeiro (null = não cobrar, ex.: cortesia).
   charge: z.object({ amount: z.number().positive(), paid: z.boolean() }).nullable().optional(),
   // Só junto com status DONE: a sessão sai do pacote ativo do cliente (sem nova cobrança).
   usePlan: z.boolean().optional(),
@@ -26,12 +28,20 @@ const updateSchema = z.object({
   partnerName: z.string().trim().min(1).optional(),
 });
 
+/** Cobranças em aberto do atendimento passam a canceladas (fora dos totais, ficam no histórico). */
+async function cancelOpenPayments(appointmentId: string) {
+  await prisma.payment.updateMany({
+    where: { appointmentId, status: { in: [...OPEN_STATUSES] } },
+    data: { status: "CANCELLED" },
+  });
+}
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const body = updateSchema.safeParse(await req.json());
+  const body = updateSchema.safeParse(await req.json().catch(() => null));
   if (!body.success) {
     return NextResponse.json({ error: body.error.flatten() }, { status: 400 });
   }
@@ -67,60 +77,118 @@ export async function PATCH(
     }
   }
 
-  const completing = data.status === "DONE" && existing.status !== "DONE";
-  const reopening = existing.status === "DONE" && data.status !== undefined && data.status !== "DONE";
-
-  // Concluir pelo pacote: usa uma sessão do pacote ativo (o mais antigo com saldo).
-  let planUsedId: string | null = null;
-  if (completing && usePlan && existing.clientId) {
-    const subs = await prisma.planSubscription.findMany({
-      where: { clientId: existing.clientId, active: true },
-      include: { plan: true },
-      orderBy: { purchasedAt: "asc" },
-    });
-    const sub = subs.find((s) => s.sessionsUsed < s.plan.sessions);
-    if (sub) {
-      const used = sub.sessionsUsed + 1;
-      await prisma.planSubscription.update({
-        where: { id: sub.id },
-        data: { sessionsUsed: used, active: used < sub.plan.sessions },
-      });
-      planUsedId = sub.id;
-    }
+  // Parceria e cadastro não se misturam: marcar parceria desliga o cliente; ligar um cliente
+  // desliga a parceria.
+  const toPartner = data.isPartner === true;
+  const newClient =
+    !toPartner && data.clientId && data.clientId !== existing.clientId
+      ? await prisma.client.findUnique({ where: { id: data.clientId } })
+      : null;
+  if (!toPartner && data.clientId && data.clientId !== existing.clientId && !newClient) {
+    return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 });
   }
 
-  // Concluir lança no Financeiro: reaproveita a cobrança em aberto do atendimento, se houver.
-  if (completing && charge) {
-    // "Já recebi" num atendimento que já passou: o dinheiro entrou no dia do atendimento,
-    // não no dia em que o Beto lançou (conta no mês certo do Financeiro).
-    const now = new Date();
-    const paidData = charge.paid
-      ? { status: "PAID" as const, paidAt: existing.startTime < now ? existing.startTime : now }
-      : {};
+  const wantsDone = data.status === "DONE" && existing.status !== "DONE";
+  const wantsReopen =
+    existing.status === "DONE" && data.status !== undefined && data.status !== "DONE";
+  const cancelling = data.status === "CANCELLED" && existing.status !== "CANCELLED";
+
+  // "Pelo pacote" só com saldo: senão o atendimento seria concluído sem cobrança nenhuma.
+  let planSub: { id: string; sessionsUsed: number; sessions: number } | null = null;
+  if (wantsDone && usePlan) {
+    const subs = existing.clientId
+      ? await prisma.planSubscription.findMany({
+          where: { clientId: existing.clientId, active: true },
+          include: { plan: true },
+          orderBy: { purchasedAt: "asc" },
+        })
+      : [];
+    const sub = subs.find((s) => s.sessionsUsed < s.plan.sessions);
+    if (!sub) {
+      return NextResponse.json(
+        { error: "Este cliente não tem sessões sobrando no pacote." },
+        { status: 409 }
+      );
+    }
+    planSub = { id: sub.id, sessionsUsed: sub.sessionsUsed, sessions: sub.plan.sessions };
+  }
+
+  // Trava contra concluir/reabrir duas vezes ao mesmo tempo (toque duplo, dois aparelhos):
+  // só um pedido consegue mudar o status; o outro não lança nada no Financeiro.
+  let completing = false;
+  if (wantsDone) {
+    const lock = await prisma.appointment.updateMany({
+      where: { id, status: { not: "DONE" } },
+      data: { status: "DONE" },
+    });
+    if (lock.count === 0) {
+      return NextResponse.json({ error: "Este atendimento já foi concluído." }, { status: 409 });
+    }
+    completing = true;
+  }
+  let reopening = false;
+  if (wantsReopen) {
+    const lock = await prisma.appointment.updateMany({
+      where: { id, status: "DONE" },
+      data: { status: data.status },
+    });
+    reopening = lock.count > 0;
+  }
+
+  // Concluir pelo pacote: usa uma sessão do pacote (o mais antigo com saldo).
+  let planUsedId: string | null = null;
+  if (completing && planSub) {
+    const used = planSub.sessionsUsed + 1;
+    await prisma.planSubscription.update({
+      where: { id: planSub.id },
+      data: { sessionsUsed: used, active: used < planSub.sessions },
+    });
+    planUsedId = planSub.id;
+  }
+
+  if (completing) {
     const open = await prisma.payment.findFirst({
-      where: { appointmentId: id, status: { in: ["PENDING", "SENT", "OVERDUE"] } },
+      where: { appointmentId: id, status: { in: [...OPEN_STATUSES] } },
       orderBy: { createdAt: "desc" },
     });
-    if (open) {
+    // Guarda como a cobrança estava, para o "Reabrir" restaurar.
+    const snapshot = open ? { preCompletionStatus: open.status, preCompletionAmount: open.amount } : {};
+
+    if (charge) {
+      // "Já recebi" num atendimento que já passou: o dinheiro entrou no dia do atendimento,
+      // não no dia em que o Beto lançou (conta no mês certo do Financeiro).
+      const now = new Date();
+      const paidData = charge.paid
+        ? { status: "PAID" as const, paidAt: existing.startTime < now ? existing.startTime : now }
+        : {};
+      if (open) {
+        // Reaproveita a cobrança em aberto do atendimento em vez de criar outra.
+        await prisma.payment.update({
+          where: { id: open.id },
+          data: { amount: charge.amount, ...paidData, ...snapshot },
+        });
+      } else {
+        await prisma.payment.create({
+          data: {
+            appointmentId: id,
+            clientId: existing.clientId,
+            amount: charge.amount,
+            fromCompletion: true,
+            ...paidData,
+          },
+        });
+      }
+    } else if (open) {
+      // Pelo pacote ou sem cobrança: a cobrança em aberto não vale mais (senão cobraria em dobro).
       await prisma.payment.update({
         where: { id: open.id },
-        data: { amount: charge.amount, ...paidData },
-      });
-    } else {
-      await prisma.payment.create({
-        data: {
-          appointmentId: id,
-          clientId: existing.clientId,
-          amount: charge.amount,
-          fromCompletion: true,
-          ...paidData,
-        },
+        data: { status: "CANCELLED", ...snapshot },
       });
     }
   }
 
-  // Reabrir desfaz a conclusão: remove o lançamento automático e devolve a sessão do plano.
-  // Pix pago pelo Mercado Pago não é apagado (o dinheiro entrou de verdade).
+  // Reabrir desfaz a conclusão: remove o lançamento criado ao concluir, restaura a cobrança
+  // que já existia e devolve a sessão do pacote. Pix pago pelo Mercado Pago não é mexido.
   let keptPayments = 0;
   if (reopening) {
     const auto = await prisma.payment.findMany({ where: { appointmentId: id, fromCompletion: true } });
@@ -129,7 +197,27 @@ export async function PATCH(
     if (removable.length > 0) {
       await prisma.payment.deleteMany({ where: { id: { in: removable.map((p) => p.id) } } });
     }
-    // Devolve a sessão ao pacote que foi usado nesta conclusão (se foi).
+
+    const touched = await prisma.payment.findMany({
+      where: { appointmentId: id, preCompletionStatus: { not: null } },
+    });
+    for (const p of touched) {
+      if (p.status === "PAID" && p.mpPaymentId) {
+        keptPayments++;
+        continue;
+      }
+      await prisma.payment.update({
+        where: { id: p.id },
+        data: {
+          status: p.preCompletionStatus as (typeof OPEN_STATUSES)[number],
+          amount: p.preCompletionAmount ?? p.amount,
+          paidAt: null,
+          preCompletionStatus: null,
+          preCompletionAmount: null,
+        },
+      });
+    }
+
     if (existing.planSubscriptionId) {
       const sub = await prisma.planSubscription.findUnique({ where: { id: existing.planSubscriptionId } });
       if (sub && sub.sessionsUsed > 0) {
@@ -141,19 +229,18 @@ export async function PATCH(
     }
   }
 
-  // O título só muda se o serviço mudar. Atendimento importado do Google pode não ter
-  // cadastro de cliente: aí o nome é o que já está no título ("Caio - Massagem").
+  // Cancelado (ou "Faltou"): a cobrança em aberto sai do "A receber".
+  if (cancelling) await cancelOpenPayments(id);
+
+  // O título só muda se o serviço, o cliente ou o nome da parceria mudar. Atendimento importado
+  // do Google pode não ter cadastro: aí o nome é o que já está no título ("Caio - Massagem").
+  const titleName = parseEventTitle(existing.title).clientName;
   const serviceChanged = data.serviceType !== undefined && data.serviceType !== existing.serviceType;
-  const newClient =
-    data.clientId && data.clientId !== existing.clientId
-      ? await prisma.client.findUnique({ where: { id: data.clientId } })
-      : null;
-  if (data.clientId && data.clientId !== existing.clientId && !newClient) {
-    return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 });
-  }
-  const clientLabel =
-    newClient?.name ?? partnerName ?? existing.client?.name ?? parseEventTitle(existing.title).clientName;
-  const titleChanged = serviceChanged || !!newClient || (!!partnerName && partnerName !== parseEventTitle(existing.title).clientName);
+  const clientLabel = toPartner
+    ? partnerName ?? titleName
+    : newClient?.name ?? existing.client?.name ?? titleName;
+  const titleChanged =
+    serviceChanged || !!newClient || (toPartner && !!partnerName && partnerName !== titleName);
   const title = titleChanged ? `${clientLabel} - ${serviceType}` : existing.title;
 
   // Cobranças do atendimento que estavam sem cliente passam a ser do cliente escolhido.
@@ -164,17 +251,18 @@ export async function PATCH(
     });
   }
 
+  const { clientId: _clientId, ...rest } = data;
+  void _clientId;
   const updated = await prisma.appointment.update({
     where: { id },
     data: {
-      ...data,
+      ...rest,
       startTime,
       endTime,
       title,
       ...(planUsedId ? { planSubscriptionId: planUsedId } : {}),
       ...(reopening ? { planSubscriptionId: null } : {}),
-      // Parceria não tem cadastro: ao marcar, desliga o cliente.
-      ...(data.isPartner ? { clientId: null } : {}),
+      ...(toPartner ? { clientId: null } : newClient ? { clientId: newClient.id, isPartner: false } : {}),
     },
     include: { client: true },
   });
@@ -199,7 +287,7 @@ export async function PATCH(
   // Sincronizar com GCal (best-effort)
   if (existing.googleEventId) {
     try {
-      if (data.status === "CANCELLED") {
+      if (cancelling) {
         await deleteCalendarEvent(existing.googleEventId);
       } else if (data.startTime || data.endTime || titleChanged) {
         await updateCalendarEvent(existing.googleEventId, { title, startTime, endTime });
@@ -229,6 +317,8 @@ export async function DELETE(
     where: { id },
     data: { status: "CANCELLED", cancelReason: reason },
   });
+  // A cobrança em aberto do atendimento cancelado sai do "A receber".
+  await cancelOpenPayments(id);
 
   if (existing.googleEventId) {
     try {

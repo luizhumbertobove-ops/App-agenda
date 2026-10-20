@@ -22,7 +22,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     where: { id },
     data: {
       status: body.data.status,
-      paidAt: body.data.status === "PAID" ? new Date() : existing.paidAt,
+      // Já paga: mantém a data do pagamento (não muda o mês em que entrou).
+      paidAt: body.data.status === "PAID" ? existing.paidAt ?? new Date() : existing.paidAt,
     },
   });
 

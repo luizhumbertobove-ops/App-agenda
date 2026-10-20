@@ -55,18 +55,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Horário de fim deve ser após o início" }, { status: 400 });
   }
 
-  // Verificar conflito de horário
+  // Verificar conflito de horário em todas as ocorrências (recorrência semanal incluída).
+  const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  const occurrences = repeatWeeks ? repeatWeeks : 1;
   const conflict = await prisma.appointment.findFirst({
     where: {
       status: { not: "CANCELLED" },
-      startTime: { lt: end },
-      endTime: { gt: start },
+      OR: Array.from({ length: occurrences }, (_, i) => ({
+        startTime: { lt: new Date(end.getTime() + i * WEEK_MS) },
+        endTime: { gt: new Date(start.getTime() + i * WEEK_MS) },
+      })),
     },
   });
 
   if (conflict) {
+    const quando = conflict.startTime.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
     return NextResponse.json(
-      { error: "Conflito de horário com outro agendamento" },
+      { error: `Conflito de horário com outro agendamento em ${quando}` },
       { status: 409 }
     );
   }
@@ -100,7 +105,8 @@ export async function POST(req: NextRequest) {
         },
         include: { client: true },
       });
-      if (amount) {
+      // Cobrança só da primeira sessão (as próximas são cobradas ao concluir, se for o caso).
+      if (amount && i === 0) {
         await prisma.payment.create({
           data: { clientId: clientId ?? null, appointmentId: appt.id, amount, status: "PENDING" },
         });

@@ -52,6 +52,8 @@ export default async function FinanceiroPage({
 
   const [payments, monthStats, settings, chartData] = await Promise.all([
     prisma.payment.findMany({
+      // Canceladas ficam só no histórico do banco.
+      where: { status: { not: "CANCELLED" } },
       include: { client: true, appointment: true },
       orderBy: { createdAt: "desc" },
     }),

@@ -5,7 +5,7 @@ import { MessageCircle } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { SyncButton } from "@/components/sync-button";
 import { PaymentButton } from "@/components/payment-button";
-import { startOfTodayBR, endOfTodayBR, formatLongDateBR, formatTimeBR, nowBR } from "@/lib/date";
+import { startOfTodayBR, endOfTodayBR, formatLongDateBR, formatTimeBR, nowBR, monthRangeBR } from "@/lib/date";
 import { getSettings } from "@/lib/settings";
 import { formatCurrencyBR } from "@/lib/format";
 import { StatusBadge } from "@/components/status-badge";
@@ -17,10 +17,8 @@ async function getDashboardData() {
   const today = startOfTodayBR();
   const todayEnd = endOfTodayBR();
 
-  const startOfMonth = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
-  const endOfMonth = new Date(
-    Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0, 23, 59, 59)
-  );
+  // Mês em horário de Brasília (o mesmo do Financeiro, para os totais baterem).
+  const { start: startOfMonth, end: endOfMonth } = monthRangeBR();
 
   const [settings, [todayAppointments, pendingPayments, monthRevenue, pendingAgg]] = await Promise.all([
     getSettings(),
@@ -31,18 +29,18 @@ async function getDashboardData() {
         orderBy: { startTime: "asc" },
       }),
       prisma.payment.findMany({
-        where: { status: { in: ["PENDING", "SENT"] } },
+        where: { status: { in: ["PENDING", "SENT", "OVERDUE"] } },
         include: { client: true, appointment: true },
         orderBy: { createdAt: "desc" },
         take: 10,
       }),
       prisma.payment.aggregate({
-        where: { status: "PAID", paidAt: { gte: startOfMonth, lte: endOfMonth } },
+        where: { status: "PAID", paidAt: { gte: startOfMonth, lt: endOfMonth } },
         _sum: { amount: true },
       }),
       // A lista acima mostra só as 10 mais recentes; o total "A receber" precisa de todas.
       prisma.payment.aggregate({
-        where: { status: { in: ["PENDING", "SENT"] } },
+        where: { status: { in: ["PENDING", "SENT", "OVERDUE"] } },
         _sum: { amount: true },
         _count: true,
       }),
@@ -274,7 +272,12 @@ export default async function InicioPage() {
                 >
                   <div className="min-w-0">
                     <p className="truncate text-gray-900">
-                      {p.client?.name ?? <span className="text-gray-500 italic">Cliente excluído</span>}
+                      {p.client?.name ??
+                        (p.appointment ? (
+                          p.appointment.title.split(" - ")[0].trim()
+                        ) : (
+                          <span className="text-gray-500 italic">Cliente excluído</span>
+                        ))}
                     </p>
                     <p className="text-sm text-gray-500">{formatCurrencyBR(p.amount)}</p>
                   </div>

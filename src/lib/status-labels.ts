@@ -12,6 +12,7 @@ export const PAYMENT_STATUS: Record<string, StatusInfo> = {
   SENT: { label: "Enviado", className: "bg-blue-100 text-blue-700" },
   PAID: { label: "Pago", className: "bg-green-100 text-green-700" },
   OVERDUE: { label: "Vencido", className: "bg-red-100 text-red-600" },
+  CANCELLED: { label: "Cancelada", className: "bg-gray-100 text-gray-500" },
 };
 
 export const MESSAGE_TYPE: Record<string, StatusInfo> = {

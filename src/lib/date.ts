@@ -61,3 +61,14 @@ export function businessHoursRangeBR(
     end: new Date(midnightBrAsUTC + endHour * 60 * 60 * 1000),
   };
 }
+
+/**
+ * Início (inclusivo) e fim (exclusivo) de um mês em horário de Brasília (00:00 BRT = 03:00 UTC).
+ * `offset` 0 = mês atual, -1 = mês passado. Usado por Início e Financeiro para os totais baterem.
+ */
+export function monthRangeBR(offset = 0): { start: Date; end: Date } {
+  const agora = nowBR();
+  const y = agora.getUTCFullYear();
+  const m = agora.getUTCMonth() + offset;
+  return { start: new Date(Date.UTC(y, m, 1, 3)), end: new Date(Date.UTC(y, m + 1, 1, 3)) };
+}

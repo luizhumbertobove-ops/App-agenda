@@ -11,7 +11,11 @@ import {
 
 // Fica em PUBLIC_PATHS (proxy.ts) por causa do cron, então a autorização é feita aqui:
 // o Vercel Cron chama com CRON_SECRET; o botão "Sincronizar agenda" chama logado.
+// GET só para o Vercel Cron: um link aberto no navegador não dispara sincronização.
 export async function GET(req: Request) {
+  if (!isCronRequest(req)) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
   return POST(req);
 }
 
@@ -42,7 +46,29 @@ async function sync(from: Date, to: Date) {
     let processed = 0;
 
     for (const event of events) {
-      if (!event.id || !event.summary || !event.start?.dateTime) continue;
+      if (!event.id) continue;
+
+      // Evento apagado no Google (vem quase vazio): cancela o atendimento no app, libera o
+      // horário (vitrine incluída) e tira a cobrança em aberto do "A receber". Concluído fica.
+      if (event.status === "cancelled") {
+        const appt = await prisma.appointment.findUnique({
+          where: { googleEventId: event.id },
+          select: { id: true, status: true },
+        });
+        if (appt && appt.status !== "CANCELLED" && appt.status !== "DONE") {
+          await prisma.appointment.update({
+            where: { id: appt.id },
+            data: { status: "CANCELLED", cancelReason: "Apagado no Google Agenda" },
+          });
+          await prisma.payment.updateMany({
+            where: { appointmentId: appt.id, status: { in: ["PENDING", "SENT", "OVERDUE"] } },
+            data: { status: "CANCELLED" },
+          });
+        }
+        continue;
+      }
+
+      if (!event.summary || !event.start?.dateTime) continue;
 
       const { clientName, serviceType } = parseEventTitle(event.summary);
       const startTime = new Date(event.start.dateTime);
@@ -52,6 +78,13 @@ async function sync(from: Date, to: Date) {
       const client = await prisma.client.findFirst({
         where: { name: { equals: clientName, mode: "insensitive" } },
       });
+      // Só preenche o cliente se o atendimento ainda não tem um (não desfaz o que o Beto ligou
+      // à mão) e nunca em atendimento de parceria (cliente da outra massoterapeuta).
+      const current = await prisma.appointment.findUnique({
+        where: { googleEventId: event.id },
+        select: { clientId: true, isPartner: true },
+      });
+      const linkClient = client && !current?.clientId && !current?.isPartner;
 
       await prisma.appointment.upsert({
         where: { googleEventId: event.id },
@@ -60,9 +93,8 @@ async function sync(from: Date, to: Date) {
           serviceType,
           startTime,
           endTime,
-          // Mantém o status marcado no app (confirmado, concluído...); só o cancelamento vem do Google.
-          ...(event.status === "cancelled" ? { status: "CANCELLED" as const } : {}),
-          ...(client ? { clientId: client.id } : {}),
+          // Mantém o status marcado no app (confirmado, concluído...).
+          ...(linkClient ? { clientId: client.id } : {}),
         },
         create: {
           googleEventId: event.id,

@@ -29,7 +29,9 @@ function LoginForm() {
         return;
       }
 
-      const from = searchParams.get("from") || "/";
+      // Só volta para páginas do próprio app (nunca um endereço externo vindo do link).
+      const raw = searchParams.get("from") || "/";
+      const from = raw.startsWith("/") && !raw.startsWith("//") && !raw.startsWith("/\\") ? raw : "/";
       router.push(from);
       router.refresh();
     } catch {

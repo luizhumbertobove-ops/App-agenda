@@ -9,7 +9,7 @@ export function PaymentRowActions({
   status,
 }: {
   paymentId: string;
-  status: "PENDING" | "SENT" | "PAID" | "OVERDUE";
+  status: string;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);

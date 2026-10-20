@@ -4,6 +4,7 @@ import { formatDateBR } from "@/lib/date";
 
 export async function GET() {
   const payments = await prisma.payment.findMany({
+    where: { status: { not: "CANCELLED" } },
     include: { client: true, appointment: true },
     orderBy: { createdAt: "desc" },
   });

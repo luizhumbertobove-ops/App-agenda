@@ -23,7 +23,8 @@ export async function POST(req: NextRequest) {
   }
 
   const paymentId = extractPaymentId(req, body);
-  if (!paymentId) {
+  // Id do Mercado Pago é numérico; qualquer outra coisa é ignorada (não vira chamada à API do MP).
+  if (!paymentId || !/^\d{1,20}$/.test(paymentId)) {
     return NextResponse.json({ received: true, ignored: "no payment id" });
   }
 
@@ -43,7 +44,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true, ignored: "payment not found locally" });
     }
 
-    if (mpPayment.status === "approved") {
+    // Valor pago diferente do cobrado: não marca como pago (fica para o Beto conferir).
+    const paidAmount = Number((mpPayment as { transaction_amount?: number }).transaction_amount);
+    const amountOk = !Number.isFinite(paidAmount) || Math.abs(paidAmount - payment.amount) < 0.01;
+
+    if (mpPayment.status === "approved" && amountOk) {
       await prisma.payment.update({
         where: { id: payment.id },
         data: { status: "PAID", paidAt: new Date(), mpPaymentId: paymentId },
@@ -56,7 +61,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("Erro ao processar webhook do Mercado Pago:", message);
-    return NextResponse.json({ received: true, error: message });
+    return NextResponse.json({ received: true });
   }
 }
 

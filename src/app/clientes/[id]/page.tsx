@@ -38,7 +38,7 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
       where: { id },
       include: {
         appointments: { orderBy: { startTime: "desc" } },
-        payments: { orderBy: { createdAt: "desc" } },
+        payments: { where: { status: { not: "CANCELLED" } }, orderBy: { createdAt: "desc" } },
         planSubscriptions: { include: { plan: true }, orderBy: { purchasedAt: "desc" } },
         whatsappLogs: { orderBy: { sentAt: "desc" }, take: 10 },
       },

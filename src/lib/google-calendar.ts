@@ -40,7 +40,8 @@ export async function listEventsBetween(from: Date, to: Date) {
       timeMin: from.toISOString(),
       timeMax: to.toISOString(),
       singleEvents: true,
-      orderBy: "startTime",
+      // Inclui os apagados (status "cancelled") para o app saber que saíram da agenda.
+      showDeleted: true,
       maxResults: 2500,
       pageToken,
     });

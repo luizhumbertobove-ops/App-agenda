@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const clients = await prisma.client.findMany({
     include: {
       appointments: { orderBy: { startTime: "desc" }, take: 1 },
-      payments: { where: { status: { in: ["PENDING", "SENT"] } } },
+      payments: { where: { status: { in: ["PENDING", "SENT", "OVERDUE"] } } },
       planSubscriptions: { where: { active: true }, include: { plan: true } },
     },
     orderBy: { name: "asc" },

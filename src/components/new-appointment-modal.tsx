@@ -145,7 +145,8 @@ export function NewAppointmentModal({
     }
   }
 
-  const today = new Date().toISOString().split("T")[0];
+  // "Hoje" em Brasília (em UTC, depois das 21h já seria amanhã).
+  const today = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
 
   if (!open) {
     return (
