@@ -2,11 +2,13 @@ export const dynamic = "force-dynamic";
 
 import { ExternalLink } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { getFotosGaleria } from "@/lib/galeria";
 import { getVitrineContent, VITRINE_CAMPOS } from "@/lib/vitrine-content";
+import { GaleriaManager } from "./galeria-manager";
 import { VitrineForm } from "./vitrine-form";
 
 export default async function ConteudoVitrinePage() {
-  const valores = await getVitrineContent();
+  const [valores, fotos] = await Promise.all([getVitrineContent(), getFotosGaleria()]);
 
   return (
     <div className="p-3 sm:p-6 max-w-3xl mx-auto">
@@ -26,7 +28,10 @@ export default async function ConteudoVitrinePage() {
         }
       />
 
-      <VitrineForm campos={VITRINE_CAMPOS} valores={valores} />
+      <div className="flex flex-col gap-6">
+        <GaleriaManager fotos={fotos} />
+        <VitrineForm campos={VITRINE_CAMPOS} valores={valores} />
+      </div>
     </div>
   );
 }
