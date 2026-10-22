@@ -154,3 +154,11 @@
 
 .bove-ds .ds-header { transition:box-shadow var(--dur-base) var(--ease-standard); }
 .bove-ds .ds-header[data-scrolled="true"] { box-shadow:var(--shadow-soft); }
+
+/* Microinterações dos componentes
+ * - .ds-fade-in: entrada com fade e subida de 2px (mensagens de erro e dialog de serviço).
+ * Hover e press dos componentes ficam inline nos próprios componentes (Button, Card, TimeSlot).
+ * Durações vêm dos tokens, então prefers-reduced-motion já as zera.
+ */
+@keyframes ds-fade-in { from { opacity:0; transform:translateY(-2px); } to { opacity:1; transform:none; } }
+.bove-ds .ds-fade-in { animation:ds-fade-in var(--dur-base) var(--ease-out-soft) both; }

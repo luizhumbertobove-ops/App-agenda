@@ -9,6 +9,7 @@ export function ServiceCard({
   badge,
   onSelect,
   selected = false,
+  interactive,
 }: {
   name: string;
   duration?: string;
@@ -17,10 +18,12 @@ export function ServiceCard({
   badge?: string;
   onSelect?: () => void;
   selected?: boolean;
+  /** Card dentro de um link/botão: sobe no hover. Padrão: true quando há onSelect. */
+  interactive?: boolean;
 }) {
   return (
     <Card
-      interactive={!!onSelect}
+      interactive={interactive ?? !!onSelect}
       padding="0"
       onClick={onSelect}
       style={{
@@ -28,6 +31,7 @@ export function ServiceCard({
         display: "flex",
         flexDirection: "column",
         height: "100%",
+        transition: "var(--transition-surface), var(--transition-control)",
         boxShadow: selected ? "0 0 0 1.5px var(--action-primary), var(--shadow-lifted)" : undefined,
       }}
     >

@@ -28,7 +28,7 @@ export function ServiceList({ services }: { services: VitrineService[] }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[var(--space-24)]">
         {services.map((service) => {
           const card = (
-            <ServiceCard name={service.name} duration={service.duration} price={service.price} />
+            <ServiceCard name={service.name} duration={service.duration} price={service.price} interactive />
           );
           return service.description || service.sessionDetails ? (
             <button
@@ -82,7 +82,7 @@ function ServiceDialog({ service, onClose }: { service: VitrineService; onClose:
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6"
+      className="ds-fade-in fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6"
       style={{ background: "var(--surface-overlay)" }}
     >
       <div

@@ -61,7 +61,13 @@ export function Input({ label, hint, error, iconLeft, id, style, ...rest }: Prop
         />
       </div>
       {(hint || error) && (
-        <span style={{ font: "var(--type-caption)", color: error ? "var(--status-danger)" : "var(--text-muted)" }}>{error || hint}</span>
+        <span
+          role={error ? "alert" : undefined}
+          className={error ? "ds-fade-in" : undefined}
+          style={{ font: "var(--type-caption)", color: error ? "var(--status-danger)" : "var(--text-muted)" }}
+        >
+          {error || hint}
+        </span>
       )}
     </div>
   );

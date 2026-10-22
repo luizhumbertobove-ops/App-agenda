@@ -26,6 +26,12 @@ function hoverStyleFor(variant: Variant): React.CSSProperties {
   return { background: "var(--linen-100)", borderColor: "var(--linen-100)" };
 }
 
+// Press escurece um passo a mais no primário; nas outras variantes, o mesmo tom do hover.
+function pressStyleFor(variant: Variant): React.CSSProperties {
+  if (variant === "primary") return { background: "var(--action-primary-press)", borderColor: "var(--action-primary-press)" };
+  return hoverStyleFor(variant);
+}
+
 export function Button({
   variant = "primary",
   size = "md",
@@ -57,6 +63,7 @@ export function Button({
 }) {
   const [hover, setHover] = useState(false);
   const [press, setPress] = useState(false);
+  const [focusVisible, setFocusVisible] = useState(false);
 
   const computedStyle: React.CSSProperties = {
     display: fullWidth ? "flex" : "inline-flex",
@@ -79,6 +86,8 @@ export function Button({
       ? { background: "var(--action-disabled)", color: "var(--action-disabled-fg)", borderColor: "var(--action-disabled)" }
       : null),
     ...(disabled ? null : hover ? hoverStyleFor(variant) : null),
+    ...(disabled ? null : press ? pressStyleFor(variant) : null),
+    boxShadow: focusVisible && !disabled ? "var(--focus-ring)" : undefined,
     ...style,
   };
 
@@ -90,14 +99,22 @@ export function Button({
     },
     onMouseDown: () => setPress(true),
     onMouseUp: () => setPress(false),
+    onFocus: (e: React.FocusEvent<HTMLElement>) => setFocusVisible(e.currentTarget.matches(":focus-visible")),
+    onBlur: () => setFocusVisible(false),
   };
+
+  const trailingIcon = iconRight ? (
+    <span style={{ display: "inline-flex", transition: "transform var(--dur-fast) var(--ease-standard)", transform: hover && !disabled ? "translateX(2px)" : "none" }}>
+      {iconRight}
+    </span>
+  ) : null;
 
   if (href) {
     return (
       <Link href={href} target={target} rel={rel} className={className} style={computedStyle} {...handlers}>
         {iconLeft}
         {children}
-        {iconRight}
+        {trailingIcon}
       </Link>
     );
   }
@@ -106,7 +123,7 @@ export function Button({
     <button type="button" disabled={disabled} onClick={onClick} className={className} style={computedStyle} {...handlers}>
       {iconLeft}
       {children}
-      {iconRight}
+      {trailingIcon}
     </button>
   );
 }

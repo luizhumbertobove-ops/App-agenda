@@ -47,7 +47,13 @@ export function Textarea({ label, hint, error, rows = 3, id, style, ...rest }: P
         {...rest}
       />
       {(hint || error) && (
-        <span style={{ font: "var(--type-caption)", color: error ? "var(--status-danger)" : "var(--text-muted)" }}>{error || hint}</span>
+        <span
+          role={error ? "alert" : undefined}
+          className={error ? "ds-fade-in" : undefined}
+          style={{ font: "var(--type-caption)", color: error ? "var(--status-danger)" : "var(--text-muted)" }}
+        >
+          {error || hint}
+        </span>
       )}
     </div>
   );
