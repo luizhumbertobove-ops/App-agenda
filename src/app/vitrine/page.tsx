@@ -151,7 +151,7 @@ export default async function VitrinePage() {
           </div>
         </div>
         <div className="relative rounded-[var(--radius-image)] overflow-hidden aspect-[4/5] lg:aspect-auto lg:h-[520px]" style={{ boxShadow: "var(--shadow-inset-hairline)" }}>
-          <Image src={c.imagemTopo} alt="Sessão de massoterapia no Spaço Lhum" fill className="object-cover" loading="eager" fetchPriority="high" />
+          <Image src={c.imagemTopo} alt="Sessão de massoterapia no Spaço Lhum" fill className="object-cover" priority />
         </div>
       </section>
 
