@@ -30,4 +30,4 @@ LCP = foto do topo (`imagemTopo`, `src/app/vitrine/page.tsx`). Decomposição: s
 
 | Ideia | Antes → Depois | Veredito | Por quê |
 |---|---|---|---|
-| — | — | — | — |
+| Foto do topo com `loading="eager" fetchPriority="high"` no lugar de `priority` (commit `5226604`) | LCP 3,42 / 3,44 s → 3,42 / 3,44 s | revertido (`a6a8668`) | Neutro. A prioridade passou a High, mas o atraso (613 ms) e o download (2,6 s) não mudaram: no Slow 4G a foto disputa banda com fontes, CSS (113 KB) e JS (148 KB). O gargalo é o volume total de dados, não a prioridade. |
