@@ -37,6 +37,7 @@ export function Button({
   size = "md",
   fullWidth = false,
   disabled = false,
+  loading = false,
   iconLeft,
   iconRight,
   href,
@@ -51,6 +52,8 @@ export function Button({
   size?: Size;
   fullWidth?: boolean;
   disabled?: boolean;
+  /** Em andamento: bloqueia o botão e mostra um spinner, mantendo as cores da variante. */
+  loading?: boolean;
   iconLeft?: React.ReactNode;
   iconRight?: React.ReactNode;
   href?: string;
@@ -65,6 +68,10 @@ export function Button({
   const [press, setPress] = useState(false);
   const [focusVisible, setFocusVisible] = useState(false);
 
+  // blocked: sem hover/press/foco. grayed: só o disabled comum usa o cinza (loading mantém a variante).
+  const blocked = disabled || loading;
+  const grayed = disabled && !loading;
+
   const computedStyle: React.CSSProperties = {
     display: fullWidth ? "flex" : "inline-flex",
     width: fullWidth ? "100%" : undefined,
@@ -75,19 +82,19 @@ export function Button({
     fontWeight: "var(--weight-medium)",
     letterSpacing: "0.01em",
     borderRadius: "var(--radius-control)",
-    cursor: disabled ? "not-allowed" : "pointer",
+    cursor: loading ? "progress" : disabled ? "not-allowed" : "pointer",
     textDecoration: "none",
     whiteSpace: "nowrap",
     transition: "var(--transition-control), transform var(--dur-fast) var(--ease-standard)",
-    transform: press && !disabled ? "scale(var(--press-scale))" : "none",
+    transform: press && !blocked ? "scale(var(--press-scale))" : "none",
     ...sizes[size],
     ...variants[variant],
-    ...(disabled
+    ...(grayed
       ? { background: "var(--action-disabled)", color: "var(--action-disabled-fg)", borderColor: "var(--action-disabled)" }
       : null),
-    ...(disabled ? null : hover ? hoverStyleFor(variant) : null),
-    ...(disabled ? null : press ? pressStyleFor(variant) : null),
-    boxShadow: focusVisible && !disabled ? "var(--focus-ring)" : undefined,
+    ...(blocked ? null : hover ? hoverStyleFor(variant) : null),
+    ...(blocked ? null : press ? pressStyleFor(variant) : null),
+    boxShadow: focusVisible && !blocked ? "var(--focus-ring)" : undefined,
     ...style,
   };
 
@@ -104,14 +111,17 @@ export function Button({
   };
 
   const trailingIcon = iconRight ? (
-    <span style={{ display: "inline-flex", transition: "transform var(--dur-fast) var(--ease-standard)", transform: hover && !disabled ? "translateX(2px)" : "none" }}>
+    <span style={{ display: "inline-flex", transition: "transform var(--dur-fast) var(--ease-standard)", transform: hover && !blocked ? "translateX(2px)" : "none" }}>
       {iconRight}
     </span>
   ) : null;
 
+  const spinner = loading ? <span className="ds-spinner" aria-hidden="true" /> : null;
+
   if (href) {
     return (
-      <Link href={href} target={target} rel={rel} className={className} style={computedStyle} {...handlers}>
+      <Link href={href} target={target} rel={rel} className={className} style={computedStyle} aria-busy={loading || undefined} {...handlers}>
+        {spinner}
         {iconLeft}
         {children}
         {trailingIcon}
@@ -120,7 +130,16 @@ export function Button({
   }
 
   return (
-    <button type="button" disabled={disabled} onClick={onClick} className={className} style={computedStyle} {...handlers}>
+    <button
+      type="button"
+      disabled={blocked}
+      aria-busy={loading || undefined}
+      onClick={onClick}
+      className={className}
+      style={computedStyle}
+      {...handlers}
+    >
+      {spinner}
       {iconLeft}
       {children}
       {trailingIcon}

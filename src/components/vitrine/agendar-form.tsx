@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { CalendarDays, Clock, MessageCircle, BadgeCheck, Phone } from "lucide-react";
+import { CalendarDays, Clock, MessageCircle, Phone } from "lucide-react";
 import { whatsappLink, isBusinessDay } from "@/lib/vitrine";
 import { useSlots } from "@/hooks/use-slots";
 import { formatCurrencyBR } from "@/lib/format";
@@ -159,10 +159,24 @@ export function AgendarForm({
     }
   }
 
+  // Estado dos horários: troca de chave reanima o bloco (ds-step-in) quando muda data ou etapa.
+  const estadoHorarios = isWeekend ? "fim-de-semana" : loadingSlots ? "carregando" : slots.length === 0 ? "vazio" : "horarios";
+
   if (confirmed) {
     return (
-      <div className="flex flex-col items-center text-center gap-4">
-        <Icon icon={BadgeCheck} size={40} style={{ color: "var(--status-success)" }} />
+      <div className="ds-step-in flex flex-col items-center text-center gap-4">
+        <svg width={48} height={48} viewBox="0 0 52 52" fill="none" aria-hidden="true" style={{ color: "var(--status-success)" }}>
+          <circle className="ds-check-circle" cx="26" cy="26" r="24" pathLength={1} stroke="currentColor" strokeWidth="2" />
+          <path
+            className="ds-check-draw"
+            d="M15 27l7 7 15-15"
+            pathLength={1}
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
         <div className="flex flex-col gap-2">
           <h1>Sessão confirmada</h1>
           <p style={{ font: "var(--type-body)", color: "var(--text-body)" }}>
@@ -248,48 +262,55 @@ export function AgendarForm({
               <Icon icon={Clock} size={13} />
               Horários disponíveis
             </span>
-            {isWeekend ? (
-              <p style={{ font: "var(--type-caption)", color: "var(--text-body)" }}>
-                Esse dia é combinado diretamente.{" "}
-                <a href={whatsappLink(fallbackMessage(), whatsapp)} target="_blank" rel="noopener noreferrer">
-                  Fale no WhatsApp
-                </a>{" "}
-                pra ver a disponibilidade.
-              </p>
-            ) : loadingSlots ? (
-              <p style={{ font: "var(--type-caption)", color: "var(--text-muted)" }}>Carregando horários…</p>
-            ) : slots.length === 0 ? (
-              <p style={{ font: "var(--type-caption)", color: "var(--text-body)" }}>
-                Nenhum horário disponível nessa data.{" "}
-                <a href={whatsappLink(fallbackMessage(), whatsapp)} target="_blank" rel="noopener noreferrer">
-                  Fale no WhatsApp
-                </a>
-                .
-              </p>
-            ) : (
-              <div className="grid grid-cols-3 gap-2">
-                {slots.map((slot) => {
-                  const time = new Date(slot.start).toLocaleTimeString("pt-BR", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    timeZone: "America/Sao_Paulo",
-                  });
-                  return (
-                    <TimeSlot
-                      key={slot.start}
-                      time={time}
-                      state={selectedSlot?.start === slot.start ? "selected" : "available"}
-                      onClick={() => setSelectedSlot(slot)}
-                    />
-                  );
-                })}
-              </div>
-            )}
+            <div key={`${date}-${estadoHorarios}`} className="ds-step-in flex flex-col gap-2">
+              {isWeekend ? (
+                <p style={{ font: "var(--type-caption)", color: "var(--text-body)" }}>
+                  Esse dia é combinado diretamente.{" "}
+                  <a href={whatsappLink(fallbackMessage(), whatsapp)} target="_blank" rel="noopener noreferrer">
+                    Fale no WhatsApp
+                  </a>{" "}
+                  pra ver a disponibilidade.
+                </p>
+              ) : loadingSlots ? (
+                <div aria-busy="true" className="grid grid-cols-3 gap-2">
+                  <span className="sr-only">Carregando horários</span>
+                  {[0, 1, 2, 3, 4, 5].map((i) => (
+                    <span key={i} className="ds-skeleton" aria-hidden="true" />
+                  ))}
+                </div>
+              ) : slots.length === 0 ? (
+                <p style={{ font: "var(--type-caption)", color: "var(--text-body)" }}>
+                  Nenhum horário disponível nessa data.{" "}
+                  <a href={whatsappLink(fallbackMessage(), whatsapp)} target="_blank" rel="noopener noreferrer">
+                    Fale no WhatsApp
+                  </a>
+                  .
+                </p>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {slots.map((slot) => {
+                    const time = new Date(slot.start).toLocaleTimeString("pt-BR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      timeZone: "America/Sao_Paulo",
+                    });
+                    return (
+                      <TimeSlot
+                        key={slot.start}
+                        time={time}
+                        state={selectedSlot?.start === slot.start ? "selected" : "available"}
+                        onClick={() => setSelectedSlot(slot)}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
         {selectedSlot && (
-          <>
+          <div key="dados" className="ds-step-in flex flex-col gap-5">
             {lembrado ? (
               <p style={{ font: "var(--type-body)", color: "var(--text-body)" }}>
                 Reservando como <strong>{lembrado.name}</strong>, WhatsApp {lembrado.phone}.{" "}
@@ -339,7 +360,7 @@ export function AgendarForm({
               rows={2}
               placeholder="Alguma preferência ou informação?"
             />
-          </>
+          </div>
         )}
 
         {error && (
@@ -356,7 +377,13 @@ export function AgendarForm({
           </p>
         )}
 
-        <Button variant="primary" fullWidth disabled={!selectedSlot || !name.trim() || !phone.trim() || submitting} onClick={handleSubmit}>
+        <Button
+          variant="primary"
+          fullWidth
+          loading={submitting}
+          disabled={!selectedSlot || !name.trim() || !phone.trim() || submitting}
+          onClick={handleSubmit}
+        >
           {submitting ? "Enviando…" : selectedSlot ? "Confirmar reserva" : "Escolha um horário"}
         </Button>
       </Card>

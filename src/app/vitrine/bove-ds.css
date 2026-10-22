@@ -162,3 +162,43 @@
  */
 @keyframes ds-fade-in { from { opacity:0; transform:translateY(-2px); } to { opacity:1; transform:none; } }
 .bove-ds .ds-fade-in { animation:ds-fade-in var(--dur-base) var(--ease-out-soft) both; }
+
+/* Fluxo de agendamento: transições de etapa, carregamento e confirmação.
+ * - .ds-step-in: entra com fade e subida de 6px a cada troca de etapa (usar com key da etapa).
+ * - .ds-spinner: giro do Button com loading. A duração fixa de .7s é aceitável aqui porque é
+ *   uma rotação contínua e sem significado de tempo; em reduced-motion ele fica parado.
+ * - .ds-skeleton: bloco de horário carregando, com shimmer que usa o tom ambient (1.6x).
+ * - .ds-check-circle / .ds-check-draw: check SVG desenhado com pathLength="1".
+ * Com prefers-reduced-motion, as entradas somem e o conteúdo aparece pronto.
+ */
+@keyframes ds-step-in { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+.bove-ds .ds-step-in { animation:ds-step-in var(--dur-base) var(--ease-out-soft) both; }
+
+@keyframes ds-spin { to { transform:rotate(360deg); } }
+.bove-ds .ds-spinner {
+  display:inline-block; flex:none; width:1em; height:1em;
+  border:1.5px solid currentColor; border-right-color:transparent; border-radius:50%;
+  animation:ds-spin .7s linear infinite;
+}
+
+.bove-ds .ds-skeleton {
+  display:block; min-height:var(--tap-min);
+  background-color:var(--surface-sunken);
+  background-image:linear-gradient(90deg, transparent, var(--linen-50), transparent);
+  background-size:200% 100%; background-repeat:no-repeat;
+  border-radius:var(--radius-control);
+  animation:ds-shimmer calc(var(--dur-ambient) * 1.6) linear infinite;
+}
+@keyframes ds-shimmer { from { background-position:100% 0; } to { background-position:0 0; } }
+
+@keyframes ds-check-stroke { from { stroke-dashoffset:1; } to { stroke-dashoffset:0; } }
+.bove-ds .ds-check-circle { stroke-dasharray:1; stroke-dashoffset:0; animation:ds-check-stroke var(--dur-slow) var(--ease-out-soft) both; }
+.bove-ds .ds-check-draw { stroke-dasharray:1; stroke-dashoffset:0; animation:ds-check-stroke var(--dur-slow) var(--ease-out-soft) var(--dur-base) both; }
+
+@media (prefers-reduced-motion:reduce) {
+  .bove-ds .ds-step-in { animation:none; }
+  .bove-ds .ds-spinner { animation:none; opacity:.6; }
+  .bove-ds .ds-skeleton { animation:none; }
+  .bove-ds .ds-check-circle,
+  .bove-ds .ds-check-draw { animation:none; stroke-dasharray:none; stroke-dashoffset:0; }
+}
