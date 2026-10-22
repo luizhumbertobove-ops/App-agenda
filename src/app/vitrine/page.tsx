@@ -23,9 +23,9 @@ import { ptBR } from "date-fns/locale";
 import { prisma } from "@/lib/prisma";
 import { formatCurrencyBR } from "@/lib/format";
 import { whatsappLink } from "@/lib/vitrine";
-import { getVitrineContent } from "@/lib/vitrine-content";
+import { getVitrineContent, LINK_GOOGLE_PADRAO } from "@/lib/vitrine-content";
 import { getFotosGaleria } from "@/lib/galeria";
-import { getAvaliacoesVitrine } from "@/lib/avaliacoes";
+import { getAvaliacoesVitrine, getResumoAvaliacoes } from "@/lib/avaliacoes";
 import { Button } from "@/components/vitrine/ds/Button";
 import { SectionHeading } from "@/components/vitrine/ds/SectionHeading";
 import { ServiceList } from "@/components/vitrine/service-list";
@@ -77,15 +77,20 @@ function Wordmark({
 }
 
 export default async function VitrinePage() {
-  const [services, c, fotos, avaliacoes] = await Promise.all([
+  const [services, c, fotos, avaliacoes, resumo] = await Promise.all([
     getServices(),
     getVitrineContent(),
     getFotosGaleria(),
     getAvaliacoesVitrine(),
+    getResumoAvaliacoes(),
   ]);
 
-  const media = avaliacoes.length > 0 ? avaliacoes.reduce((soma, a) => soma + a.rating, 0) / avaliacoes.length : 0;
-  const linkGoogle = c.avaliacoesLinkGoogle.startsWith("https://") ? c.avaliacoesLinkGoogle : null;
+  const { media, total: totalAvaliacoes } = resumo;
+  // Só mostra "Ver todas no Google" com o link do Beto, não com o padrão genérico.
+  const linkGoogle =
+    c.avaliacoesLinkGoogle.startsWith("https://") && c.avaliacoesLinkGoogle !== LINK_GOOGLE_PADRAO
+      ? c.avaliacoesLinkGoogle
+      : null;
 
   const navLinks = [
     { href: "#servicos", label: c.menuServicos },
@@ -265,7 +270,7 @@ export default async function VitrinePage() {
                     {media.toFixed(1).replace(".", ",")}
                   </span>
                   <Estrelas nota={media} tamanho={20} />
-                  <span>{avaliacoes.length === 1 ? "1 avaliação no Google" : `${avaliacoes.length} avaliações no Google`}</span>
+                  <span>{totalAvaliacoes === 1 ? "1 avaliação no Google" : `${totalAvaliacoes} avaliações no Google`}</span>
                 </div>
               }
             />

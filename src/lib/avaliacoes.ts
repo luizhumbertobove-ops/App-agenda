@@ -29,6 +29,21 @@ export async function getAvaliacoesVitrine(): Promise<AvaliacaoPublica[]> {
   }
 }
 
+/** Total e média de todas as aprovadas (não só das 10 exibidas). */
+export async function getResumoAvaliacoes(): Promise<{ total: number; media: number }> {
+  try {
+    const r = await prisma.googleReview.aggregate({
+      where: { status: "APPROVED" },
+      _count: { _all: true },
+      _avg: { rating: true },
+    });
+    return { total: r._count._all, media: r._avg.rating ?? 0 };
+  } catch (erro) {
+    console.error("Falha ao resumir as avaliações.", erro);
+    return { total: 0, media: 0 };
+  }
+}
+
 const UNIDADES_EM_DIAS: Record<string, number> = {
   dia: 1,
   semana: 7,

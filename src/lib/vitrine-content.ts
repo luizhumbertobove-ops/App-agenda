@@ -7,6 +7,9 @@ import {
   INSTAGRAM_URL,
 } from "@/lib/vitrine";
 
+/** Padrão do link das avaliações: o formulário não aceita vazio, e a vitrine trata este valor como "sem link". */
+export const LINK_GOOGLE_PADRAO = "https://www.google.com/maps";
+
 export type CampoVitrine = {
   readonly key: string;
   readonly label: string;
@@ -93,7 +96,7 @@ const CAMPOS = [
   // Avaliações
   { key: "avaliacoesEyebrow", label: "Selo da seção", section: "Avaliações", type: "text", default: "Avaliações" },
   { key: "avaliacoesTitulo", label: "Título da seção", section: "Avaliações", type: "text", default: "Quem já veio conta" },
-  { key: "avaliacoesLinkGoogle", label: "Link das avaliações no Google Maps", section: "Avaliações", type: "text", default: "https://www.google.com/maps" },
+  { key: "avaliacoesLinkGoogle", label: "Link das avaliações no Google Maps", section: "Avaliações", type: "text", default: LINK_GOOGLE_PADRAO },
 
   // Contato
   {
