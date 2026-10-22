@@ -116,7 +116,7 @@ export default async function VitrinePage() {
 
       {/* Hero */}
       <section className="max-w-[var(--container-max)] mx-auto px-[var(--gutter-inline)] lg:px-[var(--gutter-inline-lg)] py-16 lg:py-[var(--section-y)] grid grid-cols-1 lg:grid-cols-[1.05fr_.95fr] gap-10 lg:gap-[var(--space-72)] items-center">
-        <Reveal className="flex flex-col gap-6">
+        <div className="ds-enter flex flex-col gap-6">
           <span className="ds-eyebrow">{c.heroEyebrow}</span>
           <h1 style={{ fontSize: "clamp(36px, 6vw, 60px)", maxWidth: "16ch" }}>{c.heroTitulo}</h1>
           <p style={{ font: "var(--type-body-lead)", color: "var(--text-body)", maxWidth: "var(--measure-narrow)" }}>
@@ -151,10 +151,10 @@ export default async function VitrinePage() {
               </span>
             ))}
           </div>
-        </Reveal>
-        <Reveal delay={1} className="relative rounded-[var(--radius-image)] overflow-hidden aspect-[4/5] lg:aspect-auto lg:h-[520px]" style={{ boxShadow: "var(--shadow-inset-hairline)" }}>
+        </div>
+        <div className="ds-enter relative rounded-[var(--radius-image)] overflow-hidden aspect-[4/5] lg:aspect-auto lg:h-[520px]" style={{ boxShadow: "var(--shadow-inset-hairline)", ["--reveal-delay" as string]: "60ms" }}>
           <Image src={c.imagemTopo} alt="Sessão de massoterapia no Spaço Lhum" fill className="object-cover" priority />
-        </Reveal>
+        </div>
       </section>
 
       {/* Sobre / missão */}

@@ -4,7 +4,7 @@
 // (ou a classe .ds-reveal dentro de um ancestral .bove-ds com a classe js-reveal).
 // Sem JS, nada fica oculto: o estado inicial só vale depois que o JS marca .js-reveal.
 
-import { useEffect, useRef, type CSSProperties, type ElementType, type ReactNode } from "react";
+import { useLayoutEffect, useRef, type CSSProperties, type ElementType, type ReactNode } from "react";
 
 export type RevealProps = {
   children?: ReactNode;
@@ -18,9 +18,16 @@ export type RevealProps = {
 export function Reveal({ children, delay = 0, as = "div", className, style }: RevealProps) {
   const ref = useRef<HTMLElement>(null);
 
-  useEffect(() => {
+  // useLayoutEffect: decide antes da pintura, para o que já está na tela não piscar.
+  useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
+
+    // Já visível ao montar (veio renderizado do servidor): fica como está, sem esconder.
+    if (el.getBoundingClientRect().top < window.innerHeight) {
+      el.classList.add("is-visible");
+      return;
+    }
 
     el.closest(".bove-ds")?.classList.add("js-reveal");
 
