@@ -25,6 +25,8 @@ import { Button } from "@/components/vitrine/ds/Button";
 import { SectionHeading } from "@/components/vitrine/ds/SectionHeading";
 import { ServiceList } from "@/components/vitrine/service-list";
 import { Icon } from "@/components/vitrine/ds/Icon";
+import { Reveal } from "@/components/vitrine/reveal";
+import { HeaderShadow } from "@/components/vitrine/header-shadow";
 
 export const metadata: Metadata = {
   title: "Humberto Bove — Massoterapeuta | Spaço Lhum",
@@ -91,7 +93,7 @@ export default async function VitrinePage() {
   return (
     <div className="bove-ds" style={{ background: "var(--surface-page)", minHeight: "100vh" }}>
       {/* Header */}
-      <header
+      <HeaderShadow
         className="sticky top-0 z-20 border-b"
         style={{ background: "rgba(250,246,241,.86)", backdropFilter: "var(--overlay-blur)", borderColor: "var(--border-hairline)" }}
       >
@@ -99,7 +101,7 @@ export default async function VitrinePage() {
           <Wordmark nome={c.nomeProfissional} espaco={c.nomeEspaco} />
           <nav className="hidden md:flex gap-8 ml-auto">
             {navLinks.map((l) => (
-              <a key={l.href} href={l.href} style={{ font: "var(--type-body)", fontSize: "var(--size-body-s)", color: "var(--text-body)" }} className="no-underline">
+              <a key={l.href} href={l.href} style={{ font: "var(--type-body)", fontSize: "var(--size-body-s)", color: "var(--text-body)" }} className="ds-navlink no-underline">
                 {l.label}
               </a>
             ))}
@@ -110,11 +112,11 @@ export default async function VitrinePage() {
             </Button>
           </div>
         </div>
-      </header>
+      </HeaderShadow>
 
       {/* Hero */}
       <section className="max-w-[var(--container-max)] mx-auto px-[var(--gutter-inline)] lg:px-[var(--gutter-inline-lg)] py-16 lg:py-[var(--section-y)] grid grid-cols-1 lg:grid-cols-[1.05fr_.95fr] gap-10 lg:gap-[var(--space-72)] items-center">
-        <div className="flex flex-col gap-6">
+        <Reveal className="flex flex-col gap-6">
           <span className="ds-eyebrow">{c.heroEyebrow}</span>
           <h1 style={{ fontSize: "clamp(36px, 6vw, 60px)", maxWidth: "16ch" }}>{c.heroTitulo}</h1>
           <p style={{ font: "var(--type-body-lead)", color: "var(--text-body)", maxWidth: "var(--measure-narrow)" }}>
@@ -149,30 +151,32 @@ export default async function VitrinePage() {
               </span>
             ))}
           </div>
-        </div>
-        <div className="relative rounded-[var(--radius-image)] overflow-hidden aspect-[4/5] lg:aspect-auto lg:h-[520px]" style={{ boxShadow: "var(--shadow-inset-hairline)" }}>
+        </Reveal>
+        <Reveal delay={1} className="relative rounded-[var(--radius-image)] overflow-hidden aspect-[4/5] lg:aspect-auto lg:h-[520px]" style={{ boxShadow: "var(--shadow-inset-hairline)" }}>
           <Image src={c.imagemTopo} alt="Sessão de massoterapia no Spaço Lhum" fill className="object-cover" priority />
-        </div>
+        </Reveal>
       </section>
 
       {/* Sobre / missão */}
       <section id="sobre" style={{ background: "var(--surface-card)", borderTop: "1px solid var(--border-hairline)", borderBottom: "1px solid var(--border-hairline)" }}>
         <div className="max-w-[var(--container-max)] mx-auto px-[var(--gutter-inline)] lg:px-[var(--gutter-inline-lg)] py-14 lg:py-[var(--section-y)] grid grid-cols-1 lg:grid-cols-[.9fr_1.1fr] gap-10 lg:gap-[var(--space-72)] items-center">
-          <div className="relative rounded-[var(--radius-image)] overflow-hidden aspect-[4/5] lg:aspect-auto lg:h-[440px] order-2 lg:order-1" style={{ boxShadow: "var(--shadow-inset-hairline)" }}>
+          <Reveal className="relative rounded-[var(--radius-image)] overflow-hidden aspect-[4/5] lg:aspect-auto lg:h-[440px] order-2 lg:order-1" style={{ boxShadow: "var(--shadow-inset-hairline)" }}>
             <Image src={c.imagemMissao} alt="Humberto Bove, massoterapeuta do Spaço Lhum" fill className="object-cover" />
-          </div>
+          </Reveal>
           <div className="flex flex-col gap-6 order-1 lg:order-2">
-            <SectionHeading
-              eyebrow={c.sobreEyebrow}
-              title={c.sobreTitulo}
-              description={c.sobreTexto}
-            />
+            <Reveal>
+              <SectionHeading
+                eyebrow={c.sobreEyebrow}
+                title={c.sobreTitulo}
+                description={c.sobreTexto}
+              />
+            </Reveal>
             <div className="grid grid-cols-2 gap-4">
-              {benefits.map(({ icon, label }) => (
-                <span key={label} className="flex items-start gap-3" style={{ font: "var(--type-body)", fontSize: "var(--size-body-s)", color: "var(--text-body)" }}>
+              {benefits.map(({ icon, label }, i) => (
+                <Reveal key={label} as="span" delay={i} className="flex items-start gap-3" style={{ font: "var(--type-body)", fontSize: "var(--size-body-s)", color: "var(--text-body)" }}>
                   <Icon icon={icon} size={18} style={{ color: "var(--text-accent)", marginTop: 2 }} />
                   {label}
-                </span>
+                </Reveal>
               ))}
             </div>
           </div>
@@ -182,31 +186,35 @@ export default async function VitrinePage() {
       {/* Serviços */}
       <section id="servicos" style={{ background: "var(--surface-sage-soft)" }}>
         <div className="max-w-[var(--container-max)] mx-auto px-[var(--gutter-inline)] lg:px-[var(--gutter-inline-lg)] py-14 lg:py-[var(--section-y)] flex flex-col gap-10">
-          <SectionHeading
-            eyebrow={c.servicosEyebrow}
-            title={c.servicosTitulo}
-            description={c.servicosTexto}
-            action={
-              <Button variant="secondary" href="/vitrine/agendar" style={{ marginTop: "var(--space-8)" }}>
-                {c.servicosBotao}
-              </Button>
-            }
-          />
+          <Reveal>
+            <SectionHeading
+              eyebrow={c.servicosEyebrow}
+              title={c.servicosTitulo}
+              description={c.servicosTexto}
+              action={
+                <Button variant="secondary" href="/vitrine/agendar" style={{ marginTop: "var(--space-8)" }}>
+                  {c.servicosBotao}
+                </Button>
+              }
+            />
+          </Reveal>
           {services.length === 0 ? (
             <p style={{ font: "var(--type-body)", color: "var(--text-muted)" }}>
               {c.servicosVazio}
             </p>
           ) : (
-            <ServiceList
-              services={services.map((service) => ({
-                id: service.id,
-                name: service.name,
-                duration: `${service.durationMins} min`,
-                price: `a partir de ${formatCurrencyBR(service.price)}`,
-                description: service.description,
-                sessionDetails: service.sessionDetails,
-              }))}
-            />
+            <Reveal>
+              <ServiceList
+                services={services.map((service) => ({
+                  id: service.id,
+                  name: service.name,
+                  duration: `${service.durationMins} min`,
+                  price: `a partir de ${formatCurrencyBR(service.price)}`,
+                  description: service.description,
+                  sessionDetails: service.sessionDetails,
+                }))}
+              />
+            </Reveal>
           )}
         </div>
       </section>

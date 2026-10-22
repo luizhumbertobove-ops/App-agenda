@@ -118,3 +118,34 @@
 .bove-ds .ds-prose { max-width:var(--measure-prose); }
 .bove-ds ::selection { background:var(--clay-100); color:var(--clay-800); }
 .bove-ds :focus-visible { outline:none; box-shadow:var(--focus-ring); }
+
+/* Motion
+ * Entrada suave ao rolar e micro-interações da vitrine.
+ * Sempre usar os tokens de movimento (--dur-*, --ease-*), nunca ms soltos.
+ * - .ds-reveal: o elemento só fica invisível quando o JS marcou o ancestral .bove-ds
+ *   com .js-reveal (componente <Reveal>). Sem essa classe, nada fica oculto.
+ *   O atraso escalonado vem de --reveal-delay (definido inline pelo <Reveal>).
+ * - .ds-navlink: sublinhado que cresce no hover e no foco do teclado.
+ * - .ds-header: sombra suave quando a página rola (data-scrolled="true", via <HeaderShadow>).
+ * Com prefers-reduced-motion, as durações viram 0ms e o conteúdo aparece direto.
+ */
+.bove-ds.js-reveal .ds-reveal:not(.is-visible) { opacity:0; transform:translateY(8px); }
+.bove-ds .ds-reveal {
+  transition: opacity var(--dur-slow) var(--ease-out-soft), transform var(--dur-slow) var(--ease-out-soft);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+@media (prefers-reduced-motion:reduce) {
+  .bove-ds .ds-reveal { opacity:1 !important; transform:none !important; }
+}
+
+.bove-ds .ds-navlink { position:relative; text-decoration:none; }
+.bove-ds .ds-navlink::after {
+  content:""; position:absolute; left:0; right:0; bottom:-4px; height:1px; background:currentColor;
+  transform:scaleX(0); transform-origin:left;
+  transition:transform var(--dur-base) var(--ease-out-soft);
+}
+.bove-ds .ds-navlink:hover::after,
+.bove-ds .ds-navlink:focus-visible::after { transform:scaleX(1); }
+
+.bove-ds .ds-header { transition:box-shadow var(--dur-base) var(--ease-standard); }
+.bove-ds .ds-header[data-scrolled="true"] { box-shadow:var(--shadow-soft); }
