@@ -36,6 +36,7 @@ import { HeaderShadow } from "@/components/vitrine/header-shadow";
 import { HeroPhoto } from "@/components/vitrine/hero-photo";
 import { ParallaxPhoto } from "@/components/vitrine/parallax-photo";
 import { Carrossel } from "@/components/vitrine/carrossel";
+import { AvaliacoesLoop } from "@/components/vitrine/avaliacoes-loop";
 import { GaleriaFotos } from "@/components/vitrine/galeria-fotos";
 import { CartaoAvaliacao, Estrelas } from "@/components/vitrine/avaliacao-card";
 
@@ -117,6 +118,16 @@ export default async function VitrinePage() {
     { icon: Wind, label: c.beneficio5 },
     { icon: Moon, label: c.beneficio6 },
   ];
+
+  const itensAvaliacoes = avaliacoes.map((a) => (
+    <CartaoAvaliacao
+      key={a.id}
+      autor={a.author}
+      nota={a.rating}
+      texto={a.text}
+      data={a.publishedAt ? format(a.publishedAt, "MMM yyyy", { locale: ptBR }).replace(".", "") : null}
+    />
+  ));
 
   const whatsappMessage = "Olá Humberto, vim pelo site e quero agendar um horário.";
 
@@ -291,19 +302,15 @@ export default async function VitrinePage() {
                 </div>
               }
             />
-            <Carrossel
-              rotulo="Avaliações de clientes"
-              porTela={{ celular: 1.05, tablet: 2, desktop: 3 }}
-              itens={avaliacoes.map((a) => (
-                <CartaoAvaliacao
-                  key={a.id}
-                  autor={a.author}
-                  nota={a.rating}
-                  texto={a.text}
-                  data={a.publishedAt ? format(a.publishedAt, "MMM yyyy", { locale: ptBR }).replace(".", "") : null}
-                />
-              ))}
-            />
+            {avaliacoes.length >= 3 ? (
+              <AvaliacoesLoop rotulo="Avaliações de clientes" itens={itensAvaliacoes} />
+            ) : (
+              <Carrossel
+                rotulo="Avaliações de clientes"
+                porTela={{ celular: 1.05, tablet: 2, desktop: 3 }}
+                itens={itensAvaliacoes}
+              />
+            )}
             {linkGoogle && (
               <div className="flex justify-center">
                 <Button variant="secondary" href={linkGoogle} target="_blank" rel="noopener noreferrer" iconRight={<Icon icon={ExternalLink} size={16} />}>
