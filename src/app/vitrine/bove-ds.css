@@ -200,3 +200,7 @@
   .bove-ds .ds-spinner { animation:none; opacity:.6; }
   .bove-ds .ds-skeleton { animation:none; }
 }
+
+/* A vitrine rola dentro do <main overflow-auto> do layout raiz. O parallax (useScroll do Motion)
+ * precisa que esse contêiner seja posicionado para medir certo. Só vale quando a vitrine está na tela. */
+main:has(> .bove-ds) { position:relative; }

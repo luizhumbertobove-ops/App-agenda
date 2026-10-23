@@ -16,9 +16,10 @@ export type ParallaxPhotoProps = {
   /** "hero": desce mais e dá leve zoom. "soft": só um deslocamento discreto. */
   strength?: "hero" | "soft";
   priority?: boolean;
+  sizes?: string;
 };
 
-export function ParallaxPhoto({ src, alt, strength = "soft", priority }: ParallaxPhotoProps) {
+export function ParallaxPhoto({ src, alt, strength = "soft", priority, sizes = "(min-width: 1024px) 50vw, 100vw" }: ParallaxPhotoProps) {
   const { reduce } = useVitrineMotion();
   const ref = useRef<HTMLDivElement>(null);
   const container = useScrollContainer(ref);
@@ -40,7 +41,7 @@ export function ParallaxPhoto({ src, alt, strength = "soft", priority }: Paralla
         className="absolute left-0 right-0"
         style={reduce ? { top: inset, bottom: inset } : { top: inset, bottom: inset, y, ...(hero ? { scale } : {}) }}
       >
-        <Image src={src} alt={alt} fill priority={priority} className="object-cover" />
+        <Image src={src} alt={alt} fill sizes={sizes} priority={priority} className="object-cover" />
       </motion.div>
     </div>
   );
