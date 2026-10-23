@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import type { FotoGaleria } from "@/lib/galeria";
+import { comprimirImagem, MENSAGEM_ARQUIVO_GRANDE } from "@/lib/comprimir-imagem";
 
 type Mensagem = { tipo: "ok" | "erro"; texto: string };
 
@@ -25,7 +26,7 @@ export function GaleriaManager({ fotos: fotosIniciais }: { fotos: FotoGaleria[] 
     for (const [indice, arquivo] of arquivos.entries()) {
       setEnviando({ atual: indice + 1, total: arquivos.length });
       const dados = new FormData();
-      dados.append("file", arquivo);
+      dados.append("file", await comprimirImagem(arquivo));
 
       try {
         const resposta = await fetch("/api/galeria", { method: "POST", body: dados });
@@ -33,7 +34,9 @@ export function GaleriaManager({ fotos: fotosIniciais }: { fotos: FotoGaleria[] 
 
         if (!resposta.ok) {
           const aviso = enviadas > 0 ? `${enviadas} de ${arquivos.length} enviadas. ` : "";
-          setMensagem({ tipo: "erro", texto: `${aviso}${retorno.error ?? "Não foi possível enviar a foto. Tente de novo."}` });
+          const erro =
+            retorno.error ?? (resposta.status === 413 ? MENSAGEM_ARQUIVO_GRANDE : "Não foi possível enviar a foto. Tente de novo.");
+          setMensagem({ tipo: "erro", texto: `${aviso}${erro}` });
           break;
         }
 
@@ -154,7 +157,7 @@ export function GaleriaManager({ fotos: fotosIniciais }: { fotos: FotoGaleria[] 
             {enviando ? `Enviando ${enviando.atual} de ${enviando.total}...` : "Adicionar fotos"}
           </Button>
           <p className="text-xs text-gray-400">
-            {fotos.length} de {LIMITE} fotos. JPG, PNG ou WebP, até 5 MB cada.
+            {fotos.length} de {LIMITE} fotos. JPG, PNG ou WebP. Fotos grandes são reduzidas antes do envio.
           </p>
         </div>
       </div>

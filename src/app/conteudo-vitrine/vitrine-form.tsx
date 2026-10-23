@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Button } from "@/components/button";
 import { Input, Textarea } from "@/components/input";
 import type { CampoVitrine } from "@/lib/vitrine-content";
+import { comprimirImagem, MENSAGEM_ARQUIVO_GRANDE } from "@/lib/comprimir-imagem";
 
 type Mensagem = { tipo: "ok" | "erro"; texto: string };
 
@@ -143,14 +144,14 @@ function ImagemCampo({
     setEnviando(true);
     const dados = new FormData();
     dados.append("key", campo.key);
-    dados.append("file", file);
+    dados.append("file", await comprimirImagem(file));
 
     try {
       const resposta = await fetch("/api/conteudo-vitrine/imagem", { method: "POST", body: dados });
       const retorno = await resposta.json().catch(() => ({}));
 
       if (!resposta.ok) {
-        onErro(retorno.error ?? "Não foi possível enviar a imagem. Tente de novo.");
+        onErro(retorno.error ?? (resposta.status === 413 ? MENSAGEM_ARQUIVO_GRANDE : "Não foi possível enviar a imagem. Tente de novo."));
       } else {
         onEnviada(retorno.url);
         onSucesso(`Imagem "${campo.label}" trocada na vitrine.`);
@@ -184,7 +185,7 @@ function ImagemCampo({
           <Button variant="secondary" disabled={enviando} onClick={() => inputRef.current?.click()} className="self-start">
             {enviando ? "Enviando..." : "Trocar imagem"}
           </Button>
-          <p className="text-xs text-gray-400">JPG, PNG ou WebP, até 5 MB. A imagem é salva assim que você escolhe o arquivo.</p>
+          <p className="text-xs text-gray-400">JPG, PNG ou WebP. Fotos grandes são reduzidas antes do envio. A imagem é salva assim que você escolhe o arquivo.</p>
         </div>
       </div>
     </div>
