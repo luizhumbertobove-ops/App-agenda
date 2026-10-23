@@ -10,6 +10,7 @@ const PUBLIC_PATHS = [
   "/api/cron/confirmations",
   "/api/cron/reengagement",
   "/api/calendar/sync",
+  "/api/avaliacoes/importar",
 ];
 
 export default async function proxy(req: NextRequest) {

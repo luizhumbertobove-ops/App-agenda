@@ -16,15 +16,23 @@ import {
   Zap,
   Moon,
   Sparkles,
+  ExternalLink,
 } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { prisma } from "@/lib/prisma";
 import { formatCurrencyBR } from "@/lib/format";
 import { whatsappLink } from "@/lib/vitrine";
-import { getVitrineContent } from "@/lib/vitrine-content";
+import { getVitrineContent, LINK_GOOGLE_PADRAO } from "@/lib/vitrine-content";
+import { getFotosGaleria } from "@/lib/galeria";
+import { getAvaliacoesVitrine, getResumoAvaliacoes } from "@/lib/avaliacoes";
 import { Button } from "@/components/vitrine/ds/Button";
 import { SectionHeading } from "@/components/vitrine/ds/SectionHeading";
 import { ServiceList } from "@/components/vitrine/service-list";
 import { Icon } from "@/components/vitrine/ds/Icon";
+import { Carrossel } from "@/components/vitrine/carrossel";
+import { GaleriaFotos } from "@/components/vitrine/galeria-fotos";
+import { CartaoAvaliacao, Estrelas } from "@/components/vitrine/avaliacao-card";
 
 export const metadata: Metadata = {
   title: "Humberto Bove — Massoterapeuta | Spaço Lhum",
@@ -69,11 +77,25 @@ function Wordmark({
 }
 
 export default async function VitrinePage() {
-  const [services, c] = await Promise.all([getServices(), getVitrineContent()]);
+  const [services, c, fotos, avaliacoes, resumo] = await Promise.all([
+    getServices(),
+    getVitrineContent(),
+    getFotosGaleria(),
+    getAvaliacoesVitrine(),
+    getResumoAvaliacoes(),
+  ]);
+
+  const { media, total: totalAvaliacoes } = resumo;
+  // Só mostra "Ver todas no Google" com o link do Beto, não com o padrão genérico.
+  const linkGoogle =
+    c.avaliacoesLinkGoogle.startsWith("https://") && c.avaliacoesLinkGoogle !== LINK_GOOGLE_PADRAO
+      ? c.avaliacoesLinkGoogle
+      : null;
 
   const navLinks = [
     { href: "#servicos", label: c.menuServicos },
     { href: "#sobre", label: c.menuSobre },
+    ...(avaliacoes.length > 0 ? [{ href: "#avaliacoes", label: c.menuAvaliacoes }] : []),
     { href: "#contato", label: c.menuContato },
   ];
 
@@ -215,9 +237,13 @@ export default async function VitrinePage() {
       <section style={{ background: "var(--surface-page)" }}>
         <div className="max-w-[var(--container-max)] mx-auto px-[var(--gutter-inline)] lg:px-[var(--gutter-inline-lg)] py-14 lg:py-[var(--section-y)] flex flex-col gap-10">
           <SectionHeading eyebrow={c.galeriaEyebrow} title={c.galeriaTitulo} align="center" />
-          <div className="relative aspect-[4/5] rounded-[var(--radius-image)] overflow-hidden max-w-[360px] mx-auto w-full" style={{ boxShadow: "var(--shadow-inset-hairline)" }}>
-            <Image src={c.imagemGaleria} alt="Humberto Bove aplicando massoterapia" fill className="object-cover" />
-          </div>
+          {fotos.length > 0 ? (
+            <GaleriaFotos fotos={fotos} />
+          ) : (
+            <div className="relative aspect-[4/5] rounded-[var(--radius-image)] overflow-hidden max-w-[360px] mx-auto w-full" style={{ boxShadow: "var(--shadow-inset-hairline)" }}>
+              <Image src={c.imagemGaleria} alt="Humberto Bove aplicando massoterapia" fill className="object-cover" />
+            </div>
+          )}
           <p style={{ font: "var(--type-caption)", color: "var(--text-muted)", textAlign: "center" }}>
             {c.galeriaLegenda}{" "}
             <a href={c.instagramUrl} target="_blank" rel="noopener noreferrer">
@@ -226,6 +252,51 @@ export default async function VitrinePage() {
           </p>
         </div>
       </section>
+
+      {/* Avaliações (só aparece com avaliações aprovadas) */}
+      {avaliacoes.length > 0 && (
+        <section
+          id="avaliacoes"
+          style={{ background: "var(--surface-card)", borderTop: "1px solid var(--border-hairline)", borderBottom: "1px solid var(--border-hairline)", scrollMarginTop: 80 }}
+        >
+          <div className="max-w-[var(--container-max)] mx-auto px-[var(--gutter-inline)] lg:px-[var(--gutter-inline-lg)] py-14 lg:py-[var(--section-y)] flex flex-col gap-10 min-w-0">
+            <SectionHeading
+              eyebrow={c.avaliacoesEyebrow}
+              title={c.avaliacoesTitulo}
+              align="center"
+              action={
+                <div className="flex flex-col items-center gap-2" style={{ font: "var(--type-caption)", color: "var(--text-muted)" }}>
+                  <span style={{ font: "var(--type-heading)", color: "var(--text-strong)" }}>
+                    {media.toFixed(1).replace(".", ",")}
+                  </span>
+                  <Estrelas nota={media} tamanho={20} />
+                  <span>{totalAvaliacoes === 1 ? "1 avaliação no Google" : `${totalAvaliacoes} avaliações no Google`}</span>
+                </div>
+              }
+            />
+            <Carrossel
+              rotulo="Avaliações de clientes"
+              porTela={{ celular: 1.05, tablet: 2, desktop: 3 }}
+              itens={avaliacoes.map((a) => (
+                <CartaoAvaliacao
+                  key={a.id}
+                  autor={a.author}
+                  nota={a.rating}
+                  texto={a.text}
+                  data={a.publishedAt ? format(a.publishedAt, "MMM yyyy", { locale: ptBR }).replace(".", "") : null}
+                />
+              ))}
+            />
+            {linkGoogle && (
+              <div className="flex justify-center">
+                <Button variant="secondary" href={linkGoogle} target="_blank" rel="noopener noreferrer" iconRight={<Icon icon={ExternalLink} size={16} />}>
+                  Ver todas no Google
+                </Button>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Footer */}
       <footer id="contato" style={{ background: "var(--surface-inverse)", color: "var(--text-inverse)" }}>

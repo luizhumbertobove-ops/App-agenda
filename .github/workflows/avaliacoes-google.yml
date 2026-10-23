@@ -1,0 +1,45 @@
+name: Avaliações do Google (diário)
+
+on:
+  schedule:
+    # 10:00 UTC = 07:00 de Brasília
+    - cron: "0 10 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  importar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Instalar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Instalar Playwright (sem salvar no package.json)
+        run: npm i --no-save --ignore-scripts playwright@1.49.1
+
+      - name: Instalar Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Ler avaliações e enviar para o app
+        env:
+          GOOGLE_MAPS_URL: ${{ vars.GOOGLE_MAPS_URL }}
+          APP_URL: ${{ vars.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          MAX_REVIEWS: "100"
+        run: node scripts/avaliacoes/scrape.mjs
+
+      - name: Guardar screenshot se falhar
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scrape-falhou
+          path: scrape-falhou.png
+          if-no-files-found: ignore
