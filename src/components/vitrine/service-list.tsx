@@ -3,9 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { ServiceCard } from "@/components/vitrine/ds/ServiceCard";
 import { Button } from "@/components/vitrine/ds/Button";
 import { Icon } from "@/components/vitrine/ds/Icon";
+import { Reveal } from "@/components/vitrine/reveal";
+import { dur, ease, spring } from "@/components/vitrine/motion/tokens";
+import { useVitrineMotion } from "@/components/vitrine/motion/provider";
 
 export type VitrineService = {
   id: string;
@@ -26,35 +30,46 @@ export function ServiceList({ services }: { services: VitrineService[] }) {
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[var(--space-24)]">
-        {services.map((service) => {
+        {services.map((service, i) => {
           const card = (
             <ServiceCard name={service.name} duration={service.duration} price={service.price} interactive />
           );
-          return service.description || service.sessionDetails ? (
-            <button
-              key={service.id}
-              type="button"
-              onClick={() => setAberto(service)}
-              aria-label={`Ver detalhes de ${service.name}`}
-              className="block h-full w-full text-left"
-            >
-              {card}
-            </button>
-          ) : (
-            <Link key={service.id} href={`/vitrine/agendar?servico=${service.id}`} className="block h-full">
-              {card}
-            </Link>
+          return (
+            <Reveal key={service.id} delay={i} className="h-full">
+              {service.description || service.sessionDetails ? (
+                <button
+                  type="button"
+                  onClick={() => setAberto(service)}
+                  aria-label={`Ver detalhes de ${service.name}`}
+                  className="block h-full w-full text-left"
+                >
+                  {card}
+                </button>
+              ) : (
+                <Link href={`/vitrine/agendar?servico=${service.id}`} className="block h-full">
+                  {card}
+                </Link>
+              )}
+            </Reveal>
           );
         })}
       </div>
 
-      {aberto && <ServiceDialog service={aberto} onClose={() => setAberto(null)} />}
+      <AnimatePresence>
+        {aberto && <ServiceDialog key={aberto.id} service={aberto} onClose={() => setAberto(null)} />}
+      </AnimatePresence>
     </>
   );
 }
 
 function ServiceDialog({ service, onClose }: { service: VitrineService; onClose: () => void }) {
   const boxRef = useRef<HTMLDivElement>(null);
+  const { reduce, t } = useVitrineMotion();
+  // Desktop (>= 640px): o painel abre no centro com leve escala; no celular, sobe de baixo.
+  // Lido uma vez ao abrir: o dialog é transitório, então não precisa reagir a mudanças de tamanho.
+  const [desktop] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 640px)").matches,
+  );
   // Mesma regra do Modal do app: o efeito roda só ao abrir, com onClose lido de uma ref.
   const onCloseRef = useRef(onClose);
   useEffect(() => {
@@ -78,19 +93,30 @@ function ServiceDialog({ service, onClose }: { service: VitrineService; onClose:
   const titleId = `servico-${service.id}`;
 
   return (
-    <div
+    <motion.div
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="ds-fade-in fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6"
+      initial={reduce ? false : { opacity: 0 }}
+      animate={{ opacity: 1, transition: t({ duration: dur.base, ease: ease.standard }) }}
+      exit={{ opacity: 0, transition: t({ duration: dur.base, ease: ease.standard }) }}
+      className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6"
       style={{ background: "var(--surface-overlay)" }}
     >
-      <div
+      <motion.div
         ref={boxRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
+        initial={reduce ? false : desktop ? { opacity: 0, y: 16, scale: 0.98 } : { y: "100%" }}
+        animate={{
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          transition: t(desktop ? { duration: dur.slow, ease: ease.outSoft } : spring),
+        }}
+        exit={{ opacity: 0, transition: t({ duration: dur.fast }) }}
         className="relative w-full max-w-[560px] max-h-[90dvh] overflow-y-auto outline-none"
         style={{
           background: "var(--surface-card)",
@@ -155,7 +181,7 @@ function ServiceDialog({ service, onClose }: { service: VitrineService; onClose:
             Agendar este serviço
           </Button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

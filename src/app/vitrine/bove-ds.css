@@ -131,13 +131,18 @@
  * - .ds-header: sombra suave quando a página rola (data-scrolled="true", via <HeaderShadow>).
  * Com prefers-reduced-motion, as durações viram 0ms e o conteúdo aparece direto.
  */
-.bove-ds.js-reveal .ds-reveal:not(.is-visible) { opacity:0; transform:translateY(8px); }
+:root { --dur-enter:640ms; --reveal-distance:24px; }
+@media (prefers-reduced-motion:reduce) {
+  :root { --dur-enter:0ms; --reveal-distance:0px; }
+}
+
+.bove-ds.js-reveal .ds-reveal:not(.is-visible) { opacity:0; transform:translateY(var(--reveal-distance)); }
 .bove-ds .ds-reveal {
-  transition: opacity var(--dur-slow) var(--ease-out-soft), transform var(--dur-slow) var(--ease-out-soft);
+  transition: opacity var(--dur-enter) var(--ease-out-soft), transform var(--dur-enter) var(--ease-out-soft);
   transition-delay: var(--reveal-delay, 0ms);
 }
-@keyframes ds-enter { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
-.bove-ds .ds-enter { animation:ds-enter var(--dur-slow) var(--ease-out-soft) var(--reveal-delay, 0ms) both; }
+@keyframes ds-enter { from { opacity:0; transform:translateY(var(--reveal-distance)); } to { opacity:1; transform:none; } }
+.bove-ds .ds-enter { animation:ds-enter var(--dur-enter) var(--ease-out-soft) var(--reveal-delay, 0ms) both; }
 @media (prefers-reduced-motion:reduce) {
   .bove-ds .ds-enter { animation:none; }
   .bove-ds .ds-reveal { opacity:1 !important; transform:none !important; }

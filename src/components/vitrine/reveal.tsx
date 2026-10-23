@@ -8,7 +8,7 @@ import { useLayoutEffect, useRef, type CSSProperties, type ElementType, type Rea
 
 export type RevealProps = {
   children?: ReactNode;
-  /** Posição na lista; o atraso é delay * 60ms, com teto de 5 itens escalonados. */
+  /** Posição na lista; o atraso é delay * 90ms, com teto de 5 itens escalonados. */
   delay?: number;
   as?: ElementType;
   className?: string;
@@ -52,7 +52,7 @@ export function Reveal({ children, delay = 0, as = "div", className, style }: Re
   }, []);
 
   const revealStyle = {
-    "--reveal-delay": `${Math.min(delay, 5) * 60}ms`,
+    "--reveal-delay": `${Math.min(delay, 5) * 90}ms`,
     ...style,
   } as CSSProperties;
 

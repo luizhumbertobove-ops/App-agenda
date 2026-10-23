@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { VitrineMotion } from "@/components/vitrine/motion/provider";
 
 export const metadata: Metadata = {
   manifest: "/vitrine/manifest.webmanifest",
@@ -16,5 +17,5 @@ export const viewport: Viewport = {
 };
 
 export default function VitrineLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return <VitrineMotion>{children}</VitrineMotion>;
 }
