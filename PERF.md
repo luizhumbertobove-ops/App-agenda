@@ -26,8 +26,20 @@ LCP = foto do topo (`imagemTopo`, `src/app/vitrine/page.tsx`). Decomposição: s
 - A foto começa com prioridade **Low**: `priority` foi descontinuado no Next 16 e o HTML não sai com `fetchpriority="high"`.
 - Sem `sizes`, o navegador assume 100vw e baixa a versão de 1200 px (exibida com ~364 px de largura). Mesmo problema em `imagemMissao`. Desperdício estimado: ~120 KB.
 
+## Nova linha de base — 22/10/2026, depois da galeria, das avaliações e das animações (`ace58fe`)
+
+| Página | LCP | CLS | JS | Fontes | Imagens | Elementos |
+|---|---|---|---|---|---|---|
+| `/vitrine` | 3,91 s · 3,92 s | 0,00 | **208 KB** (+60 KB) | 96 KB (5 arquivos, todos pré-carregados) | 129 KB (WebP) | 282 |
+
+Decomposição do LCP: servidor 14 ms, atraso 617 ms, **download 3,07 s** (antes 2,6 s), renderização 190 ms. A foto do topo agora está em `src/components/vitrine/parallax-photo.tsx` e ocupa a largura toda no celular (408 px).
+
+- A hipótese do `sizes` caiu: com 100vw numa tela de densidade 2,625, o navegador precisa de ~1080 px, e a versão de 1200 px é a correta. O "desperdício" que o Chrome aponta conta pixels de tela 1×.
+- O que mais pesa agora: JS (+60 KB, `motion` e galeria) e as 5 fontes pré-carregadas, que disputam a banda com a foto.
+
 ## Tentativas
 
 | Ideia | Antes → Depois | Veredito | Por quê |
 |---|---|---|---|
 | Foto do topo com `loading="eager" fetchPriority="high"` no lugar de `priority` (commit `5226604`) | LCP 3,42 / 3,44 s → 3,42 / 3,44 s | revertido (`a6a8668`) | Neutro. A prioridade passou a High, mas o atraso (613 ms) e o download (2,6 s) não mudaram: no Slow 4G a foto disputa banda com fontes, CSS (113 KB) e JS (148 KB). O gargalo é o volume total de dados, não a prioridade. |
+| Fotos em AVIF antes de WebP (`images.formats` no `next.config.ts`, commit `18c78b8`) | LCP 3,91 / 3,92 s → 3,51 / 3,35 s | **mantido** | Foto do topo 76 KB → 51 KB, foto da missão 54 KB → 41 KB. Download da foto do topo 3,07 s → 2,68 s. A primeira visita a cada tamanho de foto é mais lenta (a Vercel codifica o AVIF uma vez e guarda). |
