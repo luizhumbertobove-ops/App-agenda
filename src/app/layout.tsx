@@ -9,6 +9,8 @@ const spectral = Spectral({
   weight: ["300", "400"],
   style: ["normal", "italic"],
   variable: "--font-spectral",
+  // Sem preload: as 4 variações não disputam banda com a foto do topo, e só baixam as usadas. Ver PERF.md.
+  preload: false,
 });
 
 export const metadata: Metadata = {
