@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { usePress } from "./use-press";
 
 type Tone = "default" | "flat" | "soft" | "sage" | "inverse";
 
@@ -29,21 +29,33 @@ export function Card({
   onClick?: () => void;
   children: React.ReactNode;
 }) {
-  const [hover, setHover] = useState(false);
+  const { hover, press, handlers } = usePress();
+
+  // Interativo: sobe no hover e afunda no aperto (o aperto vence o hover).
+  const estadoInterativo: React.CSSProperties = interactive
+    ? {
+        transition: press
+          ? "transform var(--dur-instant) var(--ease-standard), box-shadow var(--dur-base) var(--ease-out-soft)"
+          : "var(--transition-surface)",
+        ...(press
+          ? { transform: "scale(var(--press-scale-soft))" }
+          : hover
+            ? { transform: "var(--lift-hover)", boxShadow: "var(--shadow-hairline), var(--shadow-lifted)", cursor: "pointer" }
+            : null),
+      }
+    : {};
+
   return (
     <div
       onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
+      {...(interactive ? handlers : null)}
       className={className}
       style={{
         borderRadius: "var(--radius-card)",
         padding,
         transition: "var(--transition-surface)",
         ...tones[tone],
-        ...(interactive && hover
-          ? { transform: "var(--lift-hover)", boxShadow: "var(--shadow-hairline), var(--shadow-lifted)", cursor: "pointer" }
-          : null),
+        ...estadoInterativo,
         ...style,
       }}
     >

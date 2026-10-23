@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { pressTransition, usePress } from "./use-press";
 
 type Variant = "primary" | "secondary" | "ghost" | "inverse";
 type Size = "sm" | "md" | "lg";
@@ -64,13 +65,13 @@ export function Button({
   style?: React.CSSProperties;
   children: React.ReactNode;
 }) {
-  const [hover, setHover] = useState(false);
-  const [press, setPress] = useState(false);
-  const [focusVisible, setFocusVisible] = useState(false);
-
   // blocked: sem hover/press/foco. grayed: só o disabled comum usa o cinza (loading mantém a variante).
   const blocked = disabled || loading;
   const grayed = disabled && !loading;
+  const { hover, press, handlers } = usePress(blocked);
+  const [focusVisible, setFocusVisible] = useState(false);
+  // Sobe 1px com sombra no hover só nas variantes de destaque.
+  const eleva = variant === "primary" || variant === "inverse";
 
   const computedStyle: React.CSSProperties = {
     display: fullWidth ? "flex" : "inline-flex",
@@ -85,8 +86,12 @@ export function Button({
     cursor: loading ? "progress" : disabled ? "not-allowed" : "pointer",
     textDecoration: "none",
     whiteSpace: "nowrap",
-    transition: "var(--transition-control), transform var(--dur-fast) var(--ease-standard)",
-    transform: press && !blocked ? "scale(var(--press-scale))" : "none",
+    transition: `var(--transition-control), ${pressTransition(press)}`,
+    transform: press && !blocked
+      ? "scale(var(--press-scale))"
+      : hover && !blocked && eleva
+        ? "var(--lift-hover-small)"
+        : "none",
     ...sizes[size],
     ...variants[variant],
     ...(grayed
@@ -94,24 +99,22 @@ export function Button({
       : null),
     ...(blocked ? null : hover ? hoverStyleFor(variant) : null),
     ...(blocked ? null : press ? pressStyleFor(variant) : null),
-    boxShadow: focusVisible && !blocked ? "var(--focus-ring)" : undefined,
+    boxShadow: focusVisible && !blocked
+      ? "var(--focus-ring)"
+      : hover && !blocked && eleva
+        ? "var(--shadow-soft)"
+        : undefined,
     ...style,
   };
 
-  const handlers = {
-    onMouseEnter: () => setHover(true),
-    onMouseLeave: () => {
-      setHover(false);
-      setPress(false);
-    },
-    onMouseDown: () => setPress(true),
-    onMouseUp: () => setPress(false),
+  const handlersComFoco = {
+    ...handlers,
     onFocus: (e: React.FocusEvent<HTMLElement>) => setFocusVisible(e.currentTarget.matches(":focus-visible")),
     onBlur: () => setFocusVisible(false),
   };
 
   const trailingIcon = iconRight ? (
-    <span style={{ display: "inline-flex", transition: "transform var(--dur-fast) var(--ease-standard)", transform: hover && !blocked ? "translateX(2px)" : "none" }}>
+    <span style={{ display: "inline-flex", transition: "transform var(--dur-base) var(--ease-out-soft)", transform: hover && !blocked ? "translateX(4px)" : "none" }}>
       {iconRight}
     </span>
   ) : null;
@@ -120,7 +123,7 @@ export function Button({
 
   if (href) {
     return (
-      <Link href={href} target={target} rel={rel} className={className} style={computedStyle} aria-busy={loading || undefined} {...handlers}>
+      <Link href={href} target={target} rel={rel} className={className} style={computedStyle} aria-busy={loading || undefined} {...handlersComFoco}>
         {spinner}
         {iconLeft}
         {children}
@@ -137,7 +140,7 @@ export function Button({
       onClick={onClick}
       className={className}
       style={computedStyle}
-      {...handlers}
+      {...handlersComFoco}
     >
       {spinner}
       {iconLeft}

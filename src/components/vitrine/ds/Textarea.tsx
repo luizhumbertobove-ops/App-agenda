@@ -16,7 +16,7 @@ export function Textarea({ label, hint, error, rows = 3, id, style, ...rest }: P
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
       {label && (
-        <label htmlFor={fieldId} style={{ font: "var(--type-caption)", fontWeight: "var(--weight-medium)", color: "var(--text-body)" }}>
+        <label htmlFor={fieldId} style={{ font: "var(--type-caption)", fontWeight: "var(--weight-medium)", color: error ? "var(--status-danger)" : focus ? "var(--text-link)" : "var(--text-body)", transition: "color var(--dur-fast) var(--ease-standard)" }}>
           {label}
         </label>
       )}

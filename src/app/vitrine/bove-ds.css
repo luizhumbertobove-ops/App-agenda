@@ -96,11 +96,11 @@
   --dur-instant:90ms;--dur-fast:160ms;--dur-base:240ms;--dur-slow:420ms;--dur-ambient:900ms;
   --transition-control:background-color var(--dur-fast) var(--ease-standard),color var(--dur-fast) var(--ease-standard),border-color var(--dur-fast) var(--ease-standard),box-shadow var(--dur-fast) var(--ease-standard);
   --transition-surface:transform var(--dur-base) var(--ease-out-soft),box-shadow var(--dur-base) var(--ease-out-soft);
-  --lift-hover:translateY(-2px);--press-scale:.985;
+  --lift-hover:translateY(-4px);--lift-hover-small:translateY(-1px);--press-scale:.96;--press-scale-soft:.98;
 }
 
 @media (prefers-reduced-motion:reduce) {
-  :root { --dur-fast:0ms;--dur-base:0ms;--dur-slow:0ms;--dur-ambient:0ms;--lift-hover:none;--press-scale:1 }
+  :root { --dur-fast:0ms;--dur-base:0ms;--dur-slow:0ms;--dur-ambient:0ms;--lift-hover:none;--lift-hover-small:none;--press-scale:1;--press-scale-soft:1 }
 }
 
 /* Resets escopados — nunca no elemento global, pra nao vazar pro CRM interno */
@@ -162,11 +162,17 @@
 
 /* Microinterações dos componentes
  * - .ds-fade-in: entrada com fade e subida de 2px (mensagens de erro e dialog de serviço).
+ * - .ds-pop: entrada com fade e escala de .6 (selo de check do serviço escolhido).
  * Hover e press dos componentes ficam inline nos próprios componentes (Button, Card, TimeSlot).
  * Durações vêm dos tokens, então prefers-reduced-motion já as zera.
  */
 @keyframes ds-fade-in { from { opacity:0; transform:translateY(-2px); } to { opacity:1; transform:none; } }
 .bove-ds .ds-fade-in { animation:ds-fade-in var(--dur-base) var(--ease-out-soft) both; }
+
+/* - .ds-pop: selo que surge com escala .6 a 1 (check do serviço escolhido). */
+@keyframes ds-pop { from { opacity:0; transform:scale(.6); } to { opacity:1; transform:none; } }
+.bove-ds .ds-pop { animation:ds-pop var(--dur-base) var(--ease-out-soft) both; }
+@media (prefers-reduced-motion:reduce) { .bove-ds .ds-pop { animation:none; } }
 
 /* Fluxo de agendamento: transições de etapa, carregamento e confirmação.
  * - .ds-step-in: entra com fade e subida de 6px a cada troca de etapa (usar com key da etapa).

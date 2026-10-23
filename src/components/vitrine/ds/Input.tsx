@@ -17,7 +17,7 @@ export function Input({ label, hint, error, iconLeft, id, style, ...rest }: Prop
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
       {label && (
-        <label htmlFor={inputId} style={{ font: "var(--type-caption)", fontWeight: "var(--weight-medium)", color: "var(--text-body)" }}>
+        <label htmlFor={inputId} style={{ font: "var(--type-caption)", fontWeight: "var(--weight-medium)", color: error ? "var(--status-danger)" : focus ? "var(--text-link)" : "var(--text-body)", transition: "color var(--dur-fast) var(--ease-standard)" }}>
           {label}
         </label>
       )}
@@ -33,7 +33,7 @@ export function Input({ label, hint, error, iconLeft, id, style, ...rest }: Prop
           borderRadius: "var(--radius-control)",
           transition: "var(--transition-control)",
           boxShadow: focus ? "var(--focus-ring)" : "none",
-          color: "var(--text-subtle)",
+          color: focus ? "var(--border-focus)" : "var(--text-subtle)",
         }}
       >
         {iconLeft}
