@@ -1,5 +1,7 @@
+import { Check } from "lucide-react";
 import { Card } from "./Card";
 import { Badge } from "./Badge";
+import { Icon } from "./Icon";
 
 export function ServiceCard({
   name,
@@ -36,8 +38,8 @@ export function ServiceCard({
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        transition: "var(--transition-surface), var(--transition-control)",
-        boxShadow: selected && !highlight ? "0 0 0 1.5px var(--action-primary), var(--shadow-lifted)" : undefined,
+        // Sem transition aqui: o Card cuida do retorno do press e do hover.
+        ...(selected && !highlight ? { boxShadow: "0 0 0 1.5px var(--action-primary), var(--shadow-lifted)" } : null),
       }}
     >
       {selected && highlight}
@@ -53,6 +55,15 @@ export function ServiceCard({
           {duration && <span>{duration}</span>}
           {duration && price && <span aria-hidden="true">·</span>}
           {price && <span style={{ color: "var(--text-strong)", fontWeight: "var(--weight-medium)", fontSize: "var(--size-body-s)" }}>{price}</span>}
+          {selected && (
+            <span
+              className="ds-pop"
+              aria-hidden="true"
+              style={{ marginLeft: "auto", alignSelf: "center", flex: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: "var(--radius-pill)", background: "var(--action-primary)", color: "var(--action-primary-fg)" }}
+            >
+              <Icon icon={Check} size={14} />
+            </span>
+          )}
         </div>
       </div>
     </Card>

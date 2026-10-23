@@ -100,15 +100,20 @@ export function Carrossel({
 .${c} .${c}-item { flex: 0 0 auto; min-width: 0; display: flex; flex-direction: column; scroll-snap-align: start; width: calc((100% - var(--space-16)) / ${porTela.celular}); }
 @media (min-width: 640px) { .${c} .${c}-item { width: calc((100% - var(--space-16)) / ${porTela.tablet}); } }
 @media (min-width: 1024px) { .${c} .${c}-item { width: calc((100% - var(--space-16)) / ${porTela.desktop}); } }
-@media (prefers-reduced-motion: reduce) { .${c} .${c}-trilho { scroll-behavior: auto; } }
+@media (prefers-reduced-motion: reduce) { .${c} .${c}-trilho { scroll-behavior: auto; } .${c} .${c}-seta:active, .${c} .${c}-ponto:active span { transform: none; } }
 .${c} .${c}-controles { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-8); margin-top: var(--space-24); }
-.${c} .${c}-seta { width: var(--tap-min); height: var(--tap-min); flex: none; display: grid; place-items: center; border-radius: var(--radius-pill); border: 1px solid var(--border-hairline); background: var(--surface-card); color: var(--text-strong); box-shadow: var(--shadow-soft); cursor: pointer; transition: var(--transition-control); }
+.${c} .${c}-seta { width: var(--tap-min); height: var(--tap-min); flex: none; display: grid; place-items: center; border-radius: var(--radius-pill); border: 1px solid var(--border-hairline); background: var(--surface-card); color: var(--text-strong); box-shadow: var(--shadow-soft); cursor: pointer; transition: var(--transition-control), transform var(--dur-base) var(--ease-out-soft); }
 .${c} .${c}-seta:hover:not(:disabled) { background: var(--action-secondary-hover); }
+.${c} .${c}-seta:active:not(:disabled) { transform: scale(var(--press-scale)); transition-duration: var(--dur-instant); }
+.${c} .${c}-seta svg { transition: transform var(--dur-base) var(--ease-out-soft); }
+.${c} .${c}-seta-ant:hover:not(:disabled) svg { transform: translateX(-2px); }
+.${c} .${c}-seta-prox:hover:not(:disabled) svg { transform: translateX(2px); }
 .${c} .${c}-seta:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .${c} .${c}-seta:disabled { color: var(--action-disabled-fg); box-shadow: none; cursor: default; }
 .${c} .${c}-ponto { width: 24px; height: var(--tap-min); display: grid; place-items: center; background: none; border: 0; padding: 0; cursor: pointer; }
 .${c} .${c}-ponto:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-pill); }
-.${c} .${c}-ponto span { display: block; width: 8px; height: 8px; border-radius: var(--radius-pill); background: var(--border-strong); transition: width var(--dur-base) var(--ease-standard), background-color var(--dur-base) var(--ease-standard); }
+.${c} .${c}-ponto span { display: block; width: 8px; height: 8px; border-radius: var(--radius-pill); background: var(--border-strong); transition: width var(--dur-base) var(--ease-standard), background-color var(--dur-base) var(--ease-standard), transform var(--dur-fast) var(--ease-standard); }
+.${c} .${c}-ponto:active span { transform: scale(.8); }
 .${c} .${c}-ponto[aria-current="true"] span { width: 24px; background: var(--action-primary); }
 `;
 
@@ -134,7 +139,7 @@ export function Carrossel({
         <div className={`${c}-controles`}>
           <button
             type="button"
-            className={`${c}-seta`}
+            className={`${c}-seta ${c}-seta-ant`}
             aria-label="Anterior"
             disabled={noInicio}
             onClick={() => irPara(Math.max(ativo - 1, 0))}
@@ -155,7 +160,7 @@ export function Carrossel({
           ))}
           <button
             type="button"
-            className={`${c}-seta`}
+            className={`${c}-seta ${c}-seta-prox`}
             aria-label="Próximo"
             disabled={noFim}
             onClick={() => irPara(Math.min(ativo + 1, total - 1))}
