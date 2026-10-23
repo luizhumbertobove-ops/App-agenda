@@ -4,10 +4,11 @@ import type { NextConfig } from "next";
 const supabaseUrl = process.env.SUPABASE_URL ? new URL(process.env.SUPABASE_URL) : null;
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  ...(supabaseUrl
-    ? {
-        images: {
+  images: {
+    /** AVIF primeiro (fotos menores no 4G), WebP para navegador sem AVIF. Ver PERF.md. */
+    formats: ["image/avif", "image/webp"],
+    ...(supabaseUrl
+      ? {
           remotePatterns: [
             {
               protocol: supabaseUrl.protocol.replace(":", "") as "http" | "https",
@@ -15,9 +16,9 @@ const nextConfig: NextConfig = {
               pathname: "/storage/v1/object/public/**",
             },
           ],
-        },
-      }
-    : {}),
+        }
+      : {}),
+  },
 };
 
 export default nextConfig;
