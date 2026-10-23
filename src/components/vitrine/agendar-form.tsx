@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { CalendarDays, Clock, MessageCircle, Phone } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { whatsappLink, isBusinessDay } from "@/lib/vitrine";
 import { useSlots } from "@/hooks/use-slots";
 import { formatCurrencyBR } from "@/lib/format";
@@ -9,6 +10,8 @@ import { Card } from "@/components/vitrine/ds/Card";
 import { ServiceCard } from "@/components/vitrine/ds/ServiceCard";
 import { Input } from "@/components/vitrine/ds/Input";
 import { Textarea } from "@/components/vitrine/ds/Textarea";
+import { dur, ease, spring } from "@/components/vitrine/motion/tokens";
+import { useVitrineMotion } from "@/components/vitrine/motion/provider";
 
 /** Nome e WhatsApp lembrados neste aparelho depois da primeira reserva. */
 const CLIENTE_KEY = "bove-cliente";
@@ -73,6 +76,8 @@ export function AgendarForm({
     serviceName: string;
     isFirstSession: boolean;
   } | null>(null);
+
+  const { reduce, t } = useVitrineMotion();
 
   const service = services.find((s) => s.id === serviceId);
   const today = useMemo(() => todayBR(), []);
@@ -159,25 +164,52 @@ export function AgendarForm({
     }
   }
 
-  // Estado dos horários: troca de chave reanima o bloco (ds-step-in) quando muda data ou etapa.
+  // Estado dos horários: a troca de chave faz o bloco sair (fade) e entrar (subida suave) ao mudar data ou etapa.
   const estadoHorarios = isWeekend ? "fim-de-semana" : loadingSlots ? "carregando" : slots.length === 0 ? "vazio" : "horarios";
+
+  // Entrada em cascata (título, cards, botão): cada item entra um pouco depois do anterior.
+  const entradaCascata = (i: number) => ({
+    initial: reduce ? false : { opacity: 0, y: 12 },
+    animate: { opacity: 1, y: 0, transition: t({ duration: dur.slow, ease: ease.outSoft, delay: 0.25 + i * 0.08 }) },
+  });
+
+  // Bloco que abre e fecha pela altura. O overflow hidden corta o anel de foco dos campos,
+  // então o bloco tem 4px de respiro interno e margem negativa do mesmo tamanho.
+  const blocoAltura = {
+    initial: reduce ? false : { height: 0, opacity: 0 },
+    animate: { height: "auto", opacity: 1, transition: t({ height: spring, opacity: { duration: dur.base } }) },
+    exit: { height: 0, opacity: 0, transition: t({ height: spring, opacity: { duration: dur.base } }) },
+  };
+  const blocoAlturaStyle = { overflow: "hidden", margin: -4 } as const;
 
   if (confirmed) {
     return (
-      <div className="ds-step-in flex flex-col items-center text-center gap-4">
+      <motion.div
+        initial={reduce ? false : { opacity: 0, y: 20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1, transition: t({ duration: dur.enter, ease: ease.outSoft }) }}
+        className="flex flex-col items-center text-center gap-4"
+      >
         <svg width={48} height={48} viewBox="0 0 52 52" fill="none" aria-hidden="true" style={{ color: "var(--status-success)" }}>
-          <circle className="ds-check-circle" cx="26" cy="26" r="24" pathLength={1} stroke="currentColor" strokeWidth="2" />
-          <path
-            className="ds-check-draw"
+          <motion.circle
+            cx="26"
+            cy="26"
+            r="24"
+            stroke="currentColor"
+            strokeWidth="2"
+            initial={reduce ? false : { pathLength: 0 }}
+            animate={{ pathLength: 1, transition: t({ duration: dur.slow, ease: ease.outSoft }) }}
+          />
+          <motion.path
             d="M15 27l7 7 15-15"
-            pathLength={1}
             stroke="currentColor"
             strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
+            initial={reduce ? false : { pathLength: 0 }}
+            animate={{ pathLength: 1, transition: t({ duration: dur.slow, ease: ease.outSoft, delay: dur.slow * 0.6 }) }}
           />
         </svg>
-        <div className="flex flex-col gap-2">
+        <motion.div {...entradaCascata(0)} className="flex flex-col gap-2">
           <h1>Sessão confirmada</h1>
           <p style={{ font: "var(--type-body)", color: "var(--text-body)" }}>
             {confirmed.serviceName} · {confirmed.dateLabel}
@@ -185,36 +217,40 @@ export function AgendarForm({
           <p style={{ font: "var(--type-caption)", color: "var(--text-muted)" }}>
             A confirmação chega no WhatsApp. Qualquer coisa, é só chamar.
           </p>
-        </div>
+        </motion.div>
 
         {confirmed.isFirstSession && (
-          <Card tone="soft" className="text-left w-full">
-            <p style={{ font: "var(--type-body)", fontSize: "var(--size-body-s)", fontWeight: "var(--weight-medium)", color: "var(--text-strong)", marginBottom: "var(--space-8)" }}>
-              Primeira sessão — alguns avisos
-            </p>
-            <ul style={{ font: "var(--type-caption)", color: "var(--text-body)", paddingLeft: 18, display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
-              <li>Venha com roupas leves e confortáveis.</li>
-              <li>Evite refeições pesadas pouco antes da sessão.</li>
-              <li>Chegue com alguns minutos de antecedência.</li>
-              <li>Beba bastante água depois da sessão.</li>
-            </ul>
-            <p style={{ font: "var(--type-caption)", color: "var(--text-muted)", marginTop: "var(--space-12)", paddingTop: "var(--space-12)", borderTop: "1px solid var(--border-hairline)" }}>
-              Remarcações e cancelamentos com menos de 4 horas de antecedência têm cobrança de 50% do valor da
-              sessão.
-            </p>
-          </Card>
+          <motion.div {...entradaCascata(1)} className="w-full">
+            <Card tone="soft" className="text-left w-full">
+              <p style={{ font: "var(--type-body)", fontSize: "var(--size-body-s)", fontWeight: "var(--weight-medium)", color: "var(--text-strong)", marginBottom: "var(--space-8)" }}>
+                Primeira sessão — alguns avisos
+              </p>
+              <ul style={{ font: "var(--type-caption)", color: "var(--text-body)", paddingLeft: 18, display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
+                <li>Venha com roupas leves e confortáveis.</li>
+                <li>Evite refeições pesadas pouco antes da sessão.</li>
+                <li>Chegue com alguns minutos de antecedência.</li>
+                <li>Beba bastante água depois da sessão.</li>
+              </ul>
+              <p style={{ font: "var(--type-caption)", color: "var(--text-muted)", marginTop: "var(--space-12)", paddingTop: "var(--space-12)", borderTop: "1px solid var(--border-hairline)" }}>
+                Remarcações e cancelamentos com menos de 4 horas de antecedência têm cobrança de 50% do valor da
+                sessão.
+              </p>
+            </Card>
+          </motion.div>
         )}
 
-        <Button
-          variant="primary"
-          href={whatsappLink("Olá Humberto, acabei de reservar um horário pelo site!", whatsapp)}
-          target="_blank"
-          rel="noopener noreferrer"
-          iconLeft={<Icon icon={MessageCircle} size={18} />}
-        >
-          Falar no WhatsApp
-        </Button>
-      </div>
+        <motion.div {...entradaCascata(2)}>
+          <Button
+            variant="primary"
+            href={whatsappLink("Olá Humberto, acabei de reservar um horário pelo site!", whatsapp)}
+            target="_blank"
+            rel="noopener noreferrer"
+            iconLeft={<Icon icon={MessageCircle} size={18} />}
+          >
+            Falar no WhatsApp
+          </Button>
+        </motion.div>
+      </motion.div>
     );
   }
 
@@ -237,6 +273,22 @@ export function AgendarForm({
               price={`a partir de ${formatCurrencyBR(s.price)}`}
               selected={s.id === serviceId}
               onSelect={() => handleServiceChange(s.id)}
+              highlight={
+                s.id === serviceId ? (
+                  <motion.span
+                    layoutId="servico-selecionado"
+                    transition={t(spring)}
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      borderRadius: "inherit",
+                      boxShadow: "inset 0 0 0 1.5px var(--action-primary)",
+                      pointerEvents: "none",
+                      zIndex: -1,
+                    }}
+                  />
+                ) : undefined
+              }
             />
           ))}
         </div>
@@ -256,112 +308,153 @@ export function AgendarForm({
           }
         />
 
-        {date && (
-          <div className="flex flex-col gap-2">
-            <span className="ds-eyebrow flex items-center gap-1.5">
-              <Icon icon={Clock} size={13} />
-              Horários disponíveis
-            </span>
-            <div key={`${date}-${estadoHorarios}`} className="ds-step-in flex flex-col gap-2">
-              {isWeekend ? (
-                <p style={{ font: "var(--type-caption)", color: "var(--text-body)" }}>
-                  Esse dia é combinado diretamente.{" "}
-                  <a href={whatsappLink(fallbackMessage(), whatsapp)} target="_blank" rel="noopener noreferrer">
-                    Fale no WhatsApp
-                  </a>{" "}
-                  pra ver a disponibilidade.
-                </p>
-              ) : loadingSlots ? (
-                <div aria-busy="true" className="grid grid-cols-3 gap-2">
-                  <span className="sr-only">Carregando horários</span>
-                  {[0, 1, 2, 3, 4, 5].map((i) => (
-                    <span key={i} className="ds-skeleton" aria-hidden="true" />
-                  ))}
-                </div>
-              ) : slots.length === 0 ? (
-                <p style={{ font: "var(--type-caption)", color: "var(--text-body)" }}>
-                  Nenhum horário disponível nessa data.{" "}
-                  <a href={whatsappLink(fallbackMessage(), whatsapp)} target="_blank" rel="noopener noreferrer">
-                    Fale no WhatsApp
-                  </a>
-                  .
-                </p>
-              ) : (
-                <div className="grid grid-cols-3 gap-2">
-                  {slots.map((slot) => {
-                    const time = new Date(slot.start).toLocaleTimeString("pt-BR", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      timeZone: "America/Sao_Paulo",
-                    });
-                    return (
-                      <TimeSlot
-                        key={slot.start}
-                        time={time}
-                        state={selectedSlot?.start === slot.start ? "selected" : "available"}
-                        onClick={() => setSelectedSlot(slot)}
-                      />
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        <AnimatePresence initial={false}>
+          {date && (
+            <motion.div key="horarios" {...blocoAltura} style={blocoAlturaStyle}>
+              <div className="flex flex-col gap-2" style={{ padding: 4 }}>
+                <span className="ds-eyebrow flex items-center gap-1.5">
+                  <Icon icon={Clock} size={13} />
+                  Horários disponíveis
+                </span>
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div
+                    key={`${date}-${estadoHorarios}`}
+                    initial={reduce ? false : { opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0, transition: t({ duration: dur.slow, ease: ease.outSoft }) }}
+                    exit={{ opacity: 0, transition: t({ duration: dur.fast }) }}
+                    className="flex flex-col gap-2"
+                  >
+                    {isWeekend ? (
+                      <p style={{ font: "var(--type-caption)", color: "var(--text-body)" }}>
+                        Esse dia é combinado diretamente.{" "}
+                        <a href={whatsappLink(fallbackMessage(), whatsapp)} target="_blank" rel="noopener noreferrer">
+                          Fale no WhatsApp
+                        </a>{" "}
+                        pra ver a disponibilidade.
+                      </p>
+                    ) : loadingSlots ? (
+                      <div aria-busy="true" className="grid grid-cols-3 gap-2">
+                        <span className="sr-only">Carregando horários</span>
+                        {[0, 1, 2, 3, 4, 5].map((i) => (
+                          <span key={i} className="ds-skeleton" aria-hidden="true" />
+                        ))}
+                      </div>
+                    ) : slots.length === 0 ? (
+                      <p style={{ font: "var(--type-caption)", color: "var(--text-body)" }}>
+                        Nenhum horário disponível nessa data.{" "}
+                        <a href={whatsappLink(fallbackMessage(), whatsapp)} target="_blank" rel="noopener noreferrer">
+                          Fale no WhatsApp
+                        </a>
+                        .
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-2">
+                        {slots.map((slot, i) => {
+                          const time = new Date(slot.start).toLocaleTimeString("pt-BR", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            timeZone: "America/Sao_Paulo",
+                          });
+                          const selecionado = selectedSlot?.start === slot.start;
+                          return (
+                            <motion.div
+                              key={slot.start}
+                              initial={reduce ? false : { opacity: 0, y: 8 }}
+                              animate={{
+                                opacity: 1,
+                                y: 0,
+                                transition: t({ duration: dur.base, ease: ease.outSoft, delay: Math.min(i, 8) * 0.03 }),
+                              }}
+                            >
+                              <TimeSlot
+                                time={time}
+                                state={selecionado ? "selected" : "available"}
+                                onClick={() => setSelectedSlot(slot)}
+                                highlight={
+                                  selecionado ? (
+                                    <motion.span
+                                      layoutId="slot-selecionado"
+                                      transition={t(spring)}
+                                      style={{
+                                        position: "absolute",
+                                        inset: -1,
+                                        borderRadius: "inherit",
+                                        background: "var(--action-primary)",
+                                        zIndex: -1,
+                                      }}
+                                    />
+                                  ) : undefined
+                                }
+                              />
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        {selectedSlot && (
-          <div key="dados" className="ds-step-in flex flex-col gap-5">
-            {lembrado ? (
-              <p style={{ font: "var(--type-body)", color: "var(--text-body)" }}>
-                Reservando como <strong>{lembrado.name}</strong>, WhatsApp {lembrado.phone}.{" "}
-                <button
-                  type="button"
-                  onClick={() => {
-                    try {
-                      localStorage.removeItem(CLIENTE_KEY);
-                    } catch {}
-                    setLembrado(null);
-                    setName("");
-                    setPhone("");
-                  }}
-                  style={{ color: "var(--action-primary)", textDecoration: "underline" }}
-                >
-                  Não é você?
-                </button>
-              </p>
-            ) : (
-              <>
-                <Input label="Seu nome" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome completo" />
-                <Input
-                  type="tel"
-                  label="WhatsApp"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="(16) 99999-9999"
-                  iconLeft={<Icon icon={Phone} size={16} />}
-                  hint="Só para confirmar o horário. Da próxima vez, este aparelho lembra de você."
+        <AnimatePresence initial={false}>
+          {selectedSlot && (
+            <motion.div key="dados" {...blocoAltura} style={blocoAlturaStyle}>
+              <div className="flex flex-col gap-5" style={{ padding: 4 }}>
+                {lembrado ? (
+                  <p style={{ font: "var(--type-body)", color: "var(--text-body)" }}>
+                    Reservando como <strong>{lembrado.name}</strong>, WhatsApp {lembrado.phone}.{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        try {
+                          localStorage.removeItem(CLIENTE_KEY);
+                        } catch {}
+                        setLembrado(null);
+                        setName("");
+                        setPhone("");
+                      }}
+                      style={{ color: "var(--action-primary)", textDecoration: "underline" }}
+                    >
+                      Não é você?
+                    </button>
+                  </p>
+                ) : (
+                  <>
+                    <Input label="Seu nome" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome completo" />
+                    <Input
+                      type="tel"
+                      label="WhatsApp"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="(16) 99999-9999"
+                      iconLeft={<Icon icon={Phone} size={16} />}
+                      hint="Só para confirmar o horário. Da próxima vez, este aparelho lembra de você."
+                    />
+                  </>
+                )}
+                <input
+                  type="text"
+                  name="website"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  aria-hidden="true"
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                  style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0 }}
                 />
-              </>
-            )}
-            <input
-              type="text"
-              name="website"
-              tabIndex={-1}
-              autoComplete="off"
-              aria-hidden="true"
-              value={website}
-              onChange={(e) => setWebsite(e.target.value)}
-              style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0 }}
-            />
-            <Textarea
-              label="Observações (opcional)"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-              placeholder="Alguma preferência ou informação?"
-            />
-          </div>
-        )}
+                <Textarea
+                  label="Observações (opcional)"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={2}
+                  placeholder="Alguma preferência ou informação?"
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {error && (
           <p
