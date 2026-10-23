@@ -7,6 +7,9 @@ import {
   INSTAGRAM_URL,
 } from "@/lib/vitrine";
 
+/** Padrão do link das avaliações: o formulário não aceita vazio, e a vitrine trata este valor como "sem link". */
+export const LINK_GOOGLE_PADRAO = "https://www.google.com/maps";
+
 export type CampoVitrine = {
   readonly key: string;
   readonly label: string;
@@ -29,6 +32,7 @@ const CAMPOS = [
   { key: "headerBotaoAgendar", label: "Botão Agendar (cabeçalho)", section: "Menu", type: "text", default: "Agendar" },
   { key: "menuServicos", label: "Link Serviços", section: "Menu", type: "text", default: "Serviços" },
   { key: "menuSobre", label: "Link Sobre", section: "Menu", type: "text", default: "Sobre" },
+  { key: "menuAvaliacoes", label: "Link Avaliações", section: "Menu", type: "text", default: "Avaliações" },
   { key: "menuContato", label: "Link Contato", section: "Menu", type: "text", default: "Contato" },
 
   // Topo (hero)
@@ -88,6 +92,11 @@ const CAMPOS = [
   { key: "galeriaEyebrow", label: "Selo da seção", section: "Galeria", type: "text", default: "Galeria" },
   { key: "galeriaTitulo", label: "Título da seção", section: "Galeria", type: "text", default: "No dia a dia do consultório" },
   { key: "galeriaLegenda", label: "Texto antes do link do Instagram", section: "Galeria", type: "text", default: "Mais fotos no Instagram" },
+
+  // Avaliações
+  { key: "avaliacoesEyebrow", label: "Selo da seção", section: "Avaliações", type: "text", default: "Avaliações" },
+  { key: "avaliacoesTitulo", label: "Título da seção", section: "Avaliações", type: "text", default: "Quem já veio conta" },
+  { key: "avaliacoesLinkGoogle", label: "Link das avaliações no Google Maps", section: "Avaliações", type: "text", default: LINK_GOOGLE_PADRAO },
 
   // Contato
   {

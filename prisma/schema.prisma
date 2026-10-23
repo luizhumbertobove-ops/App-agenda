@@ -160,6 +160,43 @@ model VitrineContent {
   updatedAt DateTime @updatedAt
 }
 
+/// Foto do carrossel da galeria da vitrine (ordem crescente de `position`).
+model GalleryPhoto {
+  id        String   @id @default(cuid())
+  url       String
+  alt       String   @default("")
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+/// Avaliação do Google. Chega pelo scraper como PENDING (ou à mão como APPROVED);
+/// só as APPROVED aparecem na vitrine.
+model GoogleReview {
+  id           String       @id @default(cuid())
+  /// data-review-id do Google; nulo nas cadastradas à mão
+  externalId   String?      @unique
+  author       String
+  rating       Int
+  text         String       @default("")
+  /// Data aproximada (o Google só mostra "há 2 semanas")
+  publishedAt  DateTime?
+  status       ReviewStatus @default(PENDING)
+  source       ReviewSource @default(GOOGLE)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  HIDDEN
+}
+
+enum ReviewSource {
+  GOOGLE
+  MANUAL
+}
+
 enum AppointmentStatus {
   SCHEDULED
   CONFIRMED
