@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { updateAppointment } from "./appointments";
+import { cancelAppointment, updateAppointment } from "./appointments";
 import {
   makeAppointment,
+  makeBlock,
   makeClient,
   makePayment,
   makePlanSubscription,
@@ -187,5 +188,105 @@ describe("updateAppointment: reabrir", () => {
     const kept = await prisma.payment.findMany({ where: { appointmentId: appt.id } });
     expect(kept).toHaveLength(1);
     expect(kept[0]).toMatchObject({ id: payment.id, status: "PAID", mpPaymentId: "123" });
+  });
+});
+
+describe("updateAppointment: cancelar, remarcar e editar", () => {
+  it("cancelar via update cancela cobranças em aberto e mantém as pagas", async () => {
+    const client = await makeClient();
+    const appt = await makeAppointment({ start: START, end: END, clientId: client.id });
+    const open = await makePayment({ appointmentId: appt.id, clientId: client.id, amount: 100, status: "PENDING" });
+    const paid = await makePayment({ appointmentId: appt.id, clientId: client.id, amount: 50, status: "PAID" });
+
+    await updateAppointment(appt.id, { status: "CANCELLED" });
+
+    expect(await prisma.payment.findUniqueOrThrow({ where: { id: open.id } })).toMatchObject({ status: "CANCELLED" });
+    expect(await prisma.payment.findUniqueOrThrow({ where: { id: paid.id } })).toMatchObject({ status: "PAID" });
+  });
+
+  it("remarcar para horário ocupado → 409", async () => {
+    const client = await makeClient();
+    const appt = await makeAppointment({ start: START, end: END, clientId: client.id });
+    await makeAppointment({
+      start: new Date("2025-01-10T15:00:00Z"),
+      end: new Date("2025-01-10T16:00:00Z"),
+      clientId: client.id,
+    });
+
+    await expect(
+      updateAppointment(appt.id, {
+        startTime: new Date("2025-01-10T15:00:00Z"),
+        endTime: new Date("2025-01-10T16:00:00Z"),
+      }),
+    ).rejects.toMatchObject({ status: 409, message: "Conflito de horário com outro agendamento" });
+  });
+
+  it("remarcar para horário com bloqueio → 409", async () => {
+    const client = await makeClient();
+    const appt = await makeAppointment({ start: START, end: END, clientId: client.id });
+    await makeBlock(new Date("2025-01-10T15:00:00Z"), new Date("2025-01-10T16:00:00Z"));
+
+    await expect(
+      updateAppointment(appt.id, {
+        startTime: new Date("2025-01-10T15:00:00Z"),
+        endTime: new Date("2025-01-10T16:00:00Z"),
+      }),
+    ).rejects.toMatchObject({ status: 409, message: "Horário bloqueado" });
+  });
+
+  it("editar só observações não checa conflito", async () => {
+    const client = await makeClient();
+    const appt = await makeAppointment({ start: START, end: END, clientId: client.id });
+    await makeBlock(START, END);
+
+    const result = await updateAppointment(appt.id, { notes: "x" });
+
+    expect(result.appointment.notes).toBe("x");
+  });
+
+  it("ligar cliente: título 'Nome - Serviço' e cobranças sem cliente passam ao cliente", async () => {
+    const client = await makeClient({ name: "Ana Silva" });
+    const appt = await makeAppointment({ start: START, end: END, clientId: null });
+    await prisma.appointment.update({ where: { id: appt.id }, data: { title: "Caio - Massagem" } });
+    const payment = await makePayment({ appointmentId: appt.id, clientId: null, amount: 100, status: "PENDING" });
+
+    const result = await updateAppointment(appt.id, { clientId: client.id });
+
+    expect(result.appointment).toMatchObject({ clientId: client.id, title: "Ana Silva - Massagem" });
+    expect(await prisma.payment.findUniqueOrThrow({ where: { id: payment.id } })).toMatchObject({ clientId: client.id });
+  });
+
+  it("marcar parceria: clientId null e título com partnerName", async () => {
+    const client = await makeClient();
+    const appt = await makeAppointment({ start: START, end: END, clientId: client.id });
+
+    const result = await updateAppointment(appt.id, { isPartner: true, partnerName: "Julia" });
+
+    expect(result.appointment).toMatchObject({ clientId: null, isPartner: true, title: "Julia - Massagem" });
+  });
+
+  it("cancelAppointment com keepDone não mexe em atendimento DONE", async () => {
+    const client = await makeClient();
+    const appt = await makeAppointment({ start: START, end: END, clientId: client.id, status: "DONE" });
+
+    const result = await cancelAppointment(appt.id, { keepDone: true });
+
+    expect(result.cancelled).toBe(false);
+    expect(await prisma.appointment.findUniqueOrThrow({ where: { id: appt.id } })).toMatchObject({ status: "DONE" });
+  });
+
+  it("cancelAppointment com motivo grava cancelReason e cancela cobrança em aberto", async () => {
+    const client = await makeClient();
+    const appt = await makeAppointment({ start: START, end: END, clientId: client.id });
+    const payment = await makePayment({ appointmentId: appt.id, clientId: client.id, amount: 100, status: "PENDING" });
+
+    const result = await cancelAppointment(appt.id, { reason: "Chuva" });
+
+    expect(result.cancelled).toBe(true);
+    expect(await prisma.appointment.findUniqueOrThrow({ where: { id: appt.id } })).toMatchObject({
+      status: "CANCELLED",
+      cancelReason: "Chuva",
+    });
+    expect(await prisma.payment.findUniqueOrThrow({ where: { id: payment.id } })).toMatchObject({ status: "CANCELLED" });
   });
 });

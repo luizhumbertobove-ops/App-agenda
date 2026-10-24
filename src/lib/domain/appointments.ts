@@ -6,6 +6,7 @@ import type {
   Prisma,
 } from "@/generated/prisma/client";
 import { formatDateBR } from "@/lib/date";
+import { parseEventTitle } from "@/lib/google-calendar";
 import { DomainError } from "./errors";
 import { OPEN_PAYMENT_STATUSES } from "./constants";
 import { findConflict, withScheduleLock, type Tx } from "./schedule";
@@ -136,6 +137,34 @@ export async function updateAppointment(
       throw new DomainError("Agendamento não encontrado", 404);
     }
 
+    // Remarcar: só se o horário veio. Atendimento e bloqueio contam como conflito.
+    if (input.startTime !== undefined || input.endTime !== undefined) {
+      const conflict = await findConflict(
+        tx,
+        { start: input.startTime ?? existing.startTime, end: input.endTime ?? existing.endTime },
+        { excludeAppointmentId: id },
+      );
+      if (conflict) {
+        throw new DomainError(
+          conflict.kind === "appointment"
+            ? "Conflito de horário com outro agendamento"
+            : "Horário bloqueado",
+          409,
+        );
+      }
+    }
+
+    // Parceria e cadastro não se misturam: marcar parceria desliga o cliente; ligar um cliente
+    // desliga a parceria.
+    const toPartner = input.isPartner === true;
+    let newClient: Client | null = null;
+    if (!toPartner && input.clientId && input.clientId !== existing.clientId) {
+      newClient = await tx.client.findUnique({ where: { id: input.clientId } });
+      if (!newClient) {
+        throw new DomainError("Cliente não encontrado", 404);
+      }
+    }
+
     const wantsDone = input.status === "DONE";
     if (wantsDone && existing.status === "DONE") {
       throw new DomainError("Este atendimento já foi concluído.", 409);
@@ -169,6 +198,33 @@ export async function updateAppointment(
     if (input.cancelReason !== undefined) data.cancelReason = input.cancelReason;
     if (input.startTime !== undefined) data.startTime = input.startTime;
     if (input.endTime !== undefined) data.endTime = input.endTime;
+
+    // O título só muda se serviço, cliente ou nome da parceria mudar. Atendimento importado do
+    // Google pode não ter cadastro: aí o nome é o que já está no título ("Caio - Massagem").
+    const titleName = parseEventTitle(existing.title).clientName;
+    const serviceType = input.serviceType ?? existing.serviceType;
+    const serviceChanged = input.serviceType !== undefined && input.serviceType !== existing.serviceType;
+    const clientLabel = toPartner
+      ? (input.partnerName ?? titleName)
+      : (newClient?.name ?? existing.client?.name ?? titleName);
+    const titleChanged =
+      serviceChanged ||
+      !!newClient ||
+      (toPartner && !!input.partnerName && input.partnerName !== titleName);
+    if (titleChanged) data.title = `${clientLabel} - ${serviceType}`;
+
+    if (input.isPartner !== undefined) data.isPartner = input.isPartner;
+    if (toPartner) {
+      data.clientId = null;
+    } else if (newClient) {
+      data.clientId = newClient.id;
+      data.isPartner = false;
+      // Cobranças do atendimento que estavam sem cliente passam ao cliente escolhido.
+      await tx.payment.updateMany({
+        where: { appointmentId: id, clientId: null },
+        data: { clientId: newClient.id },
+      });
+    }
 
     if (wantsDone && planSub) {
       // Concluir pelo pacote usa uma sessão (a do mais antigo com saldo).
@@ -217,19 +273,43 @@ export async function updateAppointment(
       include: { client: true },
     });
 
-    const calendarChanged =
-      (input.startTime !== undefined &&
-        input.startTime.getTime() !== existing.startTime.getTime()) ||
-      (input.endTime !== undefined && input.endTime.getTime() !== existing.endTime.getTime());
-
     return {
       appointment,
       previousClient: existing.client,
       googleEventId: appointment.googleEventId,
       keptPayments,
       cancelled: cancelling,
-      calendarChanged,
+      calendarChanged: input.startTime !== undefined || input.endTime !== undefined || titleChanged,
     };
+  });
+}
+
+// Cancela o atendimento (DELETE e sync do Google). keepDone deixa um atendimento concluído como está.
+export async function cancelAppointment(
+  id: string,
+  opts: { reason?: string; keepDone?: boolean } = {},
+): Promise<{ cancelled: boolean; googleEventId: string | null }> {
+  return withScheduleLock(async (tx) => {
+    const existing = await tx.appointment.findUnique({ where: { id } });
+    if (!existing) {
+      throw new DomainError("Agendamento não encontrado", 404);
+    }
+    if (existing.status === "CANCELLED" || (opts.keepDone && existing.status === "DONE")) {
+      return { cancelled: false, googleEventId: existing.googleEventId };
+    }
+
+    await tx.appointment.update({
+      where: { id },
+      data: {
+        status: "CANCELLED",
+        ...(opts.reason !== undefined ? { cancelReason: opts.reason } : {}),
+      },
+    });
+    await tx.payment.updateMany({
+      where: { appointmentId: id, status: { in: [...OPEN_PAYMENT_STATUSES] } },
+      data: { status: "CANCELLED" },
+    });
+    return { cancelled: true, googleEventId: existing.googleEventId };
   });
 }
 

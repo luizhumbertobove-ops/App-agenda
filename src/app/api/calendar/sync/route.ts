@@ -8,6 +8,7 @@ import {
   parseEventTitle,
   createCalendarEvent,
 } from "@/lib/google-calendar";
+import { cancelAppointment } from "@/lib/domain/appointments";
 
 // Fica em PUBLIC_PATHS (proxy.ts) por causa do cron, então a autorização é feita aqui:
 // o Vercel Cron chama com CRON_SECRET; o botão "Sincronizar agenda" chama logado.
@@ -53,17 +54,10 @@ async function sync(from: Date, to: Date) {
       if (event.status === "cancelled") {
         const appt = await prisma.appointment.findUnique({
           where: { googleEventId: event.id },
-          select: { id: true, status: true },
+          select: { id: true },
         });
-        if (appt && appt.status !== "CANCELLED" && appt.status !== "DONE") {
-          await prisma.appointment.update({
-            where: { id: appt.id },
-            data: { status: "CANCELLED", cancelReason: "Apagado no Google Agenda" },
-          });
-          await prisma.payment.updateMany({
-            where: { appointmentId: appt.id, status: { in: ["PENDING", "SENT", "OVERDUE"] } },
-            data: { status: "CANCELLED" },
-          });
+        if (appt) {
+          await cancelAppointment(appt.id, { reason: "Apagado no Google Agenda", keepDone: true });
         }
         continue;
       }
