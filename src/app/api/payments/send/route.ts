@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { createPixCharge } from "@/lib/mercadopago";
 import { sendText, buildPaymentMessage } from "@/lib/evolution";
 import { getSettings } from "@/lib/settings";
+import { findReusablePayment } from "@/lib/domain/payments";
 import { z } from "zod";
 
 const schema = z
@@ -37,6 +38,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Cliente ou atendimento não encontrado" }, { status: 404 });
   }
 
+  // Reaproveita a cobrança em aberto (inclusive vencida) do agendamento em vez de duplicar
+  const existingPayment = appointmentId ? await findReusablePayment(appointmentId) : null;
+
   const pix = await createPixCharge({
     clientName: client.name,
     clientEmail: client.email ?? "cliente@semEmail.com",
@@ -44,13 +48,6 @@ export async function POST(req: NextRequest) {
     description: description || "Sessão de massagem",
     externalReference: appointmentId ?? client.id,
   });
-
-  // Reaproveita a cobrança pendente do agendamento em vez de duplicar
-  const existingPayment = appointmentId
-    ? await prisma.payment.findFirst({
-        where: { appointmentId, status: { in: ["PENDING", "SENT"] } },
-      })
-    : null;
 
   const paymentData = {
     amount,
