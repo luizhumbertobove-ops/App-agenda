@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { ClientSearch } from "@/components/client-search";
 import { EmptyState } from "@/components/empty-state";
+import { pageShell } from "@/components/page-shell";
 
 const PAGE_SIZE = 60;
 
@@ -82,7 +83,7 @@ export default async function ClientesPage({
     : `${total} cadastrado${total !== 1 ? "s" : ""}`;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-24 pt-6 md:px-6 md:pt-8">
+    <div className={pageShell()}>
       <header className="mb-5 flex items-end justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-medium uppercase tracking-[0.14em] text-amber-700">{eyebrow}</p>
@@ -137,7 +138,7 @@ export default async function ClientesPage({
               <h2 className="sticky top-0 z-10 bg-gray-50 px-1 py-1.5 text-xs font-semibold text-gray-500">
                 {letra}
               </h2>
-              <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white md:grid md:grid-cols-2 md:gap-3 md:divide-y-0 md:overflow-visible md:border-0 md:bg-transparent">
+              <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white @4xl:grid @4xl:grid-cols-2 @4xl:gap-3 @4xl:divide-y-0 @4xl:overflow-visible @4xl:border-0 @4xl:bg-transparent">
                 {lista.map((client) => {
                   const lastAppt = client.appointments[0];
                   const pendingCount = client.payments.length;
@@ -148,7 +149,7 @@ export default async function ClientesPage({
                     <li key={client.id}>
                       <Link
                         href={`/clientes/${client.id}`}
-                        className="flex min-h-16 items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-50 md:rounded-xl md:border md:border-gray-200 md:bg-white md:hover:border-violet-300"
+                        className="flex min-h-16 items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-50 @4xl:rounded-xl @4xl:border @4xl:border-gray-200 @4xl:bg-white @4xl:hover:border-violet-300"
                       >
                         <span
                           aria-hidden

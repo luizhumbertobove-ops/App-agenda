@@ -28,11 +28,13 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={`h-full ${dmSans.variable} ${spectral.variable}`}>
-      <body className="font-sans h-full bg-gray-50 text-gray-800 antialiased">
-        <div className="flex h-full">
+    <html lang="pt-BR" className={`${dmSans.variable} ${spectral.variable}`}>
+      <body className="font-sans bg-gray-50 text-gray-800 antialiased">
+        {/* A página rola na janela (não numa caixa): no celular a barra de endereço recolhe,
+            o toque no topo sobe a tela e a posição volta certa ao retornar. */}
+        <div className="flex min-h-dvh">
           <Sidebar />
-          <main className="flex-1 overflow-auto">{children}</main>
+          <main className="min-w-0 flex-1">{children}</main>
         </div>
       </body>
     </html>

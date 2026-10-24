@@ -4,6 +4,7 @@ import { ExternalLink } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { prisma } from "@/lib/prisma";
 import { AvaliacoesManager, type AvaliacaoAdmin } from "./avaliacoes-manager";
+import { pageShell } from "@/components/page-shell";
 
 export default async function AvaliacoesPage() {
   const avaliacoes = await prisma.googleReview.findMany({
@@ -17,7 +18,7 @@ export default async function AvaliacoesPage() {
   }));
 
   return (
-    <div className="p-3 sm:p-6 max-w-3xl mx-auto">
+    <div className={pageShell({ narrow: true })}>
       <PageHeader
         title="Avaliações"
         subtitle="Escolha quais avaliações do Google aparecem na vitrine"

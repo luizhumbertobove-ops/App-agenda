@@ -33,6 +33,10 @@ const links = [
 const mobileMain = links.slice(0, 4);
 const mobileMore = links.slice(4);
 
+/** Item da barra lateral: pílula com rótulo no computador, círculo de 44px só com o ícone no tablet. */
+const railItem =
+  "flex min-h-11 items-center gap-3 rounded-full text-[15px] max-lg:w-11 max-lg:justify-center lg:w-full lg:px-4";
+
 function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
 }
@@ -58,9 +62,10 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Computador: barra lateral clara, com a assinatura no topo */}
-      <aside className="hidden md:flex w-60 shrink-0 flex-col border-r border-gray-200 bg-white py-6">
-        <div className="px-6 mb-8">
+      {/* Computador: barra lateral clara, com a assinatura no topo. Fica parada enquanto a página rola.
+          No tablet (md até lg) vira uma faixa só de ícones, para sobrar espaço ao conteúdo. */}
+      <aside className="sticky top-0 hidden h-dvh w-[76px] shrink-0 flex-col border-r border-gray-200 bg-white py-6 md:flex lg:w-60">
+        <div className="mb-8 hidden px-6 lg:block">
           <p className="font-display text-[26px] leading-none text-gray-900">Humberto Bove</p>
           <div className="mt-2 flex items-center gap-2">
             <span className="h-px w-8 bg-amber-500" />
@@ -68,41 +73,41 @@ export function Sidebar() {
           </div>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1 px-3">
+        <nav className="flex flex-1 flex-col gap-1 px-3 max-lg:items-center">
           {links.map(({ href, label, icon: Icon }) => {
             const active = isActive(pathname, href);
             return (
               <Link
                 key={href}
                 href={href}
-                className={`flex min-h-11 items-center gap-3 rounded-full px-4 text-[15px] transition-colors ${
+                title={label}
+                aria-current={active ? "page" : undefined}
+                className={`${railItem} transition-colors ${
                   active
                     ? "bg-violet-600 font-medium text-white"
                     : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                 }`}
               >
                 <Icon size={18} strokeWidth={1.75} className="shrink-0" />
-                {label}
+                <span className="max-lg:sr-only">{label}</span>
               </Link>
             );
           })}
         </nav>
 
-        <div className="px-3">
+        <div className="flex flex-col px-3 max-lg:items-center">
           <Link
             href="/vitrine"
             target="_blank"
-            className="flex min-h-11 items-center gap-3 rounded-full px-4 text-[15px] text-gray-600 hover:bg-gray-100"
+            title="Ver vitrine"
+            className={`${railItem} text-gray-600 hover:bg-gray-100`}
           >
-            <Globe size={18} strokeWidth={1.75} />
-            Ver vitrine
+            <Globe size={18} strokeWidth={1.75} className="shrink-0" />
+            <span className="max-lg:sr-only">Ver vitrine</span>
           </Link>
-          <button
-            onClick={handleLogout}
-            className="flex min-h-11 w-full items-center gap-3 rounded-full px-4 text-[15px] text-gray-500 hover:bg-gray-100"
-          >
-            <LogOut size={18} strokeWidth={1.75} />
-            Sair
+          <button onClick={handleLogout} title="Sair" className={`${railItem} text-gray-500 hover:bg-gray-100`}>
+            <LogOut size={18} strokeWidth={1.75} className="shrink-0" />
+            <span className="max-lg:sr-only">Sair</span>
           </button>
         </div>
       </aside>

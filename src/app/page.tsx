@@ -12,6 +12,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { APPOINTMENT_STATUS } from "@/lib/status-labels";
 import { whatsappLink } from "@/lib/vitrine";
 import { WhatsappStatus } from "@/components/whatsapp-status";
+import { pageShell } from "@/components/page-shell";
 
 async function getDashboardData() {
   const today = startOfTodayBR();
@@ -96,7 +97,7 @@ export default async function InicioPage() {
 
 
   return (
-    <div className="mx-auto max-w-5xl px-5 pt-6 pb-24 md:px-6 md:pb-10">
+    <div className={pageShell()}>
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-medium uppercase tracking-[0.14em] text-amber-700 capitalize">
@@ -112,9 +113,9 @@ export default async function InicioPage() {
         <WhatsappStatus compact />
       </div>
 
-      <div className="mt-6 flex flex-col gap-6 md:grid md:grid-cols-2 md:items-start">
+      <div className="mt-6 flex flex-col gap-6 @4xl:grid @4xl:grid-cols-2 @4xl:items-start">
         {nextAppointment && (
-          <section className="relative overflow-hidden rounded-2xl bg-violet-800 p-5 text-gray-50 md:col-start-1 md:row-start-1">
+          <section className="relative overflow-hidden rounded-2xl bg-violet-800 p-5 text-gray-50 @4xl:col-start-1 @4xl:row-start-1">
             <svg
               aria-hidden
               viewBox="0 0 180 90"
@@ -167,7 +168,7 @@ export default async function InicioPage() {
         )}
 
         {goalPct !== null && monthlyGoal && (
-          <section className="rounded-xl border border-gray-200 bg-white p-5 md:col-start-2 md:row-start-1">
+          <section className="rounded-xl border border-gray-200 bg-white p-5 @4xl:col-start-2 @4xl:row-start-1">
             <div className="flex items-baseline justify-between gap-3">
               <h2 className="text-sm text-gray-500">Meta de {monthName}</h2>
               <span className="text-sm font-semibold text-amber-700">{goalPct}%</span>
@@ -189,7 +190,7 @@ export default async function InicioPage() {
           </section>
         )}
 
-        <div className="grid grid-cols-2 gap-3 md:col-start-2 md:row-start-2">
+        <div className="grid grid-cols-2 gap-3 @4xl:col-start-2 @4xl:row-start-2">
           <div className="rounded-xl border border-gray-200 bg-white p-4">
             <p className="text-sm text-gray-500">Hoje</p>
             <p className="mt-1 font-display text-3xl text-gray-900">{todayAppointments.length}</p>
@@ -202,7 +203,7 @@ export default async function InicioPage() {
           </div>
         </div>
 
-        <section className="md:col-start-1 md:row-start-2">
+        <section className="@4xl:col-start-1 @4xl:row-start-2">
           <div className="flex items-baseline justify-between gap-3">
             <h2 className="text-[17px] font-semibold text-gray-900">Agenda de hoje</h2>
             <Link href="/agenda" className="text-sm text-violet-700">
@@ -252,7 +253,7 @@ export default async function InicioPage() {
           )}
         </section>
 
-        <section className="md:col-start-2 md:row-start-3">
+        <section className="@4xl:col-start-2 @4xl:row-start-3">
           <div className="flex items-baseline justify-between gap-3">
             <h2 className="text-[17px] font-semibold text-gray-900">Cobranças em aberto</h2>
             <Link href="/financeiro" className="text-sm text-violet-700">

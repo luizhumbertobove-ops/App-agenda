@@ -4,12 +4,13 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { getWorkSchedule } from "@/lib/settings";
 import { JornadaForm } from "./jornada-form";
+import { pageShell } from "@/components/page-shell";
 
 export default async function JornadaPage() {
   const jornada = await getWorkSchedule();
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 px-5 pt-6 pb-24">
+    <div className={`${pageShell({ narrow: true })} space-y-6`}>
       <Link
         href="/agenda"
         className="inline-flex min-h-11 items-center gap-1 text-sm text-gray-500 hover:text-gray-900"

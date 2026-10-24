@@ -14,6 +14,7 @@ import { PAYMENT_STATUS } from "@/lib/status-labels";
 import { EmptyState } from "@/components/empty-state";
 import { formatCurrencyBR } from "@/lib/format";
 import Link from "next/link";
+import { pageShell } from "@/components/page-shell";
 
 const PENDING_STATUSES = ["PENDING", "SENT", "OVERDUE"];
 
@@ -115,7 +116,7 @@ export default async function FinanceiroPage({
   const monthLabel = format(today, "MMMM yyyy", { locale: ptBR });
 
   return (
-    <div className="px-5 pt-6 pb-24 md:mx-auto md:max-w-6xl md:px-6 md:pt-8">
+    <div className={pageShell()}>
       <header className="mb-6 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-xs font-medium uppercase tracking-[0.14em] text-amber-700">
@@ -135,8 +136,9 @@ export default async function FinanceiroPage({
         </div>
       </header>
 
-      <div className="flex flex-col gap-6 md:grid md:grid-cols-2 md:items-start md:gap-6">
-        <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-6 @4xl:grid @4xl:grid-cols-2 @4xl:items-start @4xl:gap-6">
+        {/* Ao lado da lista longa de cobranças, o resumo acompanha a rolagem. */}
+        <div className="flex flex-col gap-4 @4xl:sticky @4xl:top-8">
           <section className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100 p-5">
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-amber-700">
               Recebido no mês
@@ -186,7 +188,7 @@ export default async function FinanceiroPage({
           </section>
         </div>
 
-        <section className="mt-6 flex flex-col gap-3 md:mt-0">
+        <section className="mt-6 flex flex-col gap-3 @4xl:mt-0">
           <div className="flex items-center justify-between gap-3">
             <h2 className="font-display text-2xl text-gray-900">Cobranças</h2>
           </div>

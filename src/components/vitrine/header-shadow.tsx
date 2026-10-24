@@ -18,21 +18,12 @@ export function HeaderShadow({ children, className, style }: HeaderShadowProps) 
     const header = ref.current;
     if (!header) return;
 
-    // A página rola dentro do <main overflow-auto> do layout raiz, não na janela:
-    // usa o primeiro ancestral rolável e cai na janela se não houver.
-    let scroller: HTMLElement | null = header.parentElement;
-    while (scroller && !/(auto|scroll)/.test(getComputedStyle(scroller).overflowY)) {
-      scroller = scroller.parentElement;
-    }
-    const target: HTMLElement | Window = scroller ?? window;
-    const getY = () => (scroller ? scroller.scrollTop : window.scrollY);
-
     const onScroll = () => {
-      header.dataset.scrolled = getY() > 8 ? "true" : "false";
+      header.dataset.scrolled = window.scrollY > 8 ? "true" : "false";
     };
     onScroll();
-    target.addEventListener("scroll", onScroll, { passive: true });
-    return () => target.removeEventListener("scroll", onScroll);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   return (

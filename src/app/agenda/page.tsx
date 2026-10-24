@@ -15,6 +15,7 @@ import { BlockedSlotChip } from "@/components/blocked-slot-chip";
 import { BlockSlotModal } from "@/components/block-slot-modal";
 import { StatusBadge } from "@/components/status-badge";
 import { APPOINTMENT_STATUS } from "@/lib/status-labels";
+import { pageShell } from "@/components/page-shell";
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -192,7 +193,7 @@ export default async function AgendaPage({
     });
 
     return (
-      <div className="mx-auto max-w-7xl px-5 pb-24 pt-6 md:px-8">
+      <div className={pageShell()}>
         <div className="flex flex-col gap-6 md:mx-auto md:max-w-3xl">
           <AgendaHeader
             view="day"
@@ -377,7 +378,7 @@ export default async function AgendaPage({
   const weekEndDate = addDays(weekStart, 6);
 
   return (
-    <div className="mx-auto max-w-7xl px-5 pb-24 pt-6 md:px-8">
+    <div className={pageShell()}>
       <div className="flex flex-col gap-6">
         <AgendaHeader
           view="week"

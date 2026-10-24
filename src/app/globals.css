@@ -138,6 +138,6 @@ body {
 /* Espaço para a barra inferior do celular (só nas telas do admin, onde ela existe). */
 @media (max-width: 767px) {
   body:has([data-mobile-nav]) main {
-    padding-bottom: calc(88px + env(safe-area-inset-bottom));
+    padding-bottom: calc(64px + env(safe-area-inset-bottom));
   }
 }

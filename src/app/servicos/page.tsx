@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Package } from "lucide-react";
 import { NewServiceModal, EditServiceModal } from "@/components/service-modal";
 import { formatCurrencyBR } from "@/lib/format";
+import { pageShell } from "@/components/page-shell";
 
 export default async function ServicosPage() {
   const services = await prisma.service.findMany({ orderBy: { name: "asc" } });
@@ -11,7 +12,7 @@ export default async function ServicosPage() {
   const naVitrine = services.filter((s) => s.active).length;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-4 pb-24 sm:p-6">
+    <div className={`${pageShell()} space-y-6`}>
       <header className="flex items-end justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-medium uppercase tracking-[0.14em] text-amber-700">
@@ -31,11 +32,11 @@ export default async function ServicosPage() {
           </div>
         </div>
       ) : (
-        <ul className="divide-y divide-gray-200 overflow-hidden rounded-xl border border-gray-200 bg-white md:grid md:grid-cols-2 md:gap-3 md:divide-y-0 md:overflow-visible md:border-0 md:bg-transparent">
+        <ul className="divide-y divide-gray-200 overflow-hidden rounded-xl border border-gray-200 bg-white @4xl:grid @4xl:grid-cols-2 @4xl:gap-3 @4xl:divide-y-0 @4xl:overflow-visible @4xl:border-0 @4xl:bg-transparent">
           {services.map((service) => (
             <li
               key={service.id}
-              className="flex min-h-16 items-center gap-3 bg-white px-4 py-3 md:rounded-xl md:border md:border-gray-200"
+              className="flex min-h-16 items-center gap-3 bg-white px-4 py-3 @4xl:rounded-xl @4xl:border @4xl:border-gray-200"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">

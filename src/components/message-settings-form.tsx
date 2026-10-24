@@ -137,7 +137,7 @@ export function MessageSettingsForm({ settings }: { settings: Settings }) {
     <div className="space-y-8">
       <section className="space-y-4">
         <h2 className="font-display text-2xl text-gray-900">Modelos de mensagem</h2>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 @4xl:grid-cols-2">
           {MODELOS.map(({ campo, ativo, titulo, variaveis, padrao }) => (
             <div key={campo} className="space-y-3 rounded-xl border border-gray-200 bg-white p-4">
               <div className="flex items-start justify-between gap-3">
