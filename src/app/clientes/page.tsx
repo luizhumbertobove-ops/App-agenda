@@ -8,6 +8,7 @@ import { Suspense } from "react";
 import { ClientSearch } from "@/components/client-search";
 import { EmptyState } from "@/components/empty-state";
 import { pageShell } from "@/components/page-shell";
+import { mergePlans } from "@/lib/plan-access";
 
 const PAGE_SIZE = 60;
 
@@ -59,6 +60,10 @@ export default async function ClientesPage({
       appointments: { orderBy: { startTime: "desc" }, take: 1 },
       payments: { where: { status: { in: ["PENDING", "SENT", "OVERDUE"] } } },
       planSubscriptions: { where: { active: true }, include: { plan: true } },
+      planMemberships: {
+        where: { subscription: { active: true } },
+        include: { subscription: { include: { plan: true } } },
+      },
     },
     orderBy: { name: "asc" },
     ...(q ? {} : { skip: (paginaAtual - 1) * PAGE_SIZE, take: PAGE_SIZE }),
@@ -142,7 +147,7 @@ export default async function ClientesPage({
                 {lista.map((client) => {
                   const lastAppt = client.appointments[0];
                   const pendingCount = client.payments.length;
-                  const activePlan = client.planSubscriptions[0];
+                  const activePlan = mergePlans(client.planSubscriptions, client.planMemberships)[0];
                   const temTelefone = client.phone !== "00000000000";
 
                   return (

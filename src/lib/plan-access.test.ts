@@ -4,7 +4,8 @@ import {
   clientPlansWhere,
   pickPlanWithBalance,
   normalizeMemberIds,
-  pickSuccessor
+  pickSuccessor,
+  mergePlans
 } from "./plan-access.ts";
 
 test("clientPlansWhere retorna OR com clientId e members.some", () => {
@@ -122,4 +123,14 @@ test("pickSuccessor retorna null quando sem membros", () => {
   };
   const result = pickSuccessor(sub);
   assert.equal(result, null);
+});
+
+test("mergePlans combina owned e memberships sem duplicar", () => {
+  const result = mergePlans([{ id: "a" }], [{ subscription: { id: "b" } }, { subscription: { id: "a" } }]);
+  assert.deepEqual(result, [{ id: "a" }, { id: "b" }]);
+});
+
+test("mergePlans retorna array vazio quando ambos vazios", () => {
+  const result = mergePlans([], []);
+  assert.deepEqual(result, []);
 });

@@ -4,6 +4,7 @@ import { updateCalendarEvent, deleteCalendarEvent, parseEventTitle } from "@/lib
 import { sendText, buildNoShowMessage } from "@/lib/evolution";
 import { getSettings } from "@/lib/settings";
 import { z } from "zod";
+import { clientPlansWhere, pickPlanWithBalance } from "@/lib/plan-access";
 
 const OPEN_STATUSES = ["PENDING", "SENT", "OVERDUE"] as const;
 
@@ -98,12 +99,12 @@ export async function PATCH(
   if (wantsDone && usePlan) {
     const subs = existing.clientId
       ? await prisma.planSubscription.findMany({
-          where: { clientId: existing.clientId, active: true },
+          where: { ...clientPlansWhere(existing.clientId), active: true },
           include: { plan: true },
           orderBy: { purchasedAt: "asc" },
         })
       : [];
-    const sub = subs.find((s) => s.sessionsUsed < s.plan.sessions);
+    const sub = pickPlanWithBalance(subs);
     if (!sub) {
       return NextResponse.json(
         { error: "Este cliente não tem sessões sobrando no pacote." },
@@ -139,10 +140,18 @@ export async function PATCH(
   let planUsedId: string | null = null;
   if (completing && planSub) {
     const used = planSub.sessionsUsed + 1;
-    await prisma.planSubscription.update({
-      where: { id: planSub.id },
+    const usedNow = await prisma.planSubscription.updateMany({
+      where: { id: planSub.id, sessionsUsed: planSub.sessionsUsed },
       data: { sessionsUsed: used, active: used < planSub.sessions },
     });
+    if (usedNow.count === 0) {
+      // Outro atendimento usou a sessão no meio do caminho: desfaz a trava de status.
+      await prisma.appointment.update({ where: { id }, data: { status: existing.status } });
+      return NextResponse.json(
+        { error: "Este cliente não tem sessões sobrando no pacote." },
+        { status: 409 }
+      );
+    }
     planUsedId = planSub.id;
   }
 

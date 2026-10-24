@@ -16,6 +16,7 @@ import { BlockSlotModal } from "@/components/block-slot-modal";
 import { StatusBadge } from "@/components/status-badge";
 import { APPOINTMENT_STATUS } from "@/lib/status-labels";
 import { pageShell } from "@/components/page-shell";
+import { mergePlans } from "@/lib/plan-access";
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -110,6 +111,10 @@ export default async function AgendaPage({
         client: {
           include: {
             planSubscriptions: { where: { active: true }, include: { plan: true } },
+            planMemberships: {
+              where: { subscription: { active: true } },
+              include: { subscription: { include: { plan: true } } },
+            },
           },
         },
         payments: {
@@ -153,9 +158,9 @@ export default async function AgendaPage({
     // Parceria: a parte do Beto costuma ser a metade.
     return (price * horas) / (appt.isPartner ? 2 : 1);
   };
-  // Sessões que sobram nos pacotes ativos do cliente.
+  // Sessões que sobram nos pacotes ativos do cliente (inclusive os familiares).
   const planRemaining = (appt: (typeof appointments)[number]) =>
-    (appt.client?.planSubscriptions ?? []).reduce(
+    mergePlans(appt.client?.planSubscriptions ?? [], appt.client?.planMemberships ?? []).reduce(
       (n, s) => n + Math.max(0, s.plan.sessions - s.sessionsUsed),
       0
     );
