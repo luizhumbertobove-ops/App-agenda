@@ -138,7 +138,7 @@ export default async function ClientesPage({
               <h2 className="sticky top-0 z-10 bg-gray-50 px-1 py-1.5 text-xs font-semibold text-gray-500">
                 {letra}
               </h2>
-              <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white @4xl:grid @4xl:grid-cols-2 @4xl:gap-3 @4xl:divide-y-0 @4xl:overflow-visible @4xl:border-0 @4xl:bg-transparent">
+              <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white @4xl:block @4xl:columns-2 @4xl:gap-3 @4xl:divide-y-0 @4xl:*:mb-3 @4xl:*:break-inside-avoid @4xl:overflow-visible @4xl:border-0 @4xl:bg-transparent">
                 {lista.map((client) => {
                   const lastAppt = client.appointments[0];
                   const pendingCount = client.payments.length;
