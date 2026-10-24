@@ -9,6 +9,10 @@ import {
   createCalendarEvent,
 } from "@/lib/google-calendar";
 import { cancelAppointment } from "@/lib/domain/appointments";
+import { DomainError } from "@/lib/domain/errors";
+
+/** Carência para o que o app acabou de criar: o evento no Google sai depois da resposta. */
+const SYNC_GRACE_MS = 5 * 60 * 1000;
 
 // Fica em PUBLIC_PATHS (proxy.ts) por causa do cron, então a autorização é feita aqui:
 // o Vercel Cron chama com CRON_SECRET; o botão "Sincronizar agenda" chama logado.
@@ -57,7 +61,12 @@ async function sync(from: Date, to: Date) {
           select: { id: true },
         });
         if (appt) {
-          await cancelAppointment(appt.id, { reason: "Apagado no Google Agenda", keepDone: true });
+          try {
+            await cancelAppointment(appt.id, { reason: "Apagado no Google Agenda", keepDone: true });
+          } catch (err) {
+            // Atendimento sumiu no meio da sincronização: segue para o próximo evento.
+            if (!(err instanceof DomainError && err.status === 404)) throw err;
+          }
         }
         continue;
       }
@@ -78,6 +87,11 @@ async function sync(from: Date, to: Date) {
         where: { googleEventId: event.id },
         select: { clientId: true, isPartner: true },
       });
+      // Evento recém-criado pelo app (o POST grava o googleEventId logo depois da resposta):
+      // espera a próxima sincronização, senão viraria um atendimento duplicado.
+      if (!current && event.created && Date.now() - Date.parse(event.created) < SYNC_GRACE_MS) {
+        continue;
+      }
       const linkClient = client && !current?.clientId && !current?.isPartner;
 
       await prisma.appointment.upsert({
@@ -109,6 +123,8 @@ async function sync(from: Date, to: Date) {
         googleEventId: null,
         status: { not: "CANCELLED" },
         startTime: { gte: new Date() },
+        // Recém-criados ainda estão ganhando o evento no POST (after): exportar agora duplicaria.
+        createdAt: { lt: new Date(Date.now() - SYNC_GRACE_MS) },
       },
       include: { client: true },
     });

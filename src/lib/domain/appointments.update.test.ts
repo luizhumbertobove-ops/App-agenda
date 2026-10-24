@@ -140,6 +140,23 @@ describe("updateAppointment: concluir", () => {
 });
 
 describe("updateAppointment: reabrir", () => {
+  it("reabrir não mexe na cobrança reaproveitada que o Mercado Pago pagou", async () => {
+    const client = await makeClient();
+    const appt = await makeAppointment({ start: START, end: END, clientId: client.id });
+    const payment = await makePayment({ appointmentId: appt.id, clientId: client.id, amount: 100, status: "SENT" });
+    await updateAppointment(appt.id, { status: "DONE", charge: { amount: 100, paid: true } });
+    await prisma.payment.update({ where: { id: payment.id }, data: { mpPaymentId: "987" } });
+
+    const result = await updateAppointment(appt.id, { status: "SCHEDULED" });
+
+    expect(result.keptPayments).toBe(1);
+    expect(await prisma.payment.findUniqueOrThrow({ where: { id: payment.id } })).toMatchObject({
+      status: "PAID",
+      mpPaymentId: "987",
+      preCompletionStatus: "SENT",
+    });
+  });
+
   it("reabrir apaga o lançamento do Concluir, restaura a cobrança e devolve a sessão", async () => {
     const client = await makeClient();
     const appt = await makeAppointment({ start: START, end: END, clientId: client.id });
