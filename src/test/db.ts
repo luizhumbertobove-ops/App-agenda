@@ -1,4 +1,4 @@
-import type { AppointmentStatus } from "@/generated/prisma/client";
+import type { AppointmentStatus, PaymentStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
 // Apaga os dados de todas as tabelas do schema, mantendo o histórico de migrations.
@@ -38,6 +38,28 @@ export function makeAppointment(data: {
       endTime: data.end,
       status: data.status,
       clientId: data.clientId ?? null,
+    },
+  });
+}
+
+export function makePayment(data: {
+  amount: number;
+  appointmentId?: string;
+  clientId?: string | null;
+  status?: PaymentStatus;
+  fromCompletion?: boolean;
+  mpPaymentId?: string;
+  paidAt?: Date;
+}) {
+  return prisma.payment.create({
+    data: {
+      amount: data.amount,
+      appointmentId: data.appointmentId ?? null,
+      clientId: data.clientId ?? null,
+      status: data.status,
+      fromCompletion: data.fromCompletion,
+      mpPaymentId: data.mpPaymentId,
+      paidAt: data.paidAt,
     },
   });
 }
