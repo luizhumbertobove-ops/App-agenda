@@ -137,8 +137,12 @@ export async function updateAppointment(
       throw new DomainError("Agendamento não encontrado", 404);
     }
 
-    // Remarcar: só se o horário veio. Atendimento e bloqueio contam como conflito.
-    if (input.startTime !== undefined || input.endTime !== undefined) {
+    // Remarcar: só se o horário mudou (o Editar sempre manda o horário, mesmo igual).
+    // Atendimento e bloqueio contam como conflito.
+    const timeChanged =
+      (input.startTime !== undefined && input.startTime.getTime() !== existing.startTime.getTime()) ||
+      (input.endTime !== undefined && input.endTime.getTime() !== existing.endTime.getTime());
+    if (timeChanged) {
       const conflict = await findConflict(
         tx,
         { start: input.startTime ?? existing.startTime, end: input.endTime ?? existing.endTime },
@@ -279,7 +283,7 @@ export async function updateAppointment(
       googleEventId: appointment.googleEventId,
       keptPayments,
       cancelled: cancelling,
-      calendarChanged: input.startTime !== undefined || input.endTime !== undefined || titleChanged,
+      calendarChanged: timeChanged || titleChanged,
     };
   });
 }

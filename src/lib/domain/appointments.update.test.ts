@@ -244,6 +244,17 @@ describe("updateAppointment: cancelar, remarcar e editar", () => {
     expect(result.appointment.notes).toBe("x");
   });
 
+  it("editar mandando o mesmo horário não checa conflito nem mexe no Google", async () => {
+    const client = await makeClient();
+    const appt = await makeAppointment({ start: START, end: END, clientId: client.id });
+    await makeBlock(START, END);
+
+    const result = await updateAppointment(appt.id, { startTime: START, endTime: END, notes: "y" });
+
+    expect(result.appointment.notes).toBe("y");
+    expect(result.calendarChanged).toBe(false);
+  });
+
   it("ligar cliente: título 'Nome - Serviço' e cobranças sem cliente passam ao cliente", async () => {
     const client = await makeClient({ name: "Ana Silva" });
     const appt = await makeAppointment({ start: START, end: END, clientId: null });
