@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { SELECT_ITEM_GALERIA } from "@/lib/galeria";
 
 const updateSchema = z.object({
   alt: z.string().trim().max(200, "A descrição passa de 200 caracteres."),
@@ -23,7 +24,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const foto = await prisma.galleryPhoto.update({
     where: { id },
     data: { alt: body.data.alt },
-    select: { id: true, url: true, alt: true },
+    select: SELECT_ITEM_GALERIA,
   });
 
   revalidatePath("/vitrine");

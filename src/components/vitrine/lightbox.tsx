@@ -5,7 +5,7 @@ import Image from "next/image";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Icon } from "@/components/vitrine/ds/Icon";
 
-export type FotoLightbox = { id: string; url: string; alt: string };
+export type FotoLightbox = { id: string; url: string; alt: string; type?: "IMAGE" | "VIDEO" };
 
 /**
  * Visualizador de fotos com <dialog> nativo (showModal: foco preso, Esc fecha).
@@ -98,14 +98,28 @@ export function Lightbox({
               <Icon icon={ChevronLeft} size={18} />
             </button>
             <div className={`${c}-imagem`}>
-              <Image
-                key={foto.id}
-                src={foto.url}
-                alt={foto.alt || "Foto do consultório Spaço Lhum"}
-                fill
-                sizes="100vw"
-                className="object-contain"
-              />
+              {foto.type === "VIDEO" ? (
+                <video
+                  key={foto.id}
+                  src={foto.url}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  controls
+                  aria-label={foto.alt || "Vídeo do consultório"}
+                  className="absolute inset-0 size-full object-contain"
+                />
+              ) : (
+                <Image
+                  key={foto.id}
+                  src={foto.url}
+                  alt={foto.alt || "Foto do consultório Spaço Lhum"}
+                  fill
+                  sizes="100vw"
+                  className="object-contain"
+                />
+              )}
             </div>
             <button
               type="button"

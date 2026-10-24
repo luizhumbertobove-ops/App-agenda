@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 import { Carrossel } from "@/components/vitrine/carrossel";
 import { Lightbox, type FotoLightbox } from "@/components/vitrine/lightbox";
+import { VideoLoop } from "@/components/vitrine/video-loop";
 
 /** Carrossel da galeria; clicar numa foto abre o lightbox. */
 export function GaleriaFotos({ fotos }: { fotos: FotoLightbox[] }) {
@@ -23,18 +24,22 @@ export function GaleriaFotos({ fotos }: { fotos: FotoLightbox[] }) {
               disparoRef.current = e.currentTarget;
               setIndice(i);
             }}
-            aria-label={`Ampliar foto ${i + 1} de ${fotos.length}`}
+            aria-label={`Ampliar ${foto.type === "VIDEO" ? "vídeo" : "foto"} ${i + 1} de ${fotos.length}`}
             className="group relative block w-full aspect-[4/5] overflow-hidden cursor-zoom-in"
             style={{ borderRadius: "var(--radius-image)", boxShadow: "var(--shadow-inset-hairline)" }}
           >
-            <Image
-              src={foto.url}
-              alt={foto.alt || "Foto do consultório Spaço Lhum"}
-              fill
-              sizes="(min-width: 1024px) 340px, (min-width: 640px) 45vw, 80vw"
-              className="object-cover transition-transform group-hover:motion-safe:scale-[1.03]"
-              style={{ filter: "saturate(.92)", transitionDuration: "var(--dur-slow)", transitionTimingFunction: "var(--ease-out-soft)" }}
-            />
+            {foto.type === "VIDEO" ? (
+              <VideoLoop src={foto.url} alt={foto.alt} />
+            ) : (
+              <Image
+                src={foto.url}
+                alt={foto.alt || "Foto do consultório Spaço Lhum"}
+                fill
+                sizes="(min-width: 1024px) 340px, (min-width: 640px) 45vw, 80vw"
+                className="object-cover transition-transform group-hover:motion-safe:scale-[1.03]"
+                style={{ filter: "saturate(.92)", transitionDuration: "var(--dur-slow)", transitionTimingFunction: "var(--ease-out-soft)" }}
+              />
+            )}
           </button>
         ))}
       />

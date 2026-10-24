@@ -9,13 +9,87 @@ import type { FotoGaleria } from "@/lib/galeria";
 import { comprimirImagem, MENSAGEM_ARQUIVO_GRANDE } from "@/lib/comprimir-imagem";
 
 type Mensagem = { tipo: "ok" | "erro"; texto: string };
+type Resultado = { ok: true; foto: FotoGaleria } | { ok: false; erro: string };
+type Envio = { atual: number; total: number; video: boolean; percentual: number };
 
+// Mesmo valor de LIMITE_ITENS_GALERIA (src/lib/galeria.ts). Não importamos de lá: esse módulo puxa o Prisma e não pode ir ao navegador.
 const LIMITE = 20;
+const LIMITE_VIDEO_BYTES = 50 * 1024 * 1024;
 const CONFIRMA_MS = 4000;
+const MENSAGEM_VIDEO_GRANDE = "O vídeo passa de 50 MB. Escolha um vídeo mais curto.";
+const MENSAGEM_SEM_CONEXAO = "Sem conexão. Verifique a internet e tente de novo.";
+
+/** Envia o arquivo direto ao armazenamento, informando o progresso (XMLHttpRequest permite medir o upload). */
+function enviarArquivo(url: string, arquivo: File, aoProgredir: (percentual: number) => void): Promise<boolean> {
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", url);
+    xhr.setRequestHeader("Content-Type", arquivo.type);
+    xhr.upload.onprogress = (evento) => {
+      if (evento.lengthComputable) aoProgredir(Math.round((evento.loaded / evento.total) * 100));
+    };
+    xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300);
+    xhr.onerror = () => resolve(false);
+    xhr.onabort = () => resolve(false);
+    xhr.send(arquivo);
+  });
+}
+
+async function enviarFoto(arquivo: File): Promise<Resultado> {
+  const dados = new FormData();
+  dados.append("file", await comprimirImagem(arquivo));
+
+  try {
+    const resposta = await fetch("/api/galeria", { method: "POST", body: dados });
+    const retorno = await resposta.json().catch(() => ({}));
+
+    if (!resposta.ok) {
+      const erro =
+        retorno.error ?? (resposta.status === 413 ? MENSAGEM_ARQUIVO_GRANDE : "Não foi possível enviar a foto. Tente de novo.");
+      return { ok: false, erro };
+    }
+    return { ok: true, foto: retorno.foto };
+  } catch {
+    return { ok: false, erro: MENSAGEM_SEM_CONEXAO };
+  }
+}
+
+/** Vídeo em 3 passos: pedir o endereço de envio, subir direto ao armazenamento, confirmar na galeria. */
+async function enviarVideo(arquivo: File, aoProgredir: (percentual: number) => void): Promise<Resultado> {
+  if (arquivo.size > LIMITE_VIDEO_BYTES) return { ok: false, erro: MENSAGEM_VIDEO_GRANDE };
+
+  try {
+    const envio = await fetch("/api/galeria/video/envio", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tipo: arquivo.type, tamanho: arquivo.size }),
+    });
+    const dadosEnvio = await envio.json().catch(() => ({}));
+    if (!envio.ok || !dadosEnvio.uploadUrl || !dadosEnvio.path) {
+      return { ok: false, erro: dadosEnvio.error ?? "Não foi possível enviar o vídeo. Tente de novo." };
+    }
+
+    const subiu = await enviarArquivo(dadosEnvio.uploadUrl, arquivo, aoProgredir);
+    if (!subiu) return { ok: false, erro: "Não foi possível enviar o vídeo. Tente de novo." };
+
+    const confirmacao = await fetch("/api/galeria/video", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: dadosEnvio.path }),
+    });
+    const retorno = await confirmacao.json().catch(() => ({}));
+    if (!confirmacao.ok) {
+      return { ok: false, erro: retorno.error ?? "Não foi possível adicionar o vídeo. Tente de novo." };
+    }
+    return { ok: true, foto: retorno.foto };
+  } catch {
+    return { ok: false, erro: MENSAGEM_SEM_CONEXAO };
+  }
+}
 
 export function GaleriaManager({ fotos: fotosIniciais }: { fotos: FotoGaleria[] }) {
   const [fotos, setFotos] = useState<FotoGaleria[]>(fotosIniciais);
-  const [enviando, setEnviando] = useState<{ atual: number; total: number } | null>(null);
+  const [enviando, setEnviando] = useState<Envio | null>(null);
   const [mensagem, setMensagem] = useState<Mensagem | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -24,34 +98,30 @@ export function GaleriaManager({ fotos: fotosIniciais }: { fotos: FotoGaleria[] 
     let enviadas = 0;
 
     for (const [indice, arquivo] of arquivos.entries()) {
-      setEnviando({ atual: indice + 1, total: arquivos.length });
-      const dados = new FormData();
-      dados.append("file", await comprimirImagem(arquivo));
+      const ehVideo = arquivo.type.startsWith("video/");
+      setEnviando({ atual: indice + 1, total: arquivos.length, video: ehVideo, percentual: 0 });
 
-      try {
-        const resposta = await fetch("/api/galeria", { method: "POST", body: dados });
-        const retorno = await resposta.json().catch(() => ({}));
+      const resultado = ehVideo
+        ? await enviarVideo(arquivo, (percentual) =>
+            setEnviando((atual) => (atual ? { ...atual, percentual } : atual)),
+          )
+        : await enviarFoto(arquivo);
 
-        if (!resposta.ok) {
-          const aviso = enviadas > 0 ? `${enviadas} de ${arquivos.length} enviadas. ` : "";
-          const erro =
-            retorno.error ?? (resposta.status === 413 ? MENSAGEM_ARQUIVO_GRANDE : "Não foi possível enviar a foto. Tente de novo.");
-          setMensagem({ tipo: "erro", texto: `${aviso}${erro}` });
-          break;
-        }
-
-        enviadas += 1;
-        setFotos((atual) => [...atual, retorno.foto]);
-      } catch {
-        setMensagem({ tipo: "erro", texto: "Sem conexão. Verifique a internet e tente de novo." });
+      if (!resultado.ok) {
+        const aviso = enviadas > 0 ? `${enviadas} de ${arquivos.length} enviadas. ` : "";
+        setMensagem({ tipo: "erro", texto: `${aviso}${resultado.erro}` });
         break;
       }
+
+      enviadas += 1;
+      const foto = resultado.foto;
+      setFotos((atual) => [...atual, foto]);
     }
 
     setEnviando(null);
     if (inputRef.current) inputRef.current.value = "";
     if (enviadas > 0 && enviadas === arquivos.length) {
-      setMensagem({ tipo: "ok", texto: enviadas === 1 ? "Foto adicionada à galeria." : `${enviadas} fotos adicionadas à galeria.` });
+      setMensagem({ tipo: "ok", texto: enviadas === 1 ? "Item adicionado à galeria." : `${enviadas} itens adicionados à galeria.` });
     }
   }
 
@@ -78,7 +148,7 @@ export function GaleriaManager({ fotos: fotosIniciais }: { fotos: FotoGaleria[] 
       }
     } catch {
       setFotos(anterior);
-      setMensagem({ tipo: "erro", texto: "Sem conexão. Verifique a internet e tente de novo." });
+      setMensagem({ tipo: "erro", texto: MENSAGEM_SEM_CONEXAO });
     }
   }
 
@@ -98,7 +168,7 @@ export function GaleriaManager({ fotos: fotosIniciais }: { fotos: FotoGaleria[] 
       }
     } catch {
       setFotos(anterior);
-      setMensagem({ tipo: "erro", texto: "Sem conexão. Verifique a internet e tente de novo." });
+      setMensagem({ tipo: "erro", texto: MENSAGEM_SEM_CONEXAO });
     }
   }
 
@@ -120,7 +190,7 @@ export function GaleriaManager({ fotos: fotosIniciais }: { fotos: FotoGaleria[] 
       }
     } catch {
       setFotos(anterior);
-      setMensagem({ tipo: "erro", texto: "Sem conexão. Verifique a internet e tente de novo." });
+      setMensagem({ tipo: "erro", texto: MENSAGEM_SEM_CONEXAO });
     }
   }
 
@@ -130,9 +200,9 @@ export function GaleriaManager({ fotos: fotosIniciais }: { fotos: FotoGaleria[] 
     <section className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <h3 className="font-semibold text-gray-900">Fotos da galeria</h3>
+          <h3 className="font-semibold text-gray-900">Fotos e vídeos da galeria</h3>
           <p className="text-sm text-gray-500">
-            Aparecem em carrossel na vitrine, nesta ordem. Sem fotos aqui, a vitrine mostra a foto da galeria do formulário abaixo.
+            Aparecem em carrossel na vitrine, nesta ordem. Sem itens aqui, a vitrine mostra a foto da galeria do formulário abaixo.
           </p>
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
@@ -140,7 +210,7 @@ export function GaleriaManager({ fotos: fotosIniciais }: { fotos: FotoGaleria[] 
             ref={inputRef}
             type="file"
             multiple
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime"
             className="hidden"
             onChange={(e) => {
               const arquivos = Array.from(e.target.files ?? []);
@@ -154,10 +224,14 @@ export function GaleriaManager({ fotos: fotosIniciais }: { fotos: FotoGaleria[] 
             className="inline-flex items-center gap-1.5"
           >
             <Plus size={16} aria-hidden="true" />
-            {enviando ? `Enviando ${enviando.atual} de ${enviando.total}...` : "Adicionar fotos"}
+            {enviando
+              ? enviando.video
+                ? `Enviando vídeo... ${enviando.percentual}%`
+                : `Enviando ${enviando.atual} de ${enviando.total}...`
+              : "Adicionar fotos ou vídeos"}
           </Button>
           <p className="text-xs text-gray-400">
-            {fotos.length} de {LIMITE} fotos. JPG, PNG ou WebP. Fotos grandes são reduzidas antes do envio.
+            {fotos.length} de {LIMITE} itens. Fotos JPG, PNG ou WebP; vídeos MP4, WebM ou MOV até 50 MB. Vídeos tocam em loop, sem som.
           </p>
         </div>
       </div>
@@ -232,18 +306,32 @@ function FotoCard({
   return (
     <li className="flex flex-col gap-2 rounded-xl border border-gray-200 p-2">
       <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg bg-gray-100">
-        <Image
-          src={foto.url}
-          alt={foto.alt || `Foto ${numero} da galeria`}
-          fill
-          sizes="(min-width: 768px) 25vw, 50vw"
-          className="object-cover"
-          unoptimized
-        />
+        {foto.type === "VIDEO" ? (
+          <>
+            <video
+              src={`${foto.url}#t=0.1`}
+              muted
+              playsInline
+              preload="metadata"
+              aria-label={foto.alt || `Vídeo ${numero} da galeria`}
+              className="absolute inset-0 size-full object-cover"
+            />
+            <span className="absolute left-2 top-2 rounded-full bg-gray-900/70 px-2 py-0.5 text-xs text-white">Vídeo</span>
+          </>
+        ) : (
+          <Image
+            src={foto.url}
+            alt={foto.alt || `Foto ${numero} da galeria`}
+            fill
+            sizes="(min-width: 768px) 25vw, 50vw"
+            className="object-cover"
+            unoptimized
+          />
+        )}
       </div>
 
       <Input
-        aria-label={`Descrição da foto ${numero}`}
+        aria-label={`Descrição do item ${numero}`}
         placeholder="Descrição (opcional)"
         value={descricao}
         maxLength={200}

@@ -162,11 +162,12 @@ model VitrineContent {
 
 /// Foto do carrossel da galeria da vitrine (ordem crescente de `position`).
 model GalleryPhoto {
-  id        String   @id @default(cuid())
+  id        String           @id @default(cuid())
   url       String
-  alt       String   @default("")
-  position  Int      @default(0)
-  createdAt DateTime @default(now())
+  alt       String           @default("")
+  type      GalleryMediaType @default(IMAGE)
+  position  Int              @default(0)
+  createdAt DateTime         @default(now())
 }
 
 /// Avaliação do Google. Chega pelo scraper como PENDING (ou à mão como APPROVED);
@@ -184,6 +185,12 @@ model GoogleReview {
   source       ReviewSource @default(GOOGLE)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
+}
+
+/// Item da galeria: foto ou vídeo (vídeo toca em loop, sem som, no carrossel).
+enum GalleryMediaType {
+  IMAGE
+  VIDEO
 }
 
 enum ReviewStatus {

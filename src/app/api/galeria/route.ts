@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { LIMITE_ITENS_GALERIA, SELECT_ITEM_GALERIA } from "@/lib/galeria";
 import { ArmazenamentoError, ImagemInvalidaError, uploadVitrineImage } from "@/lib/storage";
-
-/** Quantas fotos cabem no carrossel da vitrine. */
-const LIMITE_FOTOS = 20;
 
 export async function GET() {
   const fotos = await prisma.galleryPhoto.findMany({
     orderBy: [{ position: "asc" }, { createdAt: "asc" }],
-    select: { id: true, url: true, alt: true },
+    select: SELECT_ITEM_GALERIA,
   });
   return NextResponse.json({ fotos });
 }
@@ -34,9 +32,9 @@ export async function POST(req: NextRequest) {
   }
 
   const total = await prisma.galleryPhoto.count();
-  if (total >= LIMITE_FOTOS) {
+  if (total >= LIMITE_ITENS_GALERIA) {
     return NextResponse.json(
-      { error: `A galeria já tem ${LIMITE_FOTOS} fotos. Remova alguma antes de adicionar outra.` },
+      { error: `A galeria já tem ${LIMITE_ITENS_GALERIA} itens. Remova algum antes de adicionar outro.` },
       { status: 400 }
     );
   }
@@ -58,7 +56,7 @@ export async function POST(req: NextRequest) {
   const ultima = await prisma.galleryPhoto.aggregate({ _max: { position: true } });
   const foto = await prisma.galleryPhoto.create({
     data: { url, alt, position: (ultima._max.position ?? -1) + 1 },
-    select: { id: true, url: true, alt: true },
+    select: SELECT_ITEM_GALERIA,
   });
 
   revalidatePath("/vitrine");
