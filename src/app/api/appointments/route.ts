@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createCalendarEvent } from "@/lib/google-calendar";
 import { createAppointments } from "@/lib/domain/appointments";
@@ -64,20 +64,22 @@ export async function POST(req: NextRequest) {
     throw e;
   }
 
-  // Google Agenda: uma ocorrência por vez, best-effort. Falha no Google não desfaz o agendamento.
-  for (const appt of created) {
-    try {
-      const googleEventId = await createCalendarEvent({
-        title: appt.title,
-        startTime: appt.startTime,
-        endTime: appt.endTime,
-      });
-      await prisma.appointment.update({ where: { id: appt.id }, data: { googleEventId } });
-    } catch {
-      /* best-effort */
+  // Google Agenda depois da resposta: 52 semanas de recorrência não podem segurar a tela.
+  // Falha no Google não desfaz o agendamento (o sync exporta o que ficar sem evento).
+  after(async () => {
+    for (const appt of created) {
+      try {
+        const googleEventId = await createCalendarEvent({
+          title: appt.title,
+          startTime: appt.startTime,
+          endTime: appt.endTime,
+        });
+        await prisma.appointment.update({ where: { id: appt.id }, data: { googleEventId } });
+      } catch {
+        /* best-effort */
+      }
     }
-  }
+  });
 
   return NextResponse.json(created[0], { status: 201 });
 }
-

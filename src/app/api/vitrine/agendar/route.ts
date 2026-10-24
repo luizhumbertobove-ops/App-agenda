@@ -97,25 +97,25 @@ export async function POST(req: NextRequest) {
   let reserva: Reserva | null;
   try {
     reserva = await withScheduleLock(async (tx) => {
-        if (await findConflict(tx, { start, end })) return null;
+      if (await findConflict(tx, { start, end })) return null;
 
-        // O cliente é reconhecido pelo WhatsApp, com ou sem o 55 (a base guarda com 55).
-        // Cliente que já existe mantém o nome cadastrado pelo Beto, mesmo se digitar outro.
-        const client =
-          (await tx.client.findFirst({ where: { phone: { in: [`55${phone}`, phone] } } })) ??
-          (await tx.client.create({ data: { name, phone: `55${phone}` } }));
+      // O cliente é reconhecido pelo WhatsApp, com ou sem o 55 (a base guarda com 55).
+      // Cliente que já existe mantém o nome cadastrado pelo Beto, mesmo se digitar outro.
+      const client =
+        (await tx.client.findFirst({ where: { phone: { in: [`55${phone}`, phone] } } })) ??
+        (await tx.client.create({ data: { name, phone: `55${phone}` } }));
 
-        const appointment = await tx.appointment.create({
-          data: {
-            clientId: client.id,
-            serviceType: service.name,
-            title: `${client.name} - ${service.name}`,
-            startTime: start,
-            endTime: end,
-            notes: noteText,
-          },
-        });
-        return { appointment, clientName: client.name, clientPhone: client.phone };
+      const appointment = await tx.appointment.create({
+        data: {
+          clientId: client.id,
+          serviceType: service.name,
+          title: `${client.name} - ${service.name}`,
+          startTime: start,
+          endTime: end,
+          notes: noteText,
+        },
+      });
+      return { appointment, clientName: client.name, clientPhone: client.phone };
     });
   } catch (err) {
     console.error("[vitrine/agendar] falha ao reservar:", err);
