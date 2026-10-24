@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { z } from "zod";
 import { deleteCalendarEvent } from "@/lib/google-calendar";
+import { pickSuccessor } from "@/lib/plan-access";
 
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -65,7 +66,21 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     select: { googleEventId: true },
   });
 
+  // Pacote familiar com saldo não some junto com o titular: passa ao membro mais antigo.
+  const owned = await prisma.planSubscription.findMany({
+    where: { clientId: id },
+    include: { plan: true, members: true },
+  });
+  const handovers = owned.flatMap((sub) => {
+    const to = pickSuccessor(sub);
+    return to ? [{ subscriptionId: sub.id, to }] : [];
+  });
+
   await prisma.$transaction([
+    ...handovers.flatMap(({ subscriptionId, to }) => [
+      prisma.planSubscriptionMember.deleteMany({ where: { subscriptionId, clientId: to } }),
+      prisma.planSubscription.update({ where: { id: subscriptionId }, data: { clientId: to } }),
+    ]),
     // Cobranças em aberto deixam de valer (senão ficariam no "A receber" para sempre).
     prisma.payment.updateMany({
       where: { clientId: id, status: { in: ["PENDING", "SENT", "OVERDUE"] } },
