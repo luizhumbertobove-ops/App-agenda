@@ -1,3 +1,4 @@
+/** Pacotes do cliente: os que ele comprou (titular) e os de que é membro (pacote familiar). */
 export function clientPlansWhere(clientId: string) {
   return {
     OR: [
@@ -7,6 +8,7 @@ export function clientPlansWhere(clientId: string) {
   };
 }
 
+/** Pacote usado ao concluir: o mais antigo que ainda tem sessões. */
 export function pickPlanWithBalance<
   T extends { sessionsUsed: number; purchasedAt: Date; plan: { sessions: number } }
 >(subs: T[]): T | null {
@@ -26,6 +28,7 @@ export function pickPlanWithBalance<
   return best;
 }
 
+/** Membros escolhidos na venda, sem repetidos; o titular não entra na lista. */
 export function normalizeMemberIds(
   ownerId: string,
   ids: string[]
@@ -47,6 +50,7 @@ export function normalizeMemberIds(
   return { ok: true, ids: unique };
 }
 
+/** Ao excluir o titular: o membro mais antigo herda o pacote, se ainda houver saldo. */
 export function pickSuccessor(sub: {
   sessionsUsed: number;
   plan: { sessions: number };
