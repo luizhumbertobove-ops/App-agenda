@@ -69,3 +69,29 @@ export function pickSuccessor(sub: {
 
   return oldest.clientId;
 }
+
+/** Pacotes do cliente: os dele e os de que é membro, sem repetir. */
+export function mergePlans<T extends { id: string }>(
+  owned: T[],
+  memberships: { subscription: T }[]
+): T[] {
+  const seen = new Set<string>();
+  const result: T[] = [];
+
+  for (const sub of owned) {
+    if (!seen.has(sub.id)) {
+      seen.add(sub.id);
+      result.push(sub);
+    }
+  }
+
+  for (const m of memberships) {
+    const sub = m.subscription;
+    if (!seen.has(sub.id)) {
+      seen.add(sub.id);
+      result.push(sub);
+    }
+  }
+
+  return result;
+}
