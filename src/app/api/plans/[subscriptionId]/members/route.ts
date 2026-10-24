@@ -7,6 +7,7 @@ const memberSchema = z.object({
   clientId: z.string().min(1),
 });
 
+/** Adiciona um membro ao pacote (pacote familiar: todos usam o mesmo saldo). */
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ subscriptionId: string }> }
@@ -47,6 +48,7 @@ export async function POST(
   }
 }
 
+/** Tira um membro do pacote; as sessões que ele já usou continuam contadas. */
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ subscriptionId: string }> }
