@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import {
   clientPlansWhere,
@@ -6,7 +6,7 @@ import {
   normalizeMemberIds,
   pickSuccessor,
   mergePlans
-} from "./plan-access.ts";
+} from "./plan-access";
 
 test("clientPlansWhere retorna OR com clientId e members.some", () => {
   const result = clientPlansWhere("c1");

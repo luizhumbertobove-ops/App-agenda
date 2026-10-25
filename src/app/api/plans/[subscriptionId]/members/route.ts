@@ -18,9 +18,16 @@ export async function POST(
     return NextResponse.json({ error: body.error.flatten() }, { status: 400 });
   }
 
-  const sub = await prisma.planSubscription.findUnique({ where: { id: subscriptionId } });
+  const sub = await prisma.planSubscription.findUnique({
+    where: { id: subscriptionId },
+    include: { _count: { select: { members: true } } },
+  });
   if (!sub) {
     return NextResponse.json({ error: "Pacote não encontrado." }, { status: 404 });
+  }
+  // Mesmo limite da venda.
+  if (sub._count.members >= 10) {
+    return NextResponse.json({ error: "O pacote já tem 10 membros." }, { status: 400 });
   }
 
   const client = await prisma.client.findUnique({ where: { id: body.data.clientId } });
