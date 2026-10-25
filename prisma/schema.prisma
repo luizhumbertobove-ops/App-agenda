@@ -18,6 +18,7 @@ model Client {
   createdAt DateTime @default(now())
 
   planSubscriptions PlanSubscription[]
+  planMemberships   PlanSubscriptionMember[]
   appointments      Appointment[]
   payments          Payment[]
   whatsappLogs      WhatsappLog[]
@@ -42,8 +43,23 @@ model PlanSubscription {
   expiresAt    DateTime?
   active       Boolean   @default(true)
 
-  client Client @relation(fields: [clientId], references: [id])
-  plan   Plan   @relation(fields: [planId], references: [id])
+  client  Client @relation(fields: [clientId], references: [id])
+  plan    Plan   @relation(fields: [planId], references: [id])
+  members PlanSubscriptionMember[]
+}
+
+/// Outros clientes que usam o saldo de um pacote (pacote familiar). O titular fica em PlanSubscription.clientId.
+model PlanSubscriptionMember {
+  id             String   @id @default(cuid())
+  subscriptionId String
+  clientId       String
+  createdAt      DateTime @default(now())
+
+  subscription PlanSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  client       Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriptionId, clientId])
+  @@index([clientId])
 }
 
 model Appointment {

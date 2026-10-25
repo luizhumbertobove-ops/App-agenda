@@ -7,6 +7,7 @@ import type {
 } from "@/generated/prisma/client";
 import { formatDateBR } from "@/lib/date";
 import { parseEventTitle } from "@/lib/google-calendar";
+import { clientPlansWhere, pickPlanWithBalance } from "@/lib/plan-access";
 import { DomainError } from "./errors";
 import { OPEN_PAYMENT_STATUSES } from "./constants";
 import { findConflict, withScheduleLock, type Tx } from "./schedule";
@@ -182,12 +183,12 @@ export async function updateAppointment(
     if (wantsDone && input.usePlan) {
       const subs = existing.clientId
         ? await tx.planSubscription.findMany({
-            where: { clientId: existing.clientId, active: true },
+            // Pacotes em que o cliente é titular ou membro (pacote familiar).
+            where: { ...clientPlansWhere(existing.clientId), active: true },
             include: { plan: true },
-            orderBy: { purchasedAt: "asc" },
           })
         : [];
-      const sub = subs.find((s) => s.sessionsUsed < s.plan.sessions);
+      const sub = pickPlanWithBalance(subs);
       if (!sub) {
         throw new DomainError("Este cliente não tem sessões sobrando no pacote.", 409);
       }
@@ -232,10 +233,17 @@ export async function updateAppointment(
 
     if (wantsDone && planSub) {
       // Concluir pelo pacote usa uma sessão (a do mais antigo com saldo).
-      const used = planSub.sessionsUsed + 1;
-      await tx.planSubscription.update({
-        where: { id: planSub.id },
-        data: { sessionsUsed: used, active: used < planSub.sessions },
+      // Incremento condicional: dois membros do mesmo pacote não passam do total.
+      const usedNow = await tx.planSubscription.updateMany({
+        where: { id: planSub.id, sessionsUsed: { lt: planSub.sessions } },
+        data: { sessionsUsed: { increment: 1 } },
+      });
+      if (usedNow.count === 0) {
+        throw new DomainError("Este cliente não tem sessões sobrando no pacote.", 409);
+      }
+      await tx.planSubscription.updateMany({
+        where: { id: planSub.id, sessionsUsed: { gte: planSub.sessions } },
+        data: { active: false },
       });
       data.planSubscriptionId = planSub.id;
     }

@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { normalizeMemberIds } from "@/lib/plan-access";
 
 const sellSchema = z.object({
   sessions: z.number().int().min(2).max(50),
   amount: z.number().positive(),
   // Já recebeu o valor do pacote (entra como pago) ou fica a receber.
   paid: z.boolean(),
+  // Outros clientes que usam o mesmo saldo.
+  memberIds: z.array(z.string()).max(10).default([]),
 });
 
 /**
@@ -25,12 +28,31 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 });
   }
 
-  const { sessions, amount, paid } = body.data;
+  const { sessions, amount, paid, memberIds } = body.data;
+
+  const normalized = normalizeMemberIds(id, memberIds);
+  if (!normalized.ok) {
+    return NextResponse.json({ error: normalized.error }, { status: 400 });
+  }
+
+  if (normalized.ids.length > 0) {
+    const count = await prisma.client.count({ where: { id: { in: normalized.ids } } });
+    if (count !== normalized.ids.length) {
+      return NextResponse.json({ error: "Cliente não encontrado." }, { status: 400 });
+    }
+  }
+
   const subscription = await prisma.$transaction(async (tx) => {
+    // Sem "familiar" no nome: membros mudam depois; o selo da ficha mostra isso.
     const plan = await tx.plan.create({
       data: { name: `Pacote de ${sessions} sessões`, sessions, price: amount, validityDays: 0 },
     });
     const sub = await tx.planSubscription.create({ data: { clientId: id, planId: plan.id } });
+    if (normalized.ids.length > 0) {
+      await tx.planSubscriptionMember.createMany({
+        data: normalized.ids.map((clientId) => ({ subscriptionId: sub.id, clientId })),
+      });
+    }
     await tx.payment.create({
       data: {
         clientId: id,
