@@ -43,8 +43,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           startTime: appt.startTime,
           endTime: appt.endTime,
         });
-      } catch {
-        /* best-effort */
+      } catch (err) {
+        // Sem isso o sync traria o título antigo do Google de volta sem ninguém saber.
+        console.error("[servicos] falha ao renomear evento no Google:", err instanceof Error ? err.message : err);
       }
     }
   });

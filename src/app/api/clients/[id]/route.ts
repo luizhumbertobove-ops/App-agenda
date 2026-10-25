@@ -5,7 +5,7 @@ import { z } from "zod";
 import { deleteCalendarEvent } from "@/lib/google-calendar";
 import { pickSuccessor } from "@/lib/plan-access";
 import { OPEN_PAYMENT_STATUSES } from "@/lib/domain/constants";
-import { normalizePhone, phoneVariants } from "@/lib/domain/phone";
+import { isValidPhone, normalizePhone, phoneVariants } from "@/lib/domain/phone";
 
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -37,12 +37,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!body.success) return NextResponse.json({ error: body.error.flatten() }, { status: 400 });
 
   // Telefone gravado normalizado; outro cliente com o mesmo número (com ou sem 55) bloqueia a troca.
+  // O formulário sempre manda o telefone: se ele não mudou, fica como está gravado (cadastro antigo
+  // sem 55, número estrangeiro ou duplicata antiga não podem travar a edição do nome).
   const data = { ...body.data };
   if (body.data.phone !== undefined) {
     const raw = body.data.phone;
-    data.phone = normalizePhone(raw);
+    const current = await prisma.client.findUnique({ where: { id }, select: { phone: true } });
+    const unchanged =
+      !!current && (raw.replace(/\D/g, "") === current.phone || normalizePhone(raw) === current.phone);
+    if (unchanged) {
+      delete data.phone;
+    } else {
+      data.phone = normalizePhone(raw);
+      if (!isValidPhone(data.phone)) {
+        return NextResponse.json({ error: { fieldErrors: { phone: ["Telefone inválido"] } } }, { status: 400 });
+      }
+    }
+  }
+  if (data.phone !== undefined) {
     const other = await prisma.client.findFirst({
-      where: { phone: { in: phoneVariants(raw) }, id: { not: id } },
+      where: { phone: { in: phoneVariants(body.data.phone ?? data.phone) }, id: { not: id } },
     });
     if (other) {
       return NextResponse.json(

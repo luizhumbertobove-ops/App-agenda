@@ -84,7 +84,8 @@ export async function updateCalendarEvent(
     description?: string;
   }
 ) {
-  await calendar.events.update({
+  // patch, não update: só os campos enviados mudam (descrição, cor e lembretes feitos no Google ficam).
+  await calendar.events.patch({
     calendarId: CALENDAR_ID(),
     eventId: googleEventId,
     requestBody: {

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { cookies } from "next/headers";
 import { z } from "zod";
-import { normalizePhone, phoneVariants } from "@/lib/domain/phone";
+import { isValidPhone, normalizePhone, phoneVariants } from "@/lib/domain/phone";
 
 const importSchema = z.object({
   contacts: z.array(
@@ -32,19 +33,32 @@ export async function POST(req: NextRequest) {
   for (const contact of body.data.contacts) {
     // Mesmo número que o cadastro (com ou sem 55, com máscara) não entra duas vezes.
     const phone = normalizePhone(contact.phone);
+    if (!isValidPhone(phone)) {
+      skipped++;
+      continue;
+    }
     const exists = await prisma.client.findFirst({ where: { phone: { in: phoneVariants(contact.phone) } } });
     if (exists) {
       skipped++;
       continue;
     }
-    await prisma.client.create({
-      data: {
-        name: contact.name,
-        phone,
-        email: contact.email,
-      },
-    });
-    imported++;
+    try {
+      await prisma.client.create({
+        data: {
+          name: contact.name,
+          phone,
+          email: contact.email,
+        },
+      });
+      imported++;
+    } catch (err) {
+      // Mesmo número cadastrado ao mesmo tempo (vitrine, outro aparelho): conta como já existente.
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        skipped++;
+        continue;
+      }
+      throw err;
+    }
   }
 
   // Limpar token após importação

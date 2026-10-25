@@ -39,11 +39,13 @@ export async function GET() {
         const name = c.names?.[0]?.displayName?.trim();
         const phones = (c.phoneNumbers ?? [])
           .map((p) => {
-            // Prefer canonical form (international), fallback to value stripped to digits
+            // Forma internacional do Google (+55..., +1...): o "+" fica, para a importação
+            // saber que número de outro país não ganha 55.
             const raw = p.canonicalForm ?? p.value ?? "";
-            return raw.replace(/\D/g, "");
+            const digits = raw.replace(/\D/g, "");
+            return raw.trim().startsWith("+") ? `+${digits}` : digits;
           })
-          .filter((p) => p.length >= 10);
+          .filter((p) => p.replace(/\D/g, "").length >= 10);
         const email = c.emailAddresses?.[0]?.value?.trim();
         return { name, phones, email };
       })
