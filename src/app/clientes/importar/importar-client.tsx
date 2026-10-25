@@ -33,6 +33,7 @@ export function ImportarClient() {
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<{ imported: number; skipped: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [importError, setImportError] = useState("");
 
   useEffect(() => {
     fetch("/api/contacts/list", { cache: "no-store" })
@@ -73,6 +74,7 @@ export function ImportarClient() {
   async function handleImport() {
     if (selectedCount === 0) return;
     setImporting(true);
+    setImportError("");
 
     const payload: Selection[] = Object.entries(selections).map(([idx, phone]) => {
       const c = contacts[Number(idx)];
@@ -85,8 +87,9 @@ export function ImportarClient() {
         { method: "POST", body: { contacts: payload } },
         "Não foi possível importar os contatos. Tente de novo.",
       );
+      // Erro na importação fica junto do botão: a tela de erro apagaria a seleção feita.
       if (!r.ok) {
-        setError(r.error);
+        setImportError(r.error);
         return;
       }
       setResult(r.data);
@@ -291,6 +294,12 @@ export function ImportarClient() {
           })
         )}
       </div>
+
+      {importError && (
+        <p role="alert" className="mt-4 text-right text-sm text-red-600">
+          {importError}
+        </p>
+      )}
 
       {selectedCount > 0 && (
         <div className="mt-4 flex justify-end">
