@@ -139,19 +139,23 @@ export async function PATCH(
   // Concluir pelo pacote: usa uma sessão do pacote (o mais antigo com saldo).
   let planUsedId: string | null = null;
   if (completing && planSub) {
-    const used = planSub.sessionsUsed + 1;
+    // Incremento condicional: dois membros concluindo juntos não passam do total do pacote.
     const usedNow = await prisma.planSubscription.updateMany({
-      where: { id: planSub.id, sessionsUsed: planSub.sessionsUsed },
-      data: { sessionsUsed: used, active: used < planSub.sessions },
+      where: { id: planSub.id, sessionsUsed: { lt: planSub.sessions } },
+      data: { sessionsUsed: { increment: 1 } },
     });
     if (usedNow.count === 0) {
-      // Outro atendimento usou a sessão no meio do caminho: desfaz a trava de status.
+      // Outro atendimento usou a última sessão no meio do caminho: desfaz a trava de status.
       await prisma.appointment.update({ where: { id }, data: { status: existing.status } });
       return NextResponse.json(
         { error: "Este cliente não tem sessões sobrando no pacote." },
         { status: 409 }
       );
     }
+    await prisma.planSubscription.updateMany({
+      where: { id: planSub.id, sessionsUsed: { gte: planSub.sessions } },
+      data: { active: false },
+    });
     planUsedId = planSub.id;
   }
 

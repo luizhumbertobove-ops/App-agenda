@@ -43,11 +43,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const subscription = await prisma.$transaction(async (tx) => {
-    const planName = normalized.ids.length > 0
-      ? `Pacote familiar de ${sessions} sessões`
-      : `Pacote de ${sessions} sessões`;
+    // Sem "familiar" no nome: membros mudam depois; o selo da ficha mostra isso.
     const plan = await tx.plan.create({
-      data: { name: planName, sessions, price: amount, validityDays: 0 },
+      data: { name: `Pacote de ${sessions} sessões`, sessions, price: amount, validityDays: 0 },
     });
     const sub = await tx.planSubscription.create({ data: { clientId: id, planId: plan.id } });
     if (normalized.ids.length > 0) {
