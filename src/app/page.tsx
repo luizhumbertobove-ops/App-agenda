@@ -12,7 +12,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { APPOINTMENT_STATUS } from "@/lib/status-labels";
 import { whatsappLink } from "@/lib/vitrine";
 import { WhatsappStatus } from "@/components/whatsapp-status";
-import { OPEN_PAYMENT_STATUSES } from "@/lib/domain/constants";
+import { hasWhatsapp, OPEN_PAYMENT_STATUSES } from "@/lib/domain/constants";
 import { TZ_BR } from "@/lib/date";
 
 async function getDashboardData() {
@@ -145,7 +145,7 @@ export default async function InicioPage() {
                   {formatTimeBR(nextAppointment.endTime)}
                 </p>
               </div>
-              {nextAppointment.client && (
+              {nextAppointment.client && hasWhatsapp(nextAppointment.client.phone) && (
                 <div className="flex flex-wrap gap-2">
                   <a
                     href={whatsappLink("", nextAppointment.client.phone)}

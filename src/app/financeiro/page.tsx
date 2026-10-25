@@ -14,7 +14,7 @@ import { PAYMENT_STATUS } from "@/lib/status-labels";
 import { EmptyState } from "@/components/empty-state";
 import { formatCurrencyBR } from "@/lib/format";
 import Link from "next/link";
-import { OPEN_PAYMENT_STATUSES } from "@/lib/domain/constants";
+import { isOpenPayment } from "@/lib/domain/constants";
 
 const FILTERS = [
   { key: "todas", label: "Todas", href: "/financeiro" },
@@ -82,7 +82,7 @@ export default async function FinanceiroPage({
 
   const totalPaid = monthStats._sum.amount ?? 0;
   // A receber = tudo o que está em aberto (inclusive vencidas), de qualquer mês.
-  const openPayments = payments.filter((p) => (OPEN_PAYMENT_STATUSES as readonly string[]).includes(p.status));
+  const openPayments = payments.filter((p) => isOpenPayment(p.status));
   const totalPending = openPayments.reduce((sum, p) => sum + p.amount, 0);
   const pendingCount = openPayments.length;
   const totalForecast = totalPaid + totalPending;
@@ -91,7 +91,7 @@ export default async function FinanceiroPage({
   const goalPct = goal > 0 ? Math.min((totalPaid / goal) * 100, 100) : 0;
   const missing = Math.max(0, goal - totalPaid);
 
-  const openCount = payments.filter((p) => (OPEN_PAYMENT_STATUSES as readonly string[]).includes(p.status)).length;
+  const openCount = payments.filter((p) => isOpenPayment(p.status)).length;
   // Data que importa: a do atendimento (quando houver); senão, a do lançamento.
   const refDate = (p: (typeof payments)[number]) => p.appointment?.startTime ?? p.createdAt;
   const diaMes = (d: Date) => {
@@ -106,7 +106,7 @@ export default async function FinanceiroPage({
   payments.sort((a, b) => refDate(b).getTime() - refDate(a).getTime());
 
   const list = payments.filter((p) => {
-    if (filter === "pendentes") return (OPEN_PAYMENT_STATUSES as readonly string[]).includes(p.status);
+    if (filter === "pendentes") return isOpenPayment(p.status);
     if (filter === "pagas") return p.status === "PAID";
     return true;
   });

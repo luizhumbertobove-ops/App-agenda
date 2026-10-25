@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { isWhatsappOnline, buildReengagementMessage } from "@/lib/evolution";
 import { getSettings } from "@/lib/settings";
 import type { MessageTarget } from "@/lib/jobs/confirmations";
-import { NO_PHONE } from "@/lib/domain/constants";
+import { hasWhatsapp, NO_PHONE } from "@/lib/domain/constants";
 import { sendAndLog } from "@/lib/domain/messaging";
 
 /** Clientes sem atendimento há mais de N dias e fora do intervalo entre lembretes. */
@@ -48,6 +48,7 @@ export async function listReengagementTargets(): Promise<MessageTarget[]> {
       const lastMsg = client.whatsappLogs[0];
       return !lastMsg || (Date.now() - lastMsg.sentAt.getTime()) / 86400000 >= cooldownDays;
     })
+    .filter((client) => hasWhatsapp(client.phone))
     .map((client) => ({
       clientId: client.id,
       clientName: client.name,

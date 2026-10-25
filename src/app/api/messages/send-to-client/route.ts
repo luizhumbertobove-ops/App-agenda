@@ -8,6 +8,7 @@ import {
   buildReengagementMessage,
 } from "@/lib/evolution";
 import { getSettings } from "@/lib/settings";
+import { hasWhatsapp } from "@/lib/domain/constants";
 import { sendAndLog } from "@/lib/domain/messaging";
 
 const schema = z.object({
@@ -27,6 +28,9 @@ export async function POST(req: NextRequest) {
   const client = await prisma.client.findUnique({ where: { id: clientId } });
   if (!client) {
     return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 });
+  }
+  if (!hasWhatsapp(client.phone)) {
+    return NextResponse.json({ error: "Cliente sem WhatsApp cadastrado" }, { status: 422 });
   }
 
   const settings = await getSettings();

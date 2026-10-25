@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { formatDateBR } from "@/lib/date";
-import { dateKeyBR } from "@/lib/date";
+import { dateKeyBR, formatDateBR } from "@/lib/date";
 
 export async function GET() {
   const payments = await prisma.payment.findMany({

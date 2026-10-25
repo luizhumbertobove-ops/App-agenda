@@ -1,6 +1,6 @@
 import axios from "axios";
 import { interpolate } from "./template";
-import { TZ_BR } from "./date";
+import { formatTimeBR } from "./date";
 
 const api = axios.create({
   baseURL: process.env.EVOLUTION_API_URL,
@@ -110,7 +110,7 @@ export const DEFAULT_REENGAGEMENT_TEMPLATE =
   `Atendo de segunda a sexta, das 7h às 19h.`;
 
 export function buildConfirmationMessage(clientName: string, date: Date, template?: string | null): string {
-  const hora = date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: TZ_BR });
+  const hora = formatTimeBR(date);
   return interpolate(template || DEFAULT_CONFIRMATION_TEMPLATE, { nome: clientName, hora });
 }
 

@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AxiosError } from "axios";
 import { logManualMessage, sendAndLog } from "./messaging";
 import { sendText } from "@/lib/evolution";
 import { prisma } from "@/lib/prisma";
@@ -8,6 +9,11 @@ vi.mock("@/lib/evolution", () => ({ sendText: vi.fn() }));
 
 const START = new Date("2026-10-20T13:00:00Z");
 const END = new Date("2026-10-20T14:00:00Z");
+
+// Devolve o console.error espionado mesmo se o teste falhar.
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 beforeEach(async () => {
   await resetDb();
@@ -41,7 +47,24 @@ describe("sendAndLog", () => {
     ).rejects.toThrow("offline");
 
     expect(await prisma.whatsappLog.count()).toBe(0);
-    vi.mocked(console.error).mockRestore();
+  });
+
+  it("o log da falha não expõe a apikey nem o corpo da requisição", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const config = { headers: { apikey: "segredo-evolution" }, data: '{"number":"5511999990000"}' };
+    vi.mocked(sendText).mockRejectedValueOnce(
+      new AxiosError("Request failed", "ECONNREFUSED", config as never)
+    );
+    const client = await makeClient();
+
+    await expect(
+      sendAndLog(client.phone, { clientId: client.id, type: "NO_SHOW", message: "Oi" })
+    ).rejects.toThrow();
+
+    const logado = JSON.stringify(spy.mock.calls);
+    expect(logado).toContain("ECONNREFUSED");
+    expect(logado).not.toContain("segredo-evolution");
+    expect(logado).not.toContain("5511999990000");
   });
 
   it("confirmação marca confirmationSentAt", async () => {
