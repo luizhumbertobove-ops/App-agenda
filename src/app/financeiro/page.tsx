@@ -15,7 +15,7 @@ import { EmptyState } from "@/components/empty-state";
 import { formatCurrencyBR } from "@/lib/format";
 import Link from "next/link";
 import { pageShell } from "@/components/page-shell";
-import { isOpenPayment } from "@/lib/domain/constants";
+import { financeTotals, listPayments, monthlyRevenue } from "@/lib/domain/finance";
 
 const FILTERS = [
   { key: "todas", label: "Todas", href: "/financeiro" },
@@ -28,11 +28,14 @@ type FilterKey = (typeof FILTERS)[number]["key"];
 export default async function FinanceiroPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; pagina?: string }>;
 }) {
-  const { status } = await searchParams;
+  const { status, pagina } = await searchParams;
   const filter: FilterKey =
     status === "pendentes" || status === "pagas" ? status : "todas";
+  // Página inválida (0, negativa, texto) cai na primeira.
+  const n = Number(pagina);
+  const page = Number.isInteger(n) && n >= 1 ? n : 1;
 
   const today = nowBR();
   // Limites de mês em horário de Brasília (00:00 BRT = 03:00 UTC); fim exclusivo.
@@ -45,54 +48,37 @@ export default async function FinanceiroPage({
       label: format(new Date(Date.UTC(y, m, 15)), "MMM", { locale: ptBR }).replace(".", ""),
     };
   };
-  const thisMonth = monthBR(0);
-
-  // Últimos 6 meses para o gráfico
+  // Últimos 6 meses para o gráfico; o último é o mês atual.
   const chartMonths = Array.from({ length: 6 }, (_, i) => monthBR(i - 5));
 
-  const [payments, monthStats, settings, chartData] = await Promise.all([
-    prisma.payment.findMany({
-      // Canceladas ficam só no histórico do banco.
-      where: { status: { not: "CANCELLED" } },
-      include: { client: true, appointment: true },
-      orderBy: { createdAt: "desc" },
-    }),
-    // Recebido no mês = pagas com data de pagamento no mês (não a data em que a cobrança foi criada).
-    prisma.payment.aggregate({
-      where: { status: "PAID", paidAt: { gte: thisMonth.start, lt: thisMonth.end } },
-      _sum: { amount: true },
-    }),
+  const [result, totals, settings, revenue] = await Promise.all([
+    listPayments(filter, page),
+    financeTotals(),
     getSettings(),
-    Promise.all(
-      chartMonths.map(async (m) => {
-        const agg = await prisma.payment.aggregate({
-          where: { status: "PAID", paidAt: { gte: m.start, lt: m.end } },
-          _sum: { amount: true },
-        });
-        return { label: m.label, value: agg._sum.amount ?? 0 };
-      })
-    ),
+    // Recebido por mês = pagas com data de pagamento no mês (não a data em que a cobrança foi criada).
+    monthlyRevenue(chartMonths),
   ]);
+  const payments = result.items;
+  const hasMore = result.hasMore;
+  const chartData = chartMonths.map((m, i) => ({ label: m.label, value: revenue[i] ?? 0 }));
 
-  // Nome do pacote para as cobranças de venda de pacote.
+  // Nome do pacote só para as cobranças desta página.
   const planIds = payments.map((p) => p.planSubscriptionId).filter((id): id is string => !!id);
   const planSubs = planIds.length
     ? await prisma.planSubscription.findMany({ where: { id: { in: planIds } }, include: { plan: true } })
     : [];
   const planName = new Map(planSubs.map((s) => [s.id, s.plan.name]));
 
-  const totalPaid = monthStats._sum.amount ?? 0;
+  const totalPaid = revenue[revenue.length - 1] ?? 0;
   // A receber = tudo o que está em aberto (inclusive vencidas), de qualquer mês.
-  const openPayments = payments.filter((p) => isOpenPayment(p.status));
-  const totalPending = openPayments.reduce((sum, p) => sum + p.amount, 0);
-  const pendingCount = openPayments.length;
+  const totalPending = totals.openSum;
+  const pendingCount = totals.openCount;
   const totalForecast = totalPaid + totalPending;
 
   const goal = settings.monthlyGoal ?? 0;
   const goalPct = goal > 0 ? Math.min((totalPaid / goal) * 100, 100) : 0;
   const missing = Math.max(0, goal - totalPaid);
 
-  const openCount = payments.filter((p) => isOpenPayment(p.status)).length;
   // Data que importa: a do atendimento (quando houver); senão, a do lançamento.
   const refDate = (p: (typeof payments)[number]) => p.appointment?.startTime ?? p.createdAt;
   const diaMes = (d: Date) => {
@@ -104,15 +90,15 @@ export default async function FinanceiroPage({
     const get = (t: string) => parts.find((x) => x.type === t)?.value ?? "";
     return `${get("day")} ${get("month").replace(".", "")}`;
   };
-  payments.sort((a, b) => refDate(b).getTime() - refDate(a).getTime());
-
-  const list = payments.filter((p) => {
-    if (filter === "pendentes") return isOpenPayment(p.status);
-    if (filter === "pagas") return p.status === "PAID";
-    return true;
-  });
-
   const monthLabel = format(today, "MMMM yyyy", { locale: ptBR });
+  // Links da paginação: a primeira página não leva "pagina" na URL.
+  const pageHref = (p: number) => {
+    const params = new URLSearchParams();
+    if (filter !== "todas") params.set("status", filter);
+    if (p > 1) params.set("pagina", String(p));
+    const qs = params.toString();
+    return qs ? `/financeiro?${qs}` : "/financeiro";
+  };
 
   return (
     <div className={pageShell()}>
@@ -213,7 +199,7 @@ export default async function FinanceiroPage({
                         active ? "bg-white/20 text-white" : "bg-amber-100 text-amber-700"
                       }`}
                     >
-                      {openCount}
+                      {pendingCount}
                     </span>
                   )}
                 </Link>
@@ -222,10 +208,10 @@ export default async function FinanceiroPage({
           </nav>
 
           <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-            {list.length === 0 ? (
+            {payments.length === 0 ? (
               <EmptyState
                 title={
-                  payments.length === 0
+                  totals.allCount === 0
                     ? "Nenhum pagamento registrado ainda."
                     : "Nenhuma cobrança nesta lista."
                 }
@@ -233,7 +219,7 @@ export default async function FinanceiroPage({
               />
             ) : (
               <ul className="divide-y divide-gray-100">
-                {list.map((p) => {
+                {payments.map((p) => {
                   // Sem cadastro ligado (atendimento importado do Google), usa o nome do título do atendimento.
                   const name =
                     p.client?.name ?? (p.appointment ? p.appointment.title.split(" - ")[0].trim() : null);
@@ -282,6 +268,27 @@ export default async function FinanceiroPage({
               </ul>
             )}
           </div>
+
+          {(hasMore || page > 1) && (
+            <div className="flex flex-wrap justify-center gap-2">
+              {page > 1 && (
+                <Link
+                  href={pageHref(1)}
+                  className="inline-flex min-h-11 items-center rounded-full border border-gray-200 bg-white px-5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                  Voltar ao início
+                </Link>
+              )}
+              {hasMore && (
+                <Link
+                  href={pageHref(page + 1)}
+                  className="inline-flex min-h-11 items-center rounded-full border border-gray-200 bg-white px-5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                  Ver mais
+                </Link>
+              )}
+            </div>
+          )}
         </section>
       </div>
     </div>
