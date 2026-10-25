@@ -11,21 +11,28 @@ import { formatCurrencyBR } from "@/lib/format";
 
 type Client = { id: string; name: string; phone: string };
 
-/** Vende um pacote de sessões (ex.: 4 sessões pagas de uma vez na primeira). */
+/**
+ * Vende um pacote de sessões (ex.: 4 sessões pagas de uma vez na primeira).
+ * Sem `clientId` (atalho da Início), o titular é escolhido no próprio modal.
+ */
 export function SellPlanModal({
   clientId,
   clientName,
   clients,
+  block = false,
 }: {
-  clientId: string;
-  clientName: string;
+  clientId?: string;
+  clientName?: string;
   clients: Client[];
+  /** Botão na largura toda. */
+  block?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [sessions, setSessions] = useState("4");
   const [amount, setAmount] = useState("");
   const [paid, setPaid] = useState(true);
+  const [owner, setOwner] = useState<{ id: string; name: string } | null>(null);
   const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
   // Muda a cada membro escolhido para o combobox limpar a busca.
   const [comboKey, setComboKey] = useState(0);
@@ -34,17 +41,18 @@ export function SellPlanModal({
 
   const n = parseInt(sessions);
   const value = Number(amount.replace(/\./g, "").replace(",", "."));
-  const valid = Number.isInteger(n) && n >= 2 && n <= 50 && Number.isFinite(value) && value > 0;
+  const valid =
+    !!owner && Number.isInteger(n) && n >= 2 && n <= 50 && Number.isFinite(value) && value > 0;
 
   // Quem ainda pode entrar: não é o titular nem quem já foi escolhido.
-  const disponiveis = clients.filter((c) => c.id !== clientId && !members.some((m) => m.id === c.id));
+  const disponiveis = clients.filter((c) => c.id !== owner?.id && !members.some((m) => m.id === c.id));
 
   async function handleSave() {
-    if (!valid) return;
+    if (!valid || !owner) return;
     setSaving(true);
     setError("");
     try {
-      const res = await fetch(`/api/clients/${clientId}/plans`, {
+      const res = await fetch(`/api/clients/${owner.id}/plans`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessions: n, amount: value, paid, memberIds: members.map((m) => m.id) }),
@@ -71,12 +79,13 @@ export function SellPlanModal({
           setSessions("4");
           setAmount("");
           setPaid(true);
+          setOwner(clientId ? { id: clientId, name: clientName ?? "" } : null);
           setMembers([]);
           setComboKey(0);
           setError("");
           setOpen(true);
         }}
-        className="flex min-h-11 items-center gap-1.5 rounded-full border border-violet-300 bg-white px-4 text-sm font-medium text-violet-700 transition-colors hover:bg-violet-50"
+        className={`flex min-h-11 items-center gap-1.5 rounded-full ${block ? "w-full justify-center " : ""} border border-violet-300 bg-white px-4 text-sm font-medium text-violet-700 transition-colors hover:bg-violet-50`}
       >
         <Package size={16} aria-hidden />
         Vender pacote
@@ -88,7 +97,7 @@ export function SellPlanModal({
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <h3 className="font-display text-xl text-gray-900">Vender pacote</h3>
-                <p className="truncate text-sm text-gray-500">{clientName}</p>
+                {clientId && <p className="truncate text-sm text-gray-500">{clientName}</p>}
               </div>
               <button
                 type="button"
@@ -99,6 +108,23 @@ export function SellPlanModal({
                 <X size={18} />
               </button>
             </div>
+
+            {!clientId && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-700">Cliente</p>
+                <ClientCombobox
+                  clients={clients}
+                  value={owner?.id ?? ""}
+                  onChange={(id, name) => {
+                    setOwner(id ? { id, name } : null);
+                    // O titular não pode estar também entre os membros; recriar o combobox de
+                    // membros atualiza a lista dele (ele guarda os clientes ao montar).
+                    setMembers((prev) => prev.filter((m) => m.id !== id));
+                    setComboKey((k) => k + 1);
+                  }}
+                />
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div>

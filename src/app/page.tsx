@@ -5,6 +5,7 @@ import { MessageCircle } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { SyncButton } from "@/components/sync-button";
 import { PaymentButton } from "@/components/payment-button";
+import { SellPlanModal } from "@/components/sell-plan-modal";
 import { startOfTodayBR, endOfTodayBR, formatLongDateBR, formatTimeBR, nowBR, monthRangeBR } from "@/lib/date";
 import { getSettings } from "@/lib/settings";
 import { formatCurrencyBR } from "@/lib/format";
@@ -21,7 +22,7 @@ async function getDashboardData() {
   // Mês em horário de Brasília (o mesmo do Financeiro, para os totais baterem).
   const { start: startOfMonth, end: endOfMonth } = monthRangeBR();
 
-  const [settings, [todayAppointments, pendingPayments, monthRevenue, pendingAgg]] = await Promise.all([
+  const [settings, [todayAppointments, pendingPayments, monthRevenue, pendingAgg, clients]] = await Promise.all([
     getSettings(),
     Promise.all([
       prisma.appointment.findMany({
@@ -45,6 +46,8 @@ async function getDashboardData() {
         _sum: { amount: true },
         _count: true,
       }),
+      // Para o atalho "Vender pacote": escolher o cliente sem sair da Início.
+      prisma.client.findMany({ select: { id: true, name: true, phone: true }, orderBy: { name: "asc" } }),
     ]),
   ]);
 
@@ -74,6 +77,7 @@ async function getDashboardData() {
     monthlyGoal: settings.monthlyGoal ?? null,
     pendingTotal: pendingAgg._sum.amount ?? 0,
     pendingCount: pendingAgg._count,
+    clients,
   };
 }
 
@@ -88,6 +92,7 @@ export default async function InicioPage() {
     monthlyGoal,
     pendingTotal,
     pendingCount,
+    clients,
   } = await getDashboardData();
 
   const goalPct =
@@ -205,6 +210,8 @@ export default async function InicioPage() {
               <p className="text-xs text-gray-500">{pendingCount} {pendingCount === 1 ? "pendente" : "pendentes"}</p>
             </div>
           </div>
+
+          <SellPlanModal clients={clients} block />
         </div>
 
         <div className="flex flex-col gap-6">
