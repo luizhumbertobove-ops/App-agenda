@@ -149,8 +149,6 @@ export default async function ClientesPage({
                   const pendingCount = client.payments.length;
                   const activePlan = mergePlans(client.planSubscriptions, client.planMemberships)[0];
                   const temTelefone = hasWhatsapp(client.phone);
-                  const activePlan = client.planSubscriptions[0];
-                  const temTelefone = hasWhatsapp(client.phone);
 
                   return (
                     <li key={client.id}>
