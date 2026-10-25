@@ -78,6 +78,7 @@ async function enviarVideo(arquivo: File, aoProgredir: (percentual: number) => v
     "Não foi possível adicionar o vídeo. Tente de novo.",
   );
   if (!confirmacao.ok) return { ok: false, erro: confirmacao.error };
+  if (!confirmacao.data?.foto) return { ok: false, erro: "Não foi possível adicionar o vídeo. Tente de novo." };
   return { ok: true, foto: confirmacao.data.foto };
 }
 

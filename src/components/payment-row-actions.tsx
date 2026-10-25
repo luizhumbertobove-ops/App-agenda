@@ -70,6 +70,7 @@ export function PaymentRowActions({
 
   if (confirmingDelete) {
     return (
+      <div className="flex flex-col items-end gap-1">
       <div className="flex items-center gap-2">
         <span className="text-sm text-red-600">Excluir?</span>
         <button
@@ -85,6 +86,12 @@ export function PaymentRowActions({
         >
           Não
         </button>
+      </div>
+      {error && (
+        <p role="alert" className="text-sm text-red-600">
+          {error}
+        </p>
+      )}
       </div>
     );
   }

@@ -338,8 +338,8 @@ function NovaAvaliacaoModal({
         },
         "Não foi possível salvar. Tente de novo.",
       );
-      if (!r.ok) {
-        setErroGeral(r.error);
+      if (!r.ok || !r.data?.avaliacao) {
+        setErroGeral(r.ok ? "Não foi possível salvar. Tente de novo." : r.error);
         return;
       }
       onSalva(r.data.avaliacao);

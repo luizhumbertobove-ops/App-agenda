@@ -48,8 +48,9 @@ export function PaymentButton({
     );
   }
 
+  // Coluna própria: na lista do Início o pai é uma linha flex e o erro não pode espremer o nome.
   return (
-    <>
+    <div className="flex shrink-0 flex-col items-end gap-1">
       <button
         onClick={handleSend}
         disabled={loading}
@@ -63,6 +64,6 @@ export function PaymentButton({
           {error}
         </p>
       )}
-    </>
+    </div>
   );
 }

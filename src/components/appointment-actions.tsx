@@ -92,6 +92,12 @@ export function AppointmentActions({
     </p>
   ) : null;
 
+  // Abrir ou fechar uma folha apaga o erro da tentativa anterior.
+  function showSheet(set: (v: boolean) => void, open: boolean) {
+    setError("");
+    set(open);
+  }
+
   async function updateStatus(newStatus: Status, extra?: Record<string, unknown>) {
     setLoading(true);
     setError("");
@@ -144,7 +150,7 @@ export function AppointmentActions({
             >
               {loading ? "Reabrindo..." : "Reabrir"}
             </button>
-            <button type="button" onClick={() => setReopening(false)} className={BTN_SECONDARY}>
+            <button type="button" onClick={() => showSheet(setReopening, false)} className={BTN_SECONDARY}>
               Voltar
             </button>
           </div>
@@ -156,7 +162,7 @@ export function AppointmentActions({
       <div className="flex flex-wrap items-center justify-end gap-2">
         {notice && <p className="mr-auto text-xs text-gray-500">{notice}</p>}
         {errorNode}
-        <button type="button" onClick={() => setReopening(true)} className={BTN_SECONDARY}>
+        <button type="button" onClick={() => showSheet(setReopening, true)} className={BTN_SECONDARY}>
           Reabrir
         </button>
       </div>
@@ -175,7 +181,7 @@ export function AppointmentActions({
           className="min-h-11 md:min-h-9 w-full sm:w-56 rounded-full border border-gray-300 bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
           onKeyDown={(e) => {
             if (e.key === "Enter") updateStatus("CANCELLED", { cancelReason });
-            if (e.key === "Escape") setCancelling(false);
+            if (e.key === "Escape") showSheet(setCancelling, false);
           }}
         />
         <button
@@ -186,7 +192,7 @@ export function AppointmentActions({
         >
           {loading ? "Cancelando..." : "Confirmar cancelamento"}
         </button>
-        <button type="button" onClick={() => setCancelling(false)} className={BTN_SECONDARY}>
+        <button type="button" onClick={() => showSheet(setCancelling, false)} className={BTN_SECONDARY}>
           Voltar
         </button>
         {errorNode && <div className="w-full">{errorNode}</div>}
@@ -214,7 +220,7 @@ export function AppointmentActions({
             onClick={() => {
               setAmount(defaultAmount ? String(defaultAmount) : "");
               setChargeMode(planRemaining > 0 ? "plan" : "paid");
-              setCompleting(true);
+              showSheet(setCompleting, true);
             }}
             disabled={loading}
             className={BTN_PRIMARY}
@@ -236,12 +242,12 @@ export function AppointmentActions({
       )}
 
       {completing && (
-        <Modal onClose={() => setCompleting(false)} className="p-6">
+        <Modal onClose={() => showSheet(setCompleting, false)} className="p-6">
           <div className="mb-4 flex items-start justify-between gap-3">
             <h3 className="font-display text-xl text-gray-900">Concluir atendimento</h3>
             <button
               type="button"
-              onClick={() => setCompleting(false)}
+              onClick={() => showSheet(setCompleting, false)}
               aria-label="Fechar"
               className="-mr-2 -mt-2 flex h-11 w-11 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600"
             >
@@ -375,7 +381,7 @@ export function AppointmentActions({
                 role="menuitem"
                 onClick={() => {
                   setMenuOpen(false);
-                  setCancelling(true);
+                  showSheet(setCancelling, true);
                 }}
                 className="flex min-h-11 md:min-h-9 w-full items-center rounded-lg px-3 text-left text-sm text-red-600 hover:bg-red-50"
               >
