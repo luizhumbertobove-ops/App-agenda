@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, UserPlus } from "lucide-react";
 import { Button } from "@/components/button";
 import { Input, Textarea } from "@/components/input";
+import { pageShell } from "@/components/page-shell";
 
 export default function NovoClientePage() {
   const router = useRouter();
@@ -55,7 +56,7 @@ export default function NovoClientePage() {
   }
 
   return (
-    <div className="p-6 max-w-lg mx-auto">
+    <div className={pageShell({ narrow: true })}>
       <Link
         href="/clientes"
         className="flex items-center gap-2 text-gray-500 hover:text-gray-700 text-sm mb-6"

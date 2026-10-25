@@ -6,12 +6,13 @@ import { getFotosGaleria } from "@/lib/galeria";
 import { getVitrineContent, VITRINE_CAMPOS } from "@/lib/vitrine-content";
 import { GaleriaManager } from "./galeria-manager";
 import { VitrineForm } from "./vitrine-form";
+import { pageShell } from "@/components/page-shell";
 
 export default async function ConteudoVitrinePage() {
   const [valores, fotos] = await Promise.all([getVitrineContent(), getFotosGaleria()]);
 
   return (
-    <div className="p-3 sm:p-6 max-w-3xl mx-auto">
+    <div className={pageShell({ narrow: true })}>
       <PageHeader
         title="Vitrine"
         subtitle="Textos, contato e fotos da vitrine pública"

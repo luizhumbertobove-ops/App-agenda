@@ -7,7 +7,6 @@
 import Image from "next/image";
 import { motion, useScroll, useTransform } from "motion/react";
 import { useRef } from "react";
-import { useScrollContainer } from "@/components/vitrine/motion/use-scroll-container";
 import { useVitrineMotion } from "@/components/vitrine/motion/provider";
 
 export type ParallaxPhotoProps = {
@@ -22,12 +21,10 @@ export type ParallaxPhotoProps = {
 export function ParallaxPhoto({ src, alt, strength = "soft", priority, sizes = "(min-width: 1024px) 50vw, 100vw" }: ParallaxPhotoProps) {
   const { reduce } = useVitrineMotion();
   const ref = useRef<HTMLDivElement>(null);
-  const container = useScrollContainer(ref);
 
   const hero = strength === "hero";
   const { scrollYProgress } = useScroll({
     target: ref,
-    container,
     offset: hero ? ["start start", "end start"] : ["start end", "end start"],
   });
   const y = useTransform(scrollYProgress, [0, 1], hero ? ["0%", "12%"] : ["-4%", "4%"]);

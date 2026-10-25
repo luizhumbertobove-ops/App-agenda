@@ -1,3 +1,5 @@
+import { pageShell } from "@/components/page-shell";
+
 /**
  * Esqueleto mostrado na hora em que se toca no menu, enquanto os dados da tela chegam
  * (loading.tsx de cada seção). Mostra o título de verdade e blocos neutros no lugar do conteúdo.
@@ -12,7 +14,7 @@ export function PageSkeleton({
   blocks?: number;
 }) {
   return (
-    <div className="mx-auto max-w-5xl px-5 pt-6 pb-24 md:px-6" aria-busy="true" aria-live="polite">
+    <div className={pageShell()} aria-busy="true" aria-live="polite">
       <header>
         {eyebrow && (
           <p className="text-xs font-medium uppercase tracking-[0.14em] text-amber-700">{eyebrow}</p>

@@ -5,7 +5,7 @@ import { format, startOfWeek, addWeeks, addDays, subDays, parseISO } from "date-
 import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import Link from "next/link";
-import { nowBR, formatTimeBR } from "@/lib/date";
+import { nowBR, formatTimeBR, formatLongDateBR } from "@/lib/date";
 import { getWorkSchedule } from "@/lib/settings";
 import { hoursForDate, toMinutes, type WorkSchedule } from "@/lib/work-schedule";
 import { NewAppointmentModal } from "@/components/new-appointment-modal";
@@ -15,6 +15,7 @@ import { BlockedSlotChip } from "@/components/blocked-slot-chip";
 import { BlockSlotModal } from "@/components/block-slot-modal";
 import { StatusBadge } from "@/components/status-badge";
 import { APPOINTMENT_STATUS } from "@/lib/status-labels";
+import { pageShell } from "@/components/page-shell";
 import { mergePlans } from "@/lib/plan-access";
 import { OPEN_PAYMENT_STATUSES } from "@/lib/domain/constants";
 
@@ -101,7 +102,7 @@ export default async function AgendaPage({
   const rangeStart = new Date(dayStartMs(view === "week" ? weekStartStr : currentDateStr));
   const rangeEnd = new Date(rangeStart.getTime() + (view === "week" ? 7 : 1) * 24 * HOUR_MS);
 
-  const [appointments, blockedSlots, services, schedule] = await Promise.all([
+  const [appointments, blockedSlots, services, schedule, upcoming] = await Promise.all([
     prisma.appointment.findMany({
       where: {
         startTime: { gte: rangeStart, lt: rangeEnd },
@@ -136,6 +137,15 @@ export default async function AgendaPage({
     }),
     prisma.service.findMany({ select: { name: true, price: true } }),
     getWorkSchedule(),
+    // Painel "Próximos dias" da visão de dia no PC.
+    view === "day"
+      ? prisma.appointment.findMany({
+          where: { startTime: { gte: rangeEnd }, status: { not: "CANCELLED" } },
+          select: { id: true, startTime: true, title: true, serviceType: true, client: { select: { name: true } } },
+          orderBy: { startTime: "asc" },
+          take: 8,
+        })
+      : Promise.resolve([]),
   ]);
 
   // Valor sugerido ao concluir: a cobrança em aberto do atendimento ou o preço do serviço.
@@ -190,6 +200,22 @@ export default async function AgendaPage({
       endTime: s.endTime.toISOString(),
     }));
 
+    const dayTools = (
+      <>
+        <BlockSlotModal currentDate={currentDateStr} blockedSlots={blockedSlotsForModal} />
+        {jornadaLink}
+      </>
+    );
+
+    // Próximos atendimentos agrupados por dia (data em horário de Brasília).
+    const upcomingByDay: { key: string; label: string; items: (typeof upcoming)[number][] }[] = [];
+    for (const a of upcoming) {
+      const key = new Date(a.startTime.getTime() - 3 * HOUR_MS).toISOString().slice(0, 10);
+      const last = upcomingByDay[upcomingByDay.length - 1];
+      if (last?.key === key) last.items.push(a);
+      else upcomingByDay.push({ key, label: formatLongDateBR(a.startTime), items: [a] });
+    }
+
     // Faixa de dias: os dias de trabalho da semana (e o dia aberto, se for folga).
     const dayWeekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
     const weekDays = Array.from({ length: 7 }, (_, i) => addDays(dayWeekStart, i)).filter((d) => {
@@ -198,8 +224,8 @@ export default async function AgendaPage({
     });
 
     return (
-      <div className="mx-auto max-w-7xl px-5 pb-24 pt-6 md:px-8">
-        <div className="flex flex-col gap-6 md:mx-auto md:max-w-3xl">
+      <div className={pageShell()}>
+        <div className="flex flex-col gap-6">
           <AgendaHeader
             view="day"
             anchor={currentDate}
@@ -213,150 +239,199 @@ export default async function AgendaPage({
             }
           />
 
-          <nav
-            aria-label="Dias da semana"
-            className="grid gap-2"
-            style={{ gridTemplateColumns: `repeat(${weekDays.length}, minmax(0, 1fr))` }}
-          >
-            {weekDays.map((d) => {
-              const key = format(d, "yyyy-MM-dd");
-              const on = key === currentDateStr;
-              return (
-                <Link
-                  key={key}
-                  href={`/agenda?date=${key}`}
-                  aria-current={on ? "date" : undefined}
-                  className={`flex h-14 flex-col items-center justify-center rounded-xl border transition-colors ${
-                    on
-                      ? "border-violet-600 bg-violet-600 text-white"
-                      : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  <span className={`text-xs capitalize ${on ? "text-white/80" : "text-gray-500"}`}>
-                    {format(d, "EEE", { locale: ptBR })}
-                  </span>
-                  <span className="text-lg font-medium leading-none tabular-nums">
-                    {format(d, "d")}
-                  </span>
-                </Link>
-              );
-            })}
-          </nav>
+          {/* No PC, a linha do tempo fica ao lado dos próximos dias; no celular, só a linha do tempo. */}
+          <div className="flex flex-col gap-6 @4xl:grid @4xl:grid-cols-[minmax(0,1fr)_18rem] @4xl:items-start @4xl:gap-10">
+            <div className="flex min-w-0 flex-col gap-6">
+              <nav
+                aria-label="Dias da semana"
+                className="grid gap-2"
+                style={{ gridTemplateColumns: `repeat(${weekDays.length}, minmax(0, 1fr))` }}
+              >
+                {weekDays.map((d) => {
+                  const key = format(d, "yyyy-MM-dd");
+                  const on = key === currentDateStr;
+                  return (
+                    <Link
+                      key={key}
+                      href={`/agenda?date=${key}`}
+                      aria-current={on ? "date" : undefined}
+                      className={`flex h-14 flex-col items-center justify-center rounded-xl border transition-colors ${
+                        on
+                          ? "border-violet-600 bg-violet-600 text-white"
+                          : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      <span className={`text-xs capitalize ${on ? "text-white/80" : "text-gray-500"}`}>
+                        {format(d, "EEE", { locale: ptBR })}
+                      </span>
+                      <span className="text-lg font-medium leading-none tabular-nums">
+                        {format(d, "d")}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </nav>
 
-          {dayOff && (
-            <p className="rounded-xl bg-gray-100 px-4 py-3 text-sm text-gray-600">
-              Dia de folga na sua jornada. Você ainda pode encaixar alguém pelo botão de novo
-              agendamento.
-            </p>
-          )}
+              {dayOff && (
+                <p className="rounded-xl bg-gray-100 px-4 py-3 text-sm text-gray-600">
+                  Dia de folga na sua jornada. Você ainda pode encaixar alguém pelo botão de novo
+                  agendamento.
+                </p>
+              )}
 
-          <ol className="flex flex-col">
-            {hourList.map((hour) => {
-              const hourAppts = apptsByHour[hour] ?? [];
-              const hourBlocked = blockedByHour[hour] ?? [];
-              const hourCont = contByHour[hour] ?? [];
-              const isEmpty = hourAppts.length === 0 && hourBlocked.length === 0 && hourCont.length === 0;
+              <ol className="flex flex-col">
+                {hourList.map((hour) => {
+                  const hourAppts = apptsByHour[hour] ?? [];
+                  const hourBlocked = blockedByHour[hour] ?? [];
+                  const hourCont = contByHour[hour] ?? [];
+                  const isEmpty = hourAppts.length === 0 && hourBlocked.length === 0 && hourCont.length === 0;
 
-              return (
-                <li key={hour} className="flex gap-3">
-                  <span className="w-12 shrink-0 pt-3 text-sm tabular-nums text-gray-500">
-                    {hh(hour)}
-                  </span>
-                  <div className="flex min-w-0 flex-1 flex-col gap-2 pb-3">
-                    {hourBlocked.map((slot) => (
-                      <BlockedSlotChip
-                        key={slot.id}
-                        variant="day"
-                        id={slot.id}
-                        startTime={slot.startTime.toISOString()}
-                        endTime={slot.endTime.toISOString()}
-                        reason={slot.reason}
-                      />
-                    ))}
+                  return (
+                    <li key={hour} className="flex gap-3">
+                      <span className="w-12 shrink-0 pt-3 text-sm tabular-nums text-gray-500">
+                        {hh(hour)}
+                      </span>
+                      <div className="flex min-w-0 flex-1 flex-col gap-2 pb-3">
+                        {hourBlocked.map((slot) => (
+                          <BlockedSlotChip
+                            key={slot.id}
+                            variant="day"
+                            id={slot.id}
+                            startTime={slot.startTime.toISOString()}
+                            endTime={slot.endTime.toISOString()}
+                            reason={slot.reason}
+                          />
+                        ))}
 
-                    {hourCont.map((appt) => (
-                      <div
-                        key={appt.id}
-                        className="flex min-h-12 items-center rounded-xl bg-violet-50 px-3 text-sm text-violet-700"
-                      >
-                        {appt.client?.name ?? appt.title.split(" - ")[0].trim()} · continua até{" "}
-                        {formatTimeBR(appt.endTime)}
+                        {hourCont.map((appt) => (
+                          <div
+                            key={appt.id}
+                            className="flex min-h-12 items-center rounded-xl bg-violet-50 px-3 text-sm text-violet-700"
+                          >
+                            {appt.client?.name ?? appt.title.split(" - ")[0].trim()} · continua até{" "}
+                            {formatTimeBR(appt.endTime)}
+                          </div>
+                        ))}
+
+                        {isEmpty && (
+                          <Link
+                            href={`/agenda?date=${currentDateStr}&novo=${hh(hour)}`}
+                            scroll={false}
+                            aria-label={`Agendar às ${hh(hour)}`}
+                            className="flex min-h-12 items-center rounded-xl border border-dashed border-gray-300 px-3 text-sm text-gray-400 transition-colors hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700"
+                          >
+                            Livre
+                          </Link>
+                        )}
+
+                        {hourAppts.map((appt) => (
+                          <article
+                            key={appt.id}
+                            className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                {appt.client ? (
+                                  <Link
+                                    href={`/clientes/${appt.client.id}`}
+                                    className="block truncate text-sm font-medium text-gray-900 hover:underline"
+                                  >
+                                    {appt.client.name}
+                                  </Link>
+                                ) : (
+                                  <p className="truncate text-sm font-medium text-gray-900">
+                                    {appt.title}
+                                  </p>
+                                )}
+                                <p className="text-xs text-gray-500">
+                                  {formatTimeBR(appt.startTime)}–{formatTimeBR(appt.endTime)}
+                                  {appt.serviceType ? ` · ${appt.serviceType}` : ""}
+                                </p>
+                              </div>
+                              <div className="flex shrink-0 items-center gap-1.5">
+                                {appt.isPartner && (
+                                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                                    Parceria
+                                  </span>
+                                )}
+                                <StatusBadge status={appt.status} map={APPOINTMENT_STATUS} />
+                              </div>
+                            </div>
+                            <div className="mt-3">
+                              <AppointmentActions
+                                appointmentId={appt.id}
+                                status={
+                                  appt.status as "SCHEDULED" | "CONFIRMED" | "DONE" | "CANCELLED"
+                                }
+                                startTime={appt.startTime.toISOString()}
+                                endTime={appt.endTime.toISOString()}
+                                serverNow={renderedAt}
+                                defaultAmount={suggestedAmount(appt)}
+                                clientId={appt.clientId}
+                                clientName={appt.client?.name ?? appt.title.split(" - ")[0].trim()}
+                                serviceType={appt.serviceType}
+                                notes={appt.notes}
+                                planRemaining={planRemaining(appt)}
+                                isPartner={appt.isPartner}
+                              />
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-4 @4xl:hidden">
+                {dayTools}
+              </div>
+            </div>
+
+            <aside aria-label="Próximos dias" className="hidden flex-col gap-6 @4xl:sticky @4xl:top-8 @4xl:flex">
+              <section>
+                <h2 className="text-[17px] font-semibold text-gray-900">Próximos dias</h2>
+                {upcomingByDay.length === 0 ? (
+                  <p className="mt-3 text-sm text-gray-500">Nada marcado depois deste dia.</p>
+                ) : (
+                  <div className="mt-3 flex flex-col gap-4">
+                    {upcomingByDay.map(({ key, label, items }) => (
+                      <div key={key}>
+                        <Link
+                          href={`/agenda?date=${key}`}
+                          className="block w-fit text-xs font-medium text-gray-500 first-letter:uppercase hover:text-violet-700"
+                        >
+                          {label}
+                        </Link>
+                        <ul className="mt-1.5 overflow-hidden rounded-xl border border-gray-200 bg-white">
+                          {items.map((a) => (
+                            <li key={a.id} className="border-b border-gray-200 last:border-b-0">
+                              <Link
+                                href={`/agenda?date=${key}`}
+                                className="flex min-h-12 items-center gap-3 px-3 py-2 hover:bg-gray-50"
+                              >
+                                <span className="w-11 shrink-0 text-sm font-semibold tabular-nums text-gray-900">
+                                  {formatTimeBR(a.startTime)}
+                                </span>
+                                <span className="flex min-w-0 flex-col">
+                                  <span className="truncate text-sm text-gray-900">
+                                    {a.client?.name ?? a.title.split(" - ")[0].trim()}
+                                  </span>
+                                  {a.serviceType && (
+                                    <span className="truncate text-xs text-gray-500">{a.serviceType}</span>
+                                  )}
+                                </span>
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
                     ))}
-
-                    {isEmpty && (
-                      <Link
-                        href={`/agenda?date=${currentDateStr}&novo=${hh(hour)}`}
-                        scroll={false}
-                        aria-label={`Agendar às ${hh(hour)}`}
-                        className="flex min-h-12 items-center rounded-xl border border-dashed border-gray-300 px-3 text-sm text-gray-400 transition-colors hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700"
-                      >
-                        Livre
-                      </Link>
-                    )}
-
-                    {hourAppts.map((appt) => (
-                      <article
-                        key={appt.id}
-                        className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            {appt.client ? (
-                              <Link
-                                href={`/clientes/${appt.client.id}`}
-                                className="block truncate text-sm font-medium text-gray-900 hover:underline"
-                              >
-                                {appt.client.name}
-                              </Link>
-                            ) : (
-                              <p className="truncate text-sm font-medium text-gray-900">
-                                {appt.title}
-                              </p>
-                            )}
-                            <p className="text-xs text-gray-500">
-                              {formatTimeBR(appt.startTime)}–{formatTimeBR(appt.endTime)}
-                              {appt.serviceType ? ` · ${appt.serviceType}` : ""}
-                            </p>
-                          </div>
-                          <div className="flex shrink-0 items-center gap-1.5">
-                            {appt.isPartner && (
-                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                                Parceria
-                              </span>
-                            )}
-                            <StatusBadge status={appt.status} map={APPOINTMENT_STATUS} />
-                          </div>
-                        </div>
-                        <div className="mt-3">
-                          <AppointmentActions
-                            appointmentId={appt.id}
-                            status={
-                              appt.status as "SCHEDULED" | "CONFIRMED" | "DONE" | "CANCELLED"
-                            }
-                            startTime={appt.startTime.toISOString()}
-                            endTime={appt.endTime.toISOString()}
-                            serverNow={renderedAt}
-                            defaultAmount={suggestedAmount(appt)}
-                            clientId={appt.clientId}
-                            clientName={appt.client?.name ?? appt.title.split(" - ")[0].trim()}
-                            serviceType={appt.serviceType}
-                            notes={appt.notes}
-                            planRemaining={planRemaining(appt)}
-                            isPartner={appt.isPartner}
-                          />
-                        </div>
-                      </article>
-                    ))}
                   </div>
-                </li>
-              );
-            })}
-          </ol>
-
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-4">
-            <BlockSlotModal currentDate={currentDateStr} blockedSlots={blockedSlotsForModal} />
-            {jornadaLink}
+                )}
+              </section>
+              <div className="flex flex-col items-start gap-2 border-t border-gray-200 pt-4">{dayTools}</div>
+            </aside>
           </div>
         </div>
       </div>
@@ -383,7 +458,7 @@ export default async function AgendaPage({
   const weekEndDate = addDays(weekStart, 6);
 
   return (
-    <div className="mx-auto max-w-7xl px-5 pb-24 pt-6 md:px-8">
+    <div className={pageShell()}>
       <div className="flex flex-col gap-6">
         <AgendaHeader
           view="week"

@@ -18,6 +18,7 @@ import { formatCurrencyBR } from "@/lib/format";
 import { StatusBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { APPOINTMENT_STATUS, PAYMENT_STATUS, MESSAGE_TYPE } from "@/lib/status-labels";
+import { pageShell } from "@/components/page-shell";
 import { hasWhatsapp } from "@/lib/domain/constants";
 
 /** Iniciais das duas primeiras palavras que começam com letra; ignora emoji. */
@@ -92,7 +93,7 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
   const temTelefone = hasWhatsapp(client.phone);
 
   return (
-    <div className="mx-auto max-w-4xl px-4 pb-24 pt-6 md:px-6 md:pt-8">
+    <div className={pageShell()}>
       <Link
         href="/clientes"
         className="-ml-2 mb-4 inline-flex min-h-11 items-center gap-1 rounded-full px-2 text-sm text-gray-500 transition-colors hover:text-gray-800"
@@ -264,7 +265,7 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
         </section>
       )}
 
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
+      <div className="mt-6 grid gap-4 @4xl:grid-cols-2">
         {/* Histórico de atendimentos */}
         <section className="rounded-xl border border-gray-200 bg-white p-5">
           <h2 className="mb-4 flex items-center gap-2 font-semibold text-gray-900">
@@ -328,7 +329,7 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
         </section>
 
         {/* Mensagens enviadas */}
-        <section className="rounded-xl border border-gray-200 bg-white p-5 md:col-span-2">
+        <section className="rounded-xl border border-gray-200 bg-white p-5 @4xl:col-span-2">
           <h2 className="mb-4 flex items-center gap-2 font-semibold text-gray-900">
             <MessageSquare size={16} className="text-green-600" aria-hidden />
             Mensagens WhatsApp

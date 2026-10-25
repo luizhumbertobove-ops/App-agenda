@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, Globe, Check, Phone, Search } from "lucide-react";
 import { Button } from "@/components/button";
 import { PageHeader } from "@/components/page-header";
+import { pageShell } from "@/components/page-shell";
 
 type Contact = {
   name: string;
@@ -93,7 +94,7 @@ export function ImportarClient() {
   // Tela de sucesso
   if (result) {
     return (
-      <div className="p-6 max-w-lg mx-auto text-center">
+      <div className={`${pageShell({ narrow: true })} text-center`}>
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <Check size={28} className="text-green-600" />
         </div>
@@ -116,7 +117,7 @@ export function ImportarClient() {
   // Tela de autenticação necessária
   if (needsAuth) {
     return (
-      <div className="p-6 max-w-lg mx-auto">
+      <div className={pageShell({ narrow: true })}>
         <Link href="/clientes" className="flex items-center gap-2 text-gray-500 hover:text-gray-700 text-sm mb-6">
           <ArrowLeft size={14} />
           Voltar
@@ -147,7 +148,7 @@ export function ImportarClient() {
   // Tela de erro
   if (error) {
     return (
-      <div className="p-6 max-w-lg mx-auto">
+      <div className={pageShell({ narrow: true })}>
         <Link href="/clientes" className="flex items-center gap-2 text-gray-500 hover:text-gray-700 text-sm mb-6">
           <ArrowLeft size={14} />
           Voltar
@@ -163,7 +164,7 @@ export function ImportarClient() {
   // Loading
   if (loading) {
     return (
-      <div className="p-6 max-w-lg mx-auto">
+      <div className={pageShell({ narrow: true })}>
         <div className="h-8 bg-gray-100 rounded w-48 mb-4 animate-pulse" />
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (

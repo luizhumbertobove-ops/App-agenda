@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { MESSAGE_TYPE } from "@/lib/status-labels";
 import { EmptyState } from "@/components/empty-state";
 import { WhatsappStatus } from "@/components/whatsapp-status";
+import { pageShell } from "@/components/page-shell";
 
 /** Primeiro instante do mês atual em horário de Brasília (00:00 BRT = 03:00 UTC). */
 function inicioDoMesBR(): Date {
@@ -41,7 +42,7 @@ export default async function MensagensPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-5xl space-y-10 px-5 pt-6 pb-24">
+    <div className={`${pageShell()} space-y-10`}>
       <header>
         <p className="text-xs font-medium uppercase tracking-[0.14em] text-amber-700">WhatsApp</p>
         <h1 className="font-display text-3xl text-gray-900">Mensagens</h1>
