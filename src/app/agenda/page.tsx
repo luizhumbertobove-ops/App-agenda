@@ -17,6 +17,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { APPOINTMENT_STATUS } from "@/lib/status-labels";
 import { pageShell } from "@/components/page-shell";
 import { mergePlans } from "@/lib/plan-access";
+import { OPEN_PAYMENT_STATUSES } from "@/lib/domain/constants";
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -118,7 +119,7 @@ export default async function AgendaPage({
           },
         },
         payments: {
-          where: { status: { in: ["PENDING", "SENT", "OVERDUE"] } },
+          where: { status: { in: [...OPEN_PAYMENT_STATUSES] } },
           select: { amount: true },
           orderBy: { createdAt: "desc" },
           take: 1,

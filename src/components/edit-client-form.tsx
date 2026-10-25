@@ -5,6 +5,7 @@ import { Pencil } from "lucide-react";
 import { Modal } from "@/components/modal";
 import { Button } from "@/components/button";
 import { Input, Textarea } from "@/components/input";
+import { NO_PHONE } from "@/lib/domain/constants";
 
 type Client = {
   id: string;
@@ -18,7 +19,7 @@ export function EditClientForm({ client }: { client: Client }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     name: client.name,
-    phone: client.phone === "00000000000" ? "" : client.phone,
+    phone: client.phone === NO_PHONE ? "" : client.phone,
     email: client.email ?? "",
     notes: client.notes ?? "",
   });
@@ -34,7 +35,7 @@ export function EditClientForm({ client }: { client: Client }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
-          phone: form.phone || "00000000000",
+          phone: form.phone || NO_PHONE,
           email: form.email || null,
           notes: form.notes || null,
         }),

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { logManualMessage } from "@/lib/domain/messaging";
 
 const schema = z.object({
   clientId: z.string(),
@@ -20,12 +20,6 @@ export async function POST(req: NextRequest) {
   }
   const { clientId, type, message, appointmentId } = body.data;
 
-  await prisma.whatsappLog.create({ data: { clientId, type, message, status: "manual" } });
-  if (type === "CONFIRMATION" && appointmentId) {
-    await prisma.appointment.update({
-      where: { id: appointmentId },
-      data: { confirmationSentAt: new Date() },
-    });
-  }
+  await logManualMessage({ clientId, type, message, appointmentId });
   return NextResponse.json({ ok: true });
 }

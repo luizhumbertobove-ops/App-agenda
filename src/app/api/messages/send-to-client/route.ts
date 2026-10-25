@@ -4,11 +4,12 @@ import { prisma } from "@/lib/prisma";
 import {
   isWhatsappOnline,
   whatsappManualLink,
-  sendText,
   buildConfirmationMessage,
   buildReengagementMessage,
 } from "@/lib/evolution";
 import { getSettings } from "@/lib/settings";
+import { hasWhatsapp } from "@/lib/domain/constants";
+import { sendAndLog } from "@/lib/domain/messaging";
 
 const schema = z.object({
   clientId: z.string(),
@@ -27,6 +28,9 @@ export async function POST(req: NextRequest) {
   const client = await prisma.client.findUnique({ where: { id: clientId } });
   if (!client) {
     return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 });
+  }
+  if (!hasWhatsapp(client.phone)) {
+    return NextResponse.json({ error: "Cliente sem WhatsApp cadastrado" }, { status: 422 });
   }
 
   const settings = await getSettings();
@@ -53,16 +57,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  await sendText(client.phone, message);
-
-  await prisma.whatsappLog.create({
-    data: {
-      clientId: client.id,
-      type: logType,
-      message,
-      status: "sent",
-    },
-  });
+  await sendAndLog(client.phone, { clientId: client.id, type: logType, message });
 
   return NextResponse.json({ ok: true });
 }

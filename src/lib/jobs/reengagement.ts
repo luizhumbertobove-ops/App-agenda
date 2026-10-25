@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { sendText, isWhatsappOnline, buildReengagementMessage } from "@/lib/evolution";
+import { isWhatsappOnline, buildReengagementMessage } from "@/lib/evolution";
 import { getSettings } from "@/lib/settings";
 import type { MessageTarget } from "@/lib/jobs/confirmations";
+import { hasWhatsapp, NO_PHONE } from "@/lib/domain/constants";
+import { sendAndLog } from "@/lib/domain/messaging";
 
 /** Clientes sem atendimento há mais de N dias e fora do intervalo entre lembretes. */
 export async function listReengagementTargets(): Promise<MessageTarget[]> {
@@ -17,7 +19,7 @@ export async function listReengagementTargets(): Promise<MessageTarget[]> {
   // Clientes cujo último atendimento foi há mais de `inactivityDays`
   const clients = await prisma.client.findMany({
     where: {
-      phone: { not: "00000000000" },
+      phone: { not: NO_PHONE },
       AND: [
         {
           appointments: {
@@ -46,6 +48,7 @@ export async function listReengagementTargets(): Promise<MessageTarget[]> {
       const lastMsg = client.whatsappLogs[0];
       return !lastMsg || (Date.now() - lastMsg.sentAt.getTime()) / 86400000 >= cooldownDays;
     })
+    .filter((client) => hasWhatsapp(client.phone))
     .map((client) => ({
       clientId: client.id,
       clientName: client.name,
@@ -61,10 +64,7 @@ export async function runReengagementSends() {
   let sent = 0;
   for (const t of await listReengagementTargets()) {
     try {
-      await sendText(t.phone, t.message);
-      await prisma.whatsappLog.create({
-        data: { clientId: t.clientId, type: "REENGAGEMENT", message: t.message },
-      });
+      await sendAndLog(t.phone, { clientId: t.clientId, type: "REENGAGEMENT", message: t.message });
       sent++;
     } catch {
       // Continua

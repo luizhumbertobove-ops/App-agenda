@@ -5,7 +5,7 @@ import { getSettings } from "@/lib/settings";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { FileDown } from "lucide-react";
-import { nowBR } from "@/lib/date";
+import { nowBR, TZ_BR } from "@/lib/date";
 import { NewChargeModal } from "@/components/new-charge-modal";
 import { PaymentRowActions } from "@/components/payment-row-actions";
 import { RevenueChart } from "@/components/revenue-chart";
@@ -15,8 +15,7 @@ import { EmptyState } from "@/components/empty-state";
 import { formatCurrencyBR } from "@/lib/format";
 import Link from "next/link";
 import { pageShell } from "@/components/page-shell";
-
-const PENDING_STATUSES = ["PENDING", "SENT", "OVERDUE"];
+import { isOpenPayment } from "@/lib/domain/constants";
 
 const FILTERS = [
   { key: "todas", label: "Todas", href: "/financeiro" },
@@ -84,7 +83,7 @@ export default async function FinanceiroPage({
 
   const totalPaid = monthStats._sum.amount ?? 0;
   // A receber = tudo o que está em aberto (inclusive vencidas), de qualquer mês.
-  const openPayments = payments.filter((p) => PENDING_STATUSES.includes(p.status));
+  const openPayments = payments.filter((p) => isOpenPayment(p.status));
   const totalPending = openPayments.reduce((sum, p) => sum + p.amount, 0);
   const pendingCount = openPayments.length;
   const totalForecast = totalPaid + totalPending;
@@ -93,14 +92,14 @@ export default async function FinanceiroPage({
   const goalPct = goal > 0 ? Math.min((totalPaid / goal) * 100, 100) : 0;
   const missing = Math.max(0, goal - totalPaid);
 
-  const openCount = payments.filter((p) => PENDING_STATUSES.includes(p.status)).length;
+  const openCount = payments.filter((p) => isOpenPayment(p.status)).length;
   // Data que importa: a do atendimento (quando houver); senão, a do lançamento.
   const refDate = (p: (typeof payments)[number]) => p.appointment?.startTime ?? p.createdAt;
   const diaMes = (d: Date) => {
     const parts = new Intl.DateTimeFormat("pt-BR", {
       day: "numeric",
       month: "short",
-      timeZone: "America/Sao_Paulo",
+      timeZone: TZ_BR,
     }).formatToParts(d);
     const get = (t: string) => parts.find((x) => x.type === t)?.value ?? "";
     return `${get("day")} ${get("month").replace(".", "")}`;
@@ -108,7 +107,7 @@ export default async function FinanceiroPage({
   payments.sort((a, b) => refDate(b).getTime() - refDate(a).getTime());
 
   const list = payments.filter((p) => {
-    if (filter === "pendentes") return PENDING_STATUSES.includes(p.status);
+    if (filter === "pendentes") return isOpenPayment(p.status);
     if (filter === "pagas") return p.status === "PAID";
     return true;
   });

@@ -5,7 +5,7 @@ import { findConflict, withScheduleLock } from "@/lib/domain/schedule";
 import { createCalendarEvent } from "@/lib/google-calendar";
 import { sendText } from "@/lib/evolution";
 import { getVitrineContent } from "@/lib/vitrine-content";
-import { formatDateBR, formatTimeBR } from "@/lib/date";
+import { dateKeyBR, formatDateBR, formatTimeBR } from "@/lib/date";
 import { ceilToHour, workRangeForDate } from "@/lib/work-schedule";
 import { getWorkSchedule } from "@/lib/settings";
 import {
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
 
   const start = new Date(startTime);
   const end = new Date(start.getTime() + SESSION_SLOT_MINUTES * 60 * 1000);
-  const dateStr = start.toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+  const dateStr = dateKeyBR(start);
   const work = workRangeForDate(await getWorkSchedule(), dateStr);
   const earliestStart = new Date(Date.now() + MIN_LEAD_MINUTES * 60 * 1000);
   // A vitrine só oferece horas cheias (7h, 8h, 9h...).

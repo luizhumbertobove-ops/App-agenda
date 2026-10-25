@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { z } from "zod";
+import { OPEN_PAYMENT_STATUSES } from "@/lib/domain/constants";
 
 export async function GET(req: NextRequest) {
   // ?simple=1: só id, nome e telefone (para busca de cliente nos formulários).
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
   const clients = await prisma.client.findMany({
     include: {
       appointments: { orderBy: { startTime: "desc" }, take: 1 },
-      payments: { where: { status: { in: ["PENDING", "SENT", "OVERDUE"] } } },
+      payments: { where: { status: { in: [...OPEN_PAYMENT_STATUSES] } } },
       planSubscriptions: { where: { active: true }, include: { plan: true } },
     },
     orderBy: { name: "asc" },

@@ -12,17 +12,9 @@ import { ClientCombobox } from "@/components/client-combobox";
 import { useClientList } from "@/hooks/use-client-list";
 import { PartnerToggle } from "@/components/partner-toggle";
 import { SessionHoursPicker, sessionMinutes } from "@/components/session-hours-picker";
+import { dateKeyBR, formatTimeBR } from "@/lib/date";
+import type { ServiceOption, SlotOption } from "@/lib/types";
 
-type Service = { id: string; name: string; durationMins: number; price: number };
-type Slot = { start: string; end: string; available: boolean };
-
-function horaBR(iso: string) {
-  return new Date(iso).toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "America/Sao_Paulo",
-  });
-}
 
 /** `preset`: aberto a partir de um horário "Livre" da Agenda, já com data e hora escolhidas. */
 export function NewAppointmentModal({
@@ -44,7 +36,7 @@ export function NewAppointmentModal({
   const hasClient = isPartner ? partnerName.trim().length > 0 : !!clientId;
   const [serviceId, setServiceId] = useState("");
   const [date, setDate] = useState(preset?.date ?? "");
-  const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<SlotOption | null>(null);
   const [notes, setNotes] = useState("");
   const [hours, setHours] = useState(1);
 
@@ -56,7 +48,7 @@ export function NewAppointmentModal({
   const [repeatWeeks, setRepeatWeeks] = useState(0);
 
   // Estado assíncrono
-  const [services, setServices] = useState<Service[]>([]);
+  const [services, setServices] = useState<ServiceOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -94,13 +86,13 @@ export function NewAppointmentModal({
     date && selectedService
       ? `/api/availability?date=${date}&duration=${sessionMinutes(hours, selectedService.durationMins)}`
       : null;
-  const { data: fetchedSlots, loading: loadingSlots } = useSlots<Slot[]>(slotsUrl);
+  const { data: fetchedSlots, loading: loadingSlots } = useSlots<SlotOption[]>(slotsUrl);
   const slots = slotsUrl ? fetchedSlots ?? [] : [];
   // Sem escolha manual, vale o horário disponível na hora tocada no "Livre".
   const slot =
     selectedSlot ??
     (preset && date === preset.date
-      ? slots.find((s) => s.available && horaBR(s.start).slice(0, 2) === preset.time.slice(0, 2)) ?? null
+      ? slots.find((s) => s.available && formatTimeBR(new Date(s.start)).slice(0, 2) === preset.time.slice(0, 2)) ?? null
       : null);
 
   // Fechar tira o ?novo= da URL, senão o formulário reabriria ao atualizar a página.
@@ -146,7 +138,7 @@ export function NewAppointmentModal({
   }
 
   // "Hoje" em Brasília (em UTC, depois das 21h já seria amanhã).
-  const today = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+  const today = dateKeyBR(new Date());
 
   if (!open) {
     return (
@@ -237,7 +229,7 @@ export function NewAppointmentModal({
             ) : (
               <div className="grid grid-cols-4 gap-2">
                 {slots.map((s) => {
-                  const time = horaBR(s.start);
+                  const time = formatTimeBR(new Date(s.start));
                   const isSelected = slot?.start === s.start;
                   return (
                     <button

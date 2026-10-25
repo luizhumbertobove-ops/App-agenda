@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-export type ClientOption = { id: string; name: string; phone: string };
+import type { ClientOption } from "@/lib/types";
 
 // Guardada enquanto o app está aberto: abrir o formulário de novo não busca outra vez.
 let cache: ClientOption[] | null = null;

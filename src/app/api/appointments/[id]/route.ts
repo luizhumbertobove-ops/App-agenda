@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { updateCalendarEvent, deleteCalendarEvent } from "@/lib/google-calendar";
-import { sendText, buildNoShowMessage } from "@/lib/evolution";
+import { buildNoShowMessage } from "@/lib/evolution";
 import { getSettings } from "@/lib/settings";
 import { cancelAppointment, updateAppointment } from "@/lib/domain/appointments";
+import { sendAndLog } from "@/lib/domain/messaging";
 import { DomainError } from "@/lib/domain/errors";
 import { z } from "zod";
 
@@ -62,9 +63,10 @@ export async function PATCH(
       // Mensagem de "Não compareceu" desativada em Mensagens: só marca a falta.
       if (settings.noShowEnabled) {
         const msg = buildNoShowMessage(previousClient.name, settings.noShowTemplate ?? null);
-        await sendText(previousClient.phone, msg);
-        await prisma.whatsappLog.create({
-          data: { clientId: previousClient.id, type: "NO_SHOW", message: msg, status: "sent" },
+        await sendAndLog(previousClient.phone, {
+          clientId: previousClient.id,
+          type: "NO_SHOW",
+          message: msg,
         });
       }
     } catch {
