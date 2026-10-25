@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { sendText, isWhatsappOnline, buildConfirmationMessage } from "@/lib/evolution";
+import { isWhatsappOnline, buildConfirmationMessage } from "@/lib/evolution";
 import { startOfTodayBR } from "@/lib/date";
 import { getSettings } from "@/lib/settings";
 import { hasWhatsapp } from "@/lib/domain/constants";
+import { sendAndLog } from "@/lib/domain/messaging";
 
 export type MessageTarget = {
   clientId: string;
@@ -50,13 +51,11 @@ export async function runConfirmationSends() {
   let sent = 0;
   for (const t of await listConfirmationTargets()) {
     try {
-      await sendText(t.phone, t.message);
-      await prisma.appointment.update({
-        where: { id: t.appointmentId },
-        data: { confirmationSentAt: new Date() },
-      });
-      await prisma.whatsappLog.create({
-        data: { clientId: t.clientId, type: "CONFIRMATION", message: t.message },
+      await sendAndLog(t.phone, {
+        clientId: t.clientId,
+        type: "CONFIRMATION",
+        message: t.message,
+        appointmentId: t.appointmentId,
       });
       sent++;
     } catch {

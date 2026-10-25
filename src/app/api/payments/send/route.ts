@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createPixCharge } from "@/lib/mercadopago";
-import { sendText, buildPaymentMessage } from "@/lib/evolution";
+import { buildPaymentMessage } from "@/lib/evolution";
 import { getSettings } from "@/lib/settings";
 import { findReusablePayment } from "@/lib/domain/payments";
+import { sendAndLog } from "@/lib/domain/messaging";
 import { z } from "zod";
 import { hasWhatsapp } from "@/lib/domain/constants";
 
@@ -69,11 +70,7 @@ export async function POST(req: NextRequest) {
   const settings = await getSettings();
   if (settings.paymentEnabled && hasWhatsapp(client.phone)) {
     const message = buildPaymentMessage(client.name, amount, pix.pixCode, settings.paymentTemplate);
-    await sendText(client.phone, message);
-
-    await prisma.whatsappLog.create({
-      data: { clientId: client.id, type: "PAYMENT_LINK", message },
-    });
+    await sendAndLog(client.phone, { clientId: client.id, type: "PAYMENT_LINK", message });
   }
 
   return NextResponse.json({ ok: true, paymentId: payment.id, pixCode: pix.pixCode });
