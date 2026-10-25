@@ -13,9 +13,8 @@ import { useClientList } from "@/hooks/use-client-list";
 import { PartnerToggle } from "@/components/partner-toggle";
 import { SessionHoursPicker, sessionMinutes } from "@/components/session-hours-picker";
 import { dateKeyBR, formatTimeBR } from "@/lib/date";
+import type { ServiceOption, SlotOption } from "@/lib/types";
 
-type Service = { id: string; name: string; durationMins: number; price: number };
-type Slot = { start: string; end: string; available: boolean };
 
 /** `preset`: aberto a partir de um horário "Livre" da Agenda, já com data e hora escolhidas. */
 export function NewAppointmentModal({
@@ -37,7 +36,7 @@ export function NewAppointmentModal({
   const hasClient = isPartner ? partnerName.trim().length > 0 : !!clientId;
   const [serviceId, setServiceId] = useState("");
   const [date, setDate] = useState(preset?.date ?? "");
-  const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<SlotOption | null>(null);
   const [notes, setNotes] = useState("");
   const [hours, setHours] = useState(1);
 
@@ -49,7 +48,7 @@ export function NewAppointmentModal({
   const [repeatWeeks, setRepeatWeeks] = useState(0);
 
   // Estado assíncrono
-  const [services, setServices] = useState<Service[]>([]);
+  const [services, setServices] = useState<ServiceOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -87,7 +86,7 @@ export function NewAppointmentModal({
     date && selectedService
       ? `/api/availability?date=${date}&duration=${sessionMinutes(hours, selectedService.durationMins)}`
       : null;
-  const { data: fetchedSlots, loading: loadingSlots } = useSlots<Slot[]>(slotsUrl);
+  const { data: fetchedSlots, loading: loadingSlots } = useSlots<SlotOption[]>(slotsUrl);
   const slots = slotsUrl ? fetchedSlots ?? [] : [];
   // Sem escolha manual, vale o horário disponível na hora tocada no "Livre".
   const slot =

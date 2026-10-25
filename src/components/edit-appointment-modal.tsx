@@ -11,10 +11,8 @@ import { ClientCombobox } from "@/components/client-combobox";
 import { PartnerToggle } from "@/components/partner-toggle";
 import { MAX_SESSION_HOURS, SessionHoursPicker, sessionMinutes } from "@/components/session-hours-picker";
 import { dateKeyBR, formatTimeBR } from "@/lib/date";
+import type { ClientOption, ServiceOption, SlotOption } from "@/lib/types";
 
-type Service = { id: string; name: string; durationMins: number; price: number };
-type Slot = { start: string; end: string; available: boolean };
-type Client = { id: string; name: string; phone: string };
 
 /** Folha para mudar serviço, data, horário e observações de um atendimento já marcado. */
 export function EditAppointmentModal({
@@ -40,14 +38,14 @@ export function EditAppointmentModal({
   onClose: () => void;
 }) {
   const router = useRouter();
-  const [services, setServices] = useState<Service[]>([]);
-  const [clients, setClients] = useState<Client[] | null>(null);
+  const [services, setServices] = useState<ServiceOption[]>([]);
+  const [clients, setClients] = useState<ClientOption[] | null>(null);
   const [clientId, setClientId] = useState(initialClientId ?? "");
   const [isPartner, setIsPartner] = useState(initialPartner);
   const [partnerName, setPartnerName] = useState(clientName);
   const [serviceName, setServiceName] = useState(serviceType);
   const [date, setDate] = useState(dateKeyBR(new Date(startTime)));
-  const [selected, setSelected] = useState<Slot | null>(null);
+  const [selected, setSelected] = useState<SlotOption | null>(null);
   const [notes, setNotes] = useState(initialNotes ?? "");
   // Tempo atual: até 1 h conta como sessão normal; acima disso, horas inteiras (2 h, 3 h).
   const [hours, setHours] = useState(() =>
@@ -76,7 +74,7 @@ export function EditAppointmentModal({
   const slotsUrl = date
     ? `/api/availability?date=${date}&duration=${duration}&exclude=${appointmentId}`
     : null;
-  const { data: fetchedSlots, loading: loadingSlots } = useSlots<Slot[]>(slotsUrl);
+  const { data: fetchedSlots, loading: loadingSlots } = useSlots<SlotOption[]>(slotsUrl);
   const slots = slotsUrl ? fetchedSlots ?? [] : [];
 
   // Sem escolha nova, fica o horário atual (se ainda existir na lista desse dia).

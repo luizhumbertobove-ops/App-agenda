@@ -4,8 +4,8 @@ import { useState } from "react";
 import { UserPlus } from "lucide-react";
 import { Input } from "@/components/input";
 import { addToClientList } from "@/hooks/use-client-list";
+import type { ClientOption } from "@/lib/types";
 
-type Client = { id: string; name: string; phone: string };
 
 /**
  * Busca cliente por nome com dropdown; opcionalmente permite criar um cliente novo
@@ -20,7 +20,7 @@ export function ClientCombobox({
   allowCreate = false,
   initialSearch = "",
 }: {
-  clients: Client[];
+  clients: ClientOption[];
   value: string;
   onChange: (clientId: string, name: string) => void;
   allowCreate?: boolean;
@@ -42,7 +42,7 @@ export function ClientCombobox({
   );
   const showDropdown = search.length > 0 && !value;
 
-  function handleSelect(c: Client) {
+  function handleSelect(c: ClientOption) {
     onChange(c.id, c.name);
     setSearch(c.name);
     setShowNewClient(false);
@@ -73,7 +73,7 @@ export function ClientCombobox({
         return;
       }
 
-      const created: Client = await res.json();
+      const created: ClientOption = await res.json();
       setClients((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
       addToClientList(created);
       onChange(created.id, created.name);

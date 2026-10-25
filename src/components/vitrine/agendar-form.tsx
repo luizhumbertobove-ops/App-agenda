@@ -16,6 +16,7 @@ import { TimeSlot } from "@/components/vitrine/ds/TimeSlot";
 import { Button } from "@/components/vitrine/ds/Button";
 import { Icon } from "@/components/vitrine/ds/Icon";
 import { dateKeyBR, formatTimeBR, TZ_BR } from "@/lib/date";
+import type { ServiceOption, SlotOption } from "@/lib/types";
 
 /** Nome e WhatsApp lembrados neste aparelho depois da primeira reserva. */
 const CLIENTE_KEY = "bove-cliente";
@@ -30,8 +31,6 @@ function clienteSalvo(): { name: string; phone: string } | null {
   }
 }
 
-type Service = { id: string; name: string; durationMins: number; price: number };
-type Slot = { start: string; end: string };
 
 function todayBR(): string {
   return dateKeyBR(new Date());
@@ -44,7 +43,7 @@ export function AgendarForm({
   workDays,
   scheduleText,
 }: {
-  services: Service[];
+  services: ServiceOption[];
   initialServiceId?: string;
   /** Número do Beto, editável na página Vitrine do app. */
   whatsapp: string;
@@ -59,7 +58,7 @@ export function AgendarForm({
       : services[0]?.id ?? ""
   );
   const [date, setDate] = useState("");
-  const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<SlotOption | null>(null);
 
   // Os campos só aparecem depois de escolher um horário (já no navegador), então ler o
   // localStorage aqui não causa diferença de hidratação.
@@ -85,7 +84,7 @@ export function AgendarForm({
   const isWeekend = date.length > 0 && !isBusinessDay(date, workDays);
 
   const slotsUrl = date && service && !isWeekend ? `/api/vitrine/availability?date=${date}` : null;
-  const { data: fetchedSlots, loading: loadingSlots, refetch: refetchSlots } = useSlots<Slot[]>(slotsUrl);
+  const { data: fetchedSlots, loading: loadingSlots, refetch: refetchSlots } = useSlots<SlotOption[]>(slotsUrl);
   const slots = slotsUrl ? fetchedSlots ?? [] : [];
 
   function handleDateChange(value: string) {
