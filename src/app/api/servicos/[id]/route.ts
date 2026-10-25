@@ -31,7 +31,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         ? await renameServiceInFutureAppointments(tx, before.name, service.name)
         : [];
     return { service, renamed };
-  });
+  }, { timeout: 15_000 });
 
   // Google Agenda depois da resposta e best-effort: falha lá não desfaz a renomeação.
   after(async () => {
