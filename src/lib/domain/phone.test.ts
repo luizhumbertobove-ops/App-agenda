@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { normalizePhone, phoneVariants } from "./phone";
+import { NO_PHONE } from "./constants";
 
 describe("normalizePhone", () => {
   it("celular com máscara, +55, zero de operadora ou 55 vira o mesmo número", () => {
@@ -7,6 +8,10 @@ describe("normalizePhone", () => {
     expect(normalizePhone("+55 11 98888-7777")).toBe("5511988887777");
     expect(normalizePhone("011988887777")).toBe("5511988887777");
     expect(normalizePhone("5511988887777")).toBe("5511988887777");
+  });
+
+  it("sentinela do cadastro sem WhatsApp continua sentinela", () => {
+    expect(normalizePhone(NO_PHONE)).toBe(NO_PHONE);
   });
 
   it("fixo sem 55 ganha o 55", () => {

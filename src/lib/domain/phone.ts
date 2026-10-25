@@ -1,9 +1,13 @@
+import { NO_PHONE } from "./constants";
+
 /**
  * Telefone gravado sempre só com dígitos e com o 55 do país, que é o formato
  * que o cadastro e a vitrine já usam. Aceita máscara, "+55" e "0" de operadora.
  */
 export function normalizePhone(raw: string): string {
   let digits = raw.replace(/\D/g, "");
+  // O sentinela do cadastro sem WhatsApp não é número: fica como está.
+  if (digits === NO_PHONE) return NO_PHONE;
   if (digits.startsWith("0")) digits = digits.slice(1);
   if (digits.length === 10 || digits.length === 11) return `55${digits}`;
   return digits;
