@@ -7,6 +7,7 @@ import { Plus, Star } from "lucide-react";
 import { Button } from "@/components/button";
 import { Input, Textarea } from "@/components/input";
 import { Modal } from "@/components/modal";
+import { apiRequest } from "@/lib/api-client";
 
 export type AvaliacaoAdmin = {
   id: string;
@@ -49,31 +50,25 @@ export function AvaliacoesManager({ avaliacoes: iniciais }: { avaliacoes: Avalia
     setLista((atual) => atual.map((a) => (a.id === id ? { ...a, status } : a)));
     setMensagem(null);
 
-    try {
-      const resposta = await fetch(`/api/avaliacoes/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      if (!resposta.ok) {
-        const retorno = await resposta.json().catch(() => ({}));
-        setLista(anterior);
-        setMensagem({ tipo: "erro", texto: retorno.error ?? "Não foi possível mudar a avaliação. Tente de novo." });
-        return;
-      }
-      setMensagem({
-        tipo: "ok",
-        texto:
-          status === "APPROVED"
-            ? "Avaliação aprovada. Ela já pode aparecer na vitrine."
-            : status === "HIDDEN"
-              ? "Avaliação ocultada. Ela sai da vitrine."
-              : "Avaliação voltou para pendentes.",
-      });
-    } catch {
+    const r = await apiRequest(
+      `/api/avaliacoes/${id}`,
+      { method: "PATCH", body: { status } },
+      "Não foi possível mudar a avaliação. Tente de novo.",
+    );
+    if (!r.ok) {
       setLista(anterior);
-      setMensagem({ tipo: "erro", texto: "Sem conexão. Verifique a internet e tente de novo." });
+      setMensagem({ tipo: "erro", texto: r.error });
+      return;
     }
+    setMensagem({
+      tipo: "ok",
+      texto:
+        status === "APPROVED"
+          ? "Avaliação aprovada. Ela já pode aparecer na vitrine."
+          : status === "HIDDEN"
+            ? "Avaliação ocultada. Ela sai da vitrine."
+            : "Avaliação voltou para pendentes.",
+    });
   }
 
   async function apagar(id: string) {
@@ -81,19 +76,17 @@ export function AvaliacoesManager({ avaliacoes: iniciais }: { avaliacoes: Avalia
     setLista((atual) => atual.filter((a) => a.id !== id));
     setMensagem(null);
 
-    try {
-      const resposta = await fetch(`/api/avaliacoes/${id}`, { method: "DELETE" });
-      if (!resposta.ok) {
-        const retorno = await resposta.json().catch(() => ({}));
-        setLista(anterior);
-        setMensagem({ tipo: "erro", texto: retorno.error ?? "Não foi possível apagar a avaliação. Tente de novo." });
-        return;
-      }
-      setMensagem({ tipo: "ok", texto: "Avaliação apagada." });
-    } catch {
+    const r = await apiRequest(
+      `/api/avaliacoes/${id}`,
+      { method: "DELETE" },
+      "Não foi possível apagar a avaliação. Tente de novo.",
+    );
+    if (!r.ok) {
       setLista(anterior);
-      setMensagem({ tipo: "erro", texto: "Sem conexão. Verifique a internet e tente de novo." });
+      setMensagem({ tipo: "erro", texto: r.error });
+      return;
     }
+    setMensagem({ tipo: "ok", texto: "Avaliação apagada." });
   }
 
   function cadastrada(avaliacao: AvaliacaoAdmin) {
@@ -332,25 +325,24 @@ function NovaAvaliacaoModal({
 
     setSalvando(true);
     try {
-      const resposta = await fetch("/api/avaliacoes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          author: nomeLimpo,
-          rating: nota,
-          text: texto.trim(),
-          publishedAt: data || null,
-        }),
-      });
-      const retorno = await resposta.json().catch(() => ({}));
-
-      if (!resposta.ok) {
-        setErroGeral(retorno.error ?? "Não foi possível salvar. Tente de novo.");
+      const r = await apiRequest<{ avaliacao: AvaliacaoAdmin }>(
+        "/api/avaliacoes",
+        {
+          method: "POST",
+          body: {
+            author: nomeLimpo,
+            rating: nota,
+            text: texto.trim(),
+            publishedAt: data || null,
+          },
+        },
+        "Não foi possível salvar. Tente de novo.",
+      );
+      if (!r.ok) {
+        setErroGeral(r.error);
         return;
       }
-      onSalva(retorno.avaliacao);
-    } catch {
-      setErroGeral("Sem conexão. Verifique a internet e tente de novo.");
+      onSalva(r.data.avaliacao);
     } finally {
       setSalvando(false);
     }

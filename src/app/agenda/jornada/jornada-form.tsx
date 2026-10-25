@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
+import { apiRequest } from "@/lib/api-client";
 import { COMERCIAL, WEEKDAYS, toMinutes, type WorkSchedule } from "@/lib/work-schedule";
 
 export function JornadaForm({ inicial }: { inicial: WorkSchedule }) {
@@ -34,19 +35,17 @@ export function JornadaForm({ inicial }: { inicial: WorkSchedule }) {
     setSalvando(true);
     setAviso(null);
     try {
-      const res = await fetch("/api/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workSchedule: jornada }),
-      });
-      setAviso(
-        res.ok
-          ? { ok: true, texto: "Jornada salva." }
-          : { ok: false, texto: "Não foi possível salvar. Confira os horários." }
+      const r = await apiRequest(
+        "/api/settings",
+        { method: "PATCH", body: { workSchedule: jornada } },
+        "Não foi possível salvar. Confira os horários.",
       );
-      if (res.ok) router.refresh();
-    } catch {
-      setAviso({ ok: false, texto: "Erro de conexão ao salvar." });
+      if (!r.ok) {
+        setAviso({ ok: false, texto: r.error });
+        return;
+      }
+      setAviso({ ok: true, texto: "Jornada salva." });
+      router.refresh();
     } finally {
       setSalvando(false);
     }

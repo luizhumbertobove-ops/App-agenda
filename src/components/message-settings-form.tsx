@@ -9,6 +9,7 @@ import {
 } from "@/lib/evolution";
 import { Button } from "@/components/button";
 import { Input, Textarea } from "@/components/input";
+import { apiRequest } from "@/lib/api-client";
 
 type Settings = {
   confirmationTemplate: string | null;
@@ -83,6 +84,7 @@ export function MessageSettingsForm({ settings }: { settings: Settings }) {
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [erro, setErro] = useState("");
   // Liga/desliga salva na hora (não depende do botão Salvar dos textos).
   const [ativos, setAtivos] = useState<Record<CampoAtivo, boolean>>({
     confirmationEnabled: settings.confirmationEnabled,
@@ -94,30 +96,42 @@ export function MessageSettingsForm({ settings }: { settings: Settings }) {
   async function alternar(campo: CampoAtivo) {
     const valor = !ativos[campo];
     setAtivos((a) => ({ ...a, [campo]: valor }));
-    const res = await fetch("/api/settings", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ [campo]: valor }),
-    }).catch(() => null);
-    if (!res?.ok) setAtivos((a) => ({ ...a, [campo]: !valor }));
+    setErro("");
+    const r = await apiRequest(
+      "/api/settings",
+      { method: "PATCH", body: { [campo]: valor } },
+      "Não consegui salvar. Tente de novo.",
+    );
+    if (!r.ok) {
+      setAtivos((a) => ({ ...a, [campo]: !valor }));
+      setErro(r.error);
+    }
   }
 
   async function handleSave() {
     setSaving(true);
     setSaved(false);
+    setErro("");
     try {
-      await fetch("/api/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          confirmationTemplate: form.confirmationTemplate || null,
-          paymentTemplate: form.paymentTemplate || null,
-          reengagementTemplate: form.reengagementTemplate || null,
-          noShowTemplate: form.noShowTemplate || null,
-          monthlyGoal: form.monthlyGoal > 0 ? form.monthlyGoal : null,
-        }),
-      });
+      const r = await apiRequest(
+        "/api/settings",
+        {
+          method: "PATCH",
+          body: {
+            ...form,
+            confirmationTemplate: form.confirmationTemplate || null,
+            paymentTemplate: form.paymentTemplate || null,
+            reengagementTemplate: form.reengagementTemplate || null,
+            noShowTemplate: form.noShowTemplate || null,
+            monthlyGoal: form.monthlyGoal > 0 ? form.monthlyGoal : null,
+          },
+        },
+        "Não consegui salvar. Tente de novo.",
+      );
+      if (!r.ok) {
+        setErro(r.error);
+        return;
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } finally {
@@ -272,6 +286,11 @@ export function MessageSettingsForm({ settings }: { settings: Settings }) {
           <span role="status" className="text-sm text-green-700">
             Configurações salvas.
           </span>
+        )}
+        {erro && (
+          <p role="alert" className="text-sm text-red-600">
+            {erro}
+          </p>
         )}
       </div>
     </div>

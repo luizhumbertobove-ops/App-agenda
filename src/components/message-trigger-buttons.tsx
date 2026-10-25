@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, Heart, MessageCircle, Send, X } from "lucide-react";
 import { Button } from "@/components/button";
 import { Modal } from "@/components/modal";
+import { apiRequest } from "@/lib/api-client";
 
 type TipoEnvio = "confirmations" | "reengagement";
 type Target = {
@@ -73,16 +74,16 @@ export function MessageTriggerButtons() {
   function registrar(t: Target) {
     const key = t.appointmentId ?? t.clientId;
     setEnviados((s) => new Set(s).add(key));
-    fetch("/api/messages/manual-log", {
+    // Registro em segundo plano: a janela do WhatsApp já abriu e a lista continua na tela.
+    void apiRequest("/api/messages/manual-log", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+      body: {
         clientId: t.clientId,
         type: manual?.type === "confirmations" ? "CONFIRMATION" : "REENGAGEMENT",
         message: t.message,
         appointmentId: t.appointmentId,
-      }),
-    }).catch(() => {});
+      },
+    });
   }
 
   function fecharManual() {

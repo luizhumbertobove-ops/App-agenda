@@ -5,6 +5,7 @@ import Image from "next/image";
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
+import { apiRequest } from "@/lib/api-client";
 import type { FotoGaleria } from "@/lib/galeria";
 import { comprimirImagem, MENSAGEM_ARQUIVO_GRANDE } from "@/lib/comprimir-imagem";
 
@@ -58,33 +59,26 @@ async function enviarFoto(arquivo: File): Promise<Resultado> {
 async function enviarVideo(arquivo: File, aoProgredir: (percentual: number) => void): Promise<Resultado> {
   if (arquivo.size > LIMITE_VIDEO_BYTES) return { ok: false, erro: MENSAGEM_VIDEO_GRANDE };
 
-  try {
-    const envio = await fetch("/api/galeria/video/envio", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tipo: arquivo.type, tamanho: arquivo.size }),
-    });
-    const dadosEnvio = await envio.json().catch(() => ({}));
-    if (!envio.ok || !dadosEnvio.uploadUrl || !dadosEnvio.path) {
-      return { ok: false, erro: dadosEnvio.error ?? "Não foi possível enviar o vídeo. Tente de novo." };
-    }
-
-    const subiu = await enviarArquivo(dadosEnvio.uploadUrl, arquivo, aoProgredir);
-    if (!subiu) return { ok: false, erro: "Não foi possível enviar o vídeo. Tente de novo." };
-
-    const confirmacao = await fetch("/api/galeria/video", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: dadosEnvio.path }),
-    });
-    const retorno = await confirmacao.json().catch(() => ({}));
-    if (!confirmacao.ok) {
-      return { ok: false, erro: retorno.error ?? "Não foi possível adicionar o vídeo. Tente de novo." };
-    }
-    return { ok: true, foto: retorno.foto };
-  } catch {
-    return { ok: false, erro: MENSAGEM_SEM_CONEXAO };
+  const envio = await apiRequest<{ uploadUrl: string; path: string }>(
+    "/api/galeria/video/envio",
+    { method: "POST", body: { tipo: arquivo.type, tamanho: arquivo.size } },
+    "Não foi possível enviar o vídeo. Tente de novo.",
+  );
+  if (!envio.ok) return { ok: false, erro: envio.error };
+  if (!envio.data?.uploadUrl || !envio.data.path) {
+    return { ok: false, erro: "Não foi possível enviar o vídeo. Tente de novo." };
   }
+
+  const subiu = await enviarArquivo(envio.data.uploadUrl, arquivo, aoProgredir);
+  if (!subiu) return { ok: false, erro: "Não foi possível enviar o vídeo. Tente de novo." };
+
+  const confirmacao = await apiRequest<{ foto: FotoGaleria }>(
+    "/api/galeria/video",
+    { method: "POST", body: { path: envio.data.path } },
+    "Não foi possível adicionar o vídeo. Tente de novo.",
+  );
+  if (!confirmacao.ok) return { ok: false, erro: confirmacao.error };
+  return { ok: true, foto: confirmacao.data.foto };
 }
 
 export function GaleriaManager({ fotos: fotosIniciais }: { fotos: FotoGaleria[] }) {
@@ -157,18 +151,16 @@ export function GaleriaManager({ fotos: fotosIniciais }: { fotos: FotoGaleria[] 
     setFotos((atual) => atual.filter((f) => f.id !== id));
     setMensagem(null);
 
-    try {
-      const resposta = await fetch(`/api/galeria/${id}`, { method: "DELETE" });
-      if (!resposta.ok) {
-        const retorno = await resposta.json().catch(() => ({}));
-        setFotos(anterior);
-        setMensagem({ tipo: "erro", texto: retorno.error ?? "Não foi possível remover a foto. Tente de novo." });
-      } else {
-        setMensagem({ tipo: "ok", texto: "Foto removida da galeria." });
-      }
-    } catch {
+    const r = await apiRequest(
+      `/api/galeria/${id}`,
+      { method: "DELETE" },
+      "Não foi possível remover a foto. Tente de novo.",
+    );
+    if (!r.ok) {
       setFotos(anterior);
-      setMensagem({ tipo: "erro", texto: MENSAGEM_SEM_CONEXAO });
+      setMensagem({ tipo: "erro", texto: r.error });
+    } else {
+      setMensagem({ tipo: "ok", texto: "Foto removida da galeria." });
     }
   }
 
@@ -177,20 +169,14 @@ export function GaleriaManager({ fotos: fotosIniciais }: { fotos: FotoGaleria[] 
     setFotos((atual) => atual.map((f) => (f.id === id ? { ...f, alt } : f)));
     setMensagem(null);
 
-    try {
-      const resposta = await fetch(`/api/galeria/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ alt }),
-      });
-      if (!resposta.ok) {
-        const retorno = await resposta.json().catch(() => ({}));
-        setFotos(anterior);
-        setMensagem({ tipo: "erro", texto: retorno.error ?? "Não foi possível salvar a descrição. Tente de novo." });
-      }
-    } catch {
+    const r = await apiRequest(
+      `/api/galeria/${id}`,
+      { method: "PATCH", body: { alt } },
+      "Não foi possível salvar a descrição. Tente de novo.",
+    );
+    if (!r.ok) {
       setFotos(anterior);
-      setMensagem({ tipo: "erro", texto: MENSAGEM_SEM_CONEXAO });
+      setMensagem({ tipo: "erro", texto: r.error });
     }
   }
 

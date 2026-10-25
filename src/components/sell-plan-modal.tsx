@@ -7,6 +7,7 @@ import { Modal } from "@/components/modal";
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import { ClientCombobox } from "@/components/client-combobox";
+import { apiRequest } from "@/lib/api-client";
 import { formatCurrencyBR } from "@/lib/format";
 
 type Client = { id: string; name: string; phone: string };
@@ -52,20 +53,20 @@ export function SellPlanModal({
     setSaving(true);
     setError("");
     try {
-      const res = await fetch(`/api/clients/${owner.id}/plans`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessions: n, amount: value, paid, memberIds: members.map((m) => m.id) }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        setError(typeof data?.error === "string" ? data.error : "Não foi possível registrar o pacote.");
+      const r = await apiRequest(
+        `/api/clients/${owner.id}/plans`,
+        {
+          method: "POST",
+          body: { sessions: n, amount: value, paid, memberIds: members.map((m) => m.id) },
+        },
+        "Não foi possível registrar o pacote.",
+      );
+      if (!r.ok) {
+        setError(r.error);
         return;
       }
       setOpen(false);
       router.refresh();
-    } catch {
-      setError("Erro de conexão.");
     } finally {
       setSaving(false);
     }

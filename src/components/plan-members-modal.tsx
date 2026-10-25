@@ -5,14 +5,9 @@ import { useRouter } from "next/navigation";
 import { Users, X } from "lucide-react";
 import { Modal } from "@/components/modal";
 import { ClientCombobox } from "@/components/client-combobox";
+import { apiRequest } from "@/lib/api-client";
 
 type Client = { id: string; name: string; phone: string };
-
-/** Lê a mensagem de erro da API; se não vier uma, usa o texto padrão. */
-async function mensagemDeErro(res: Response, padrao: string): Promise<string> {
-  const data = await res.json().catch(() => null);
-  return typeof data?.error === "string" ? data.error : padrao;
-}
 
 /** Gerencia quem usa o pacote familiar além do titular. */
 export function PlanMembersModal({
@@ -42,19 +37,17 @@ export function PlanMembersModal({
     setBusy(true);
     setError("");
     try {
-      const res = await fetch(`/api/plans/${subscriptionId}/members`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientId }),
-      });
-      if (!res.ok) {
-        setError(await mensagemDeErro(res, "Não foi possível adicionar."));
+      const r = await apiRequest(
+        `/api/plans/${subscriptionId}/members`,
+        { method: "POST", body: { clientId } },
+        "Não foi possível adicionar.",
+      );
+      if (!r.ok) {
+        setError(r.error);
         return;
       }
       setComboKey((k) => k + 1);
       router.refresh();
-    } catch {
-      setError("Erro de conexão.");
     } finally {
       setBusy(false);
     }
@@ -64,18 +57,16 @@ export function PlanMembersModal({
     setBusy(true);
     setError("");
     try {
-      const res = await fetch(`/api/plans/${subscriptionId}/members`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientId }),
-      });
-      if (!res.ok) {
-        setError(await mensagemDeErro(res, "Não foi possível tirar do pacote."));
+      const r = await apiRequest(
+        `/api/plans/${subscriptionId}/members`,
+        { method: "DELETE", body: { clientId } },
+        "Não foi possível tirar do pacote.",
+      );
+      if (!r.ok) {
+        setError(r.error);
         return;
       }
       router.refresh();
-    } catch {
-      setError("Erro de conexão.");
     } finally {
       setBusy(false);
     }

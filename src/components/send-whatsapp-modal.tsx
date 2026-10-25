@@ -5,6 +5,7 @@ import { MessageSquare, X, Send, Check } from "lucide-react";
 import { Modal } from "@/components/modal";
 import { Button } from "@/components/button";
 import { Textarea } from "@/components/input";
+import { apiRequest } from "@/lib/api-client";
 
 type MessageType = "confirmation" | "reengagement" | "custom";
 
@@ -143,11 +144,11 @@ export function SendWhatsappModal({
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => {
-                    fetch("/api/messages/manual-log", {
+                    // Registro em segundo plano: a janela do WhatsApp já abriu e o modal fecha.
+                    void apiRequest("/api/messages/manual-log", {
                       method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ clientId, type: manual.logType, message: manual.message }),
-                    }).catch(() => {});
+                      body: { clientId, type: manual.logType, message: manual.message },
+                    });
                     setOpen(false);
                     setManual(null);
                   }}

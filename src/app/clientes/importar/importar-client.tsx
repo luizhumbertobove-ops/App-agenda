@@ -7,6 +7,7 @@ import { ArrowLeft, Globe, Check, Phone, Search } from "lucide-react";
 import { Button } from "@/components/button";
 import { PageHeader } from "@/components/page-header";
 import { pageShell } from "@/components/page-shell";
+import { apiRequest } from "@/lib/api-client";
 
 type Contact = {
   name: string;
@@ -79,13 +80,16 @@ export function ImportarClient() {
     });
 
     try {
-      const res = await fetch("/api/contacts/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contacts: payload }),
-      });
-      const data = await res.json();
-      setResult(data);
+      const r = await apiRequest<{ imported: number; skipped: number }>(
+        "/api/contacts/import",
+        { method: "POST", body: { contacts: payload } },
+        "Não foi possível importar os contatos. Tente de novo.",
+      );
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      setResult(r.data);
     } finally {
       setImporting(false);
     }
