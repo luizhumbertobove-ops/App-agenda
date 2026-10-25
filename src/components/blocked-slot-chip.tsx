@@ -7,6 +7,7 @@ import { Modal } from "@/components/modal";
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import { dateKeyBR, formatTimeBR } from "@/lib/date";
+import { apiRequest } from "@/lib/api-client";
 
 /**
  * Bloqueio na agenda: mostra o motivo e, ao tocar, abre a edição (dia, início, fim, motivo)
@@ -55,19 +56,16 @@ export function BlockedSlotChip({
     setSaving(true);
     setError("");
     try {
-      const res = await fetch(`/api/blocked-slots/${id}`, {
+      const r = await apiRequest(`/api/blocked-slots/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ startTime: ini.toISOString(), endTime: fim.toISOString(), reason: motivo.trim() || null }),
-      });
-      if (!res.ok) {
-        setError("Não foi possível salvar o bloqueio.");
+        body: { startTime: ini.toISOString(), endTime: fim.toISOString(), reason: motivo.trim() || null },
+      }, "Não foi possível salvar o bloqueio.");
+      if (!r.ok) {
+        setError(r.error);
         return;
       }
       setOpen(false);
       router.refresh();
-    } catch {
-      setError("Erro de conexão.");
     } finally {
       setSaving(false);
     }
@@ -75,8 +73,13 @@ export function BlockedSlotChip({
 
   async function excluir() {
     setSaving(true);
+    setError("");
     try {
-      await fetch(`/api/blocked-slots/${id}`, { method: "DELETE" });
+      const r = await apiRequest(`/api/blocked-slots/${id}`, { method: "DELETE" }, "Não consegui excluir. Tente de novo.");
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
       setOpen(false);
       router.refresh();
     } finally {

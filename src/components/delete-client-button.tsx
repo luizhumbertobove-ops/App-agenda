@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/button";
+import { apiRequest } from "@/lib/api-client";
 
 export function DeleteClientButton({ clientId }: { clientId: string }) {
   const router = useRouter();
@@ -15,16 +16,13 @@ export function DeleteClientButton({ clientId }: { clientId: string }) {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/clients/${clientId}`, { method: "DELETE" });
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error ?? "Erro ao excluir cliente");
+      const r = await apiRequest(`/api/clients/${clientId}`, { method: "DELETE" }, "Erro ao excluir cliente");
+      if (!r.ok) {
+        setError(r.error);
         return;
       }
       router.push("/clientes");
       router.refresh();
-    } catch {
-      setError("Erro de conexão");
     } finally {
       setLoading(false);
     }

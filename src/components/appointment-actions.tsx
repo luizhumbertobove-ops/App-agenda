@@ -7,6 +7,7 @@ import { Modal } from "@/components/modal";
 import { Input } from "@/components/input";
 import { Button } from "@/components/button";
 import { EditAppointmentModal } from "@/components/edit-appointment-modal";
+import { apiRequest } from "@/lib/api-client";
 
 type Status = "SCHEDULED" | "CONFIRMED" | "DONE" | "CANCELLED";
 type ChargeMode = "plan" | "paid" | "pending" | "none";
@@ -67,6 +68,7 @@ export function AppointmentActions({
   const [chargeMode, setChargeMode] = useState<ChargeMode>("paid");
   const [reopening, setReopening] = useState(false);
   const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
   const [editing, setEditing] = useState(false);
 
   // Relógio atualizado a cada minuto: troca "Confirmar" por "Concluiu/Faltou" quando o horário chega.
@@ -84,24 +86,33 @@ export function AppointmentActions({
 
   const started = now >= new Date(startTime).getTime();
 
+  const errorNode = error ? (
+    <p role="alert" className="text-sm text-red-600">
+      {error}
+    </p>
+  ) : null;
+
   async function updateStatus(newStatus: Status, extra?: Record<string, unknown>) {
     setLoading(true);
+    setError("");
     try {
-      const res = await fetch(`/api/appointments/${appointmentId}`, {
+      const r = await apiRequest<{ keptPayments?: number }>(`/api/appointments/${appointmentId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus, ...extra }),
+        body: { status: newStatus, ...extra },
       });
-      const data = await res.json().catch(() => ({}));
-      if (data.keptPayments > 0) {
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      if ((r.data?.keptPayments ?? 0) > 0) {
         setNotice("O Pix pago pelo Mercado Pago foi mantido no Financeiro.");
       }
-      router.refresh();
-    } finally {
-      setLoading(false);
       setCancelling(false);
       setCompleting(false);
       setReopening(false);
+      router.refresh();
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -137,12 +148,14 @@ export function AppointmentActions({
               Voltar
             </button>
           </div>
+          {errorNode}
         </div>
       );
     }
     return (
       <div className="flex flex-wrap items-center justify-end gap-2">
         {notice && <p className="mr-auto text-xs text-gray-500">{notice}</p>}
+        {errorNode}
         <button type="button" onClick={() => setReopening(true)} className={BTN_SECONDARY}>
           Reabrir
         </button>
@@ -176,6 +189,7 @@ export function AppointmentActions({
         <button type="button" onClick={() => setCancelling(false)} className={BTN_SECONDARY}>
           Voltar
         </button>
+        {errorNode && <div className="w-full">{errorNode}</div>}
       </div>
     );
   }
@@ -289,6 +303,8 @@ export function AppointmentActions({
             </div>
           )}
 
+          {errorNode && <div className="mt-4">{errorNode}</div>}
+
           <Button
             onClick={confirmCompletion}
             disabled={loading || !amountValid}
@@ -312,6 +328,8 @@ export function AppointmentActions({
           onClose={() => setEditing(false)}
         />
       )}
+
+      {!completing && errorNode && <div className="w-full">{errorNode}</div>}
 
       <div className="relative ml-auto">
         <button

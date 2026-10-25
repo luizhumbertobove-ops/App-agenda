@@ -13,6 +13,7 @@ import { useClientList } from "@/hooks/use-client-list";
 import { PartnerToggle } from "@/components/partner-toggle";
 import { SessionHoursPicker, sessionMinutes } from "@/components/session-hours-picker";
 import { dateKeyBR, formatTimeBR } from "@/lib/date";
+import { apiRequest } from "@/lib/api-client";
 import type { ServiceOption, SlotOption } from "@/lib/types";
 
 
@@ -107,10 +108,9 @@ export function NewAppointmentModal({
     setError("");
 
     try {
-      const res = await fetch("/api/appointments", {
+      const r = await apiRequest("/api/appointments", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: {
           ...(isPartner ? { isPartner: true, partnerName: partnerName.trim() } : { clientId }),
           serviceType: selectedService.name,
           startTime: slot.start,
@@ -118,20 +118,17 @@ export function NewAppointmentModal({
           notes: notes || undefined,
           amount: createPayment && paymentAmount ? Number(paymentAmount) : undefined,
           repeatWeeks: repeatWeeks > 0 ? repeatWeeks : undefined,
-        }),
-      });
+        },
+      }, "Erro ao criar agendamento");
 
-      if (!res.ok) {
-        const data = await res.json();
-        setError(typeof data.error === "string" ? data.error : "Erro ao criar agendamento");
+      if (!r.ok) {
+        setError(r.error);
         return;
       }
 
       setOpen(false);
       if (preset) router.replace(preset.returnTo ?? `/agenda?date=${preset.date}`, { scroll: false });
       else router.refresh();
-    } catch {
-      setError("Erro ao criar agendamento");
     } finally {
       setLoading(false);
     }

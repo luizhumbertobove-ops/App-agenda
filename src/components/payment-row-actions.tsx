@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Send, Trash2 } from "lucide-react";
+import { apiRequest } from "@/lib/api-client";
 
 export function PaymentRowActions({
   paymentId,
@@ -14,16 +15,21 @@ export function PaymentRowActions({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [error, setError] = useState("");
   const [resend, setResend] = useState<{ ok: boolean; text: string } | null>(null);
 
   async function markPaid() {
     setLoading(true);
+    setError("");
     try {
-      await fetch(`/api/payments/${paymentId}`, {
+      const r = await apiRequest(`/api/payments/${paymentId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "PAID" }),
+        body: { status: "PAID" },
       });
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
       router.refresh();
     } finally {
       setLoading(false);
@@ -34,16 +40,9 @@ export function PaymentRowActions({
     setLoading(true);
     setResend(null);
     try {
-      const res = await fetch(`/api/payments/${paymentId}/resend`, { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-      setResend(
-        res.ok
-          ? { ok: true, text: "Pix reenviado" }
-          : { ok: false, text: typeof data.error === "string" ? data.error : "Não foi possível reenviar" }
-      );
-      if (res.ok) router.refresh();
-    } catch {
-      setResend({ ok: false, text: "Não foi possível reenviar" });
+      const r = await apiRequest(`/api/payments/${paymentId}/resend`, { method: "POST" }, "Não foi possível reenviar");
+      setResend(r.ok ? { ok: true, text: "Pix reenviado" } : { ok: false, text: r.error });
+      if (r.ok) router.refresh();
     } finally {
       setLoading(false);
     }
@@ -51,8 +50,13 @@ export function PaymentRowActions({
 
   async function handleDelete() {
     setLoading(true);
+    setError("");
     try {
-      await fetch(`/api/payments/${paymentId}`, { method: "DELETE" });
+      const r = await apiRequest(`/api/payments/${paymentId}`, { method: "DELETE" }, "Não consegui excluir. Tente de novo.");
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
       router.refresh();
     } finally {
       setLoading(false);
@@ -120,6 +124,11 @@ export function PaymentRowActions({
       {resend && (
         <p role="status" className={`text-xs ${resend.ok ? "text-green-700" : "text-red-600"}`}>
           {resend.text}
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="text-sm text-red-600">
+          {error}
         </p>
       )}
     </div>

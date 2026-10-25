@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Plus } from "lucide-react";
 import { Modal } from "@/components/modal";
+import { apiRequest } from "@/lib/api-client";
 
 type Service = {
   id: string;
@@ -42,7 +43,7 @@ function ServiceForm({
   initial?: Partial<Service>;
   onSave: (data: ServiceData) => Promise<void>;
   onClose: () => void;
-  onDelete?: () => void;
+  onDelete?: () => Promise<void>;
 }) {
   const ids = {
     name: useId(),
@@ -83,10 +84,19 @@ function ServiceForm({
         sessionDetails: sessionDetails.trim() || null,
       });
       onClose();
-    } catch {
-      setError("Erro ao salvar serviço.");
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : "Erro ao salvar serviço.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleDelete() {
+    setError("");
+    try {
+      await onDelete?.();
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : "Não consegui excluir. Tente de novo.");
     }
   }
 
@@ -217,7 +227,7 @@ function ServiceForm({
         <div className="border-t border-gray-200 pt-4">
           <button
             type="button"
-            onClick={onDelete}
+            onClick={handleDelete}
             className="flex min-h-11 w-full items-center justify-center text-sm font-medium text-red-600 hover:text-red-700 hover:underline"
           >
             Excluir serviço
@@ -233,12 +243,8 @@ export function NewServiceModal({ fullLabel = false }: { fullLabel?: boolean }) 
   const router = useRouter();
 
   async function handleSave(data: ServiceData) {
-    const res = await fetch("/api/servicos", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error("Erro ao criar serviço");
+    const r = await apiRequest("/api/servicos", { method: "POST", body: data }, "Erro ao criar serviço");
+    if (!r.ok) throw new Error(r.error);
     router.refresh();
   }
 
@@ -273,18 +279,15 @@ export function EditServiceModal({ service }: { service: Service }) {
   const router = useRouter();
 
   async function handleSave(data: ServiceData) {
-    const res = await fetch(`/api/servicos/${service.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error("Erro ao atualizar serviço");
+    const r = await apiRequest(`/api/servicos/${service.id}`, { method: "PATCH", body: data }, "Erro ao atualizar serviço");
+    if (!r.ok) throw new Error(r.error);
     router.refresh();
   }
 
   async function handleDelete() {
     if (!confirm(`Excluir o serviço "${service.name}"?`)) return;
-    await fetch(`/api/servicos/${service.id}`, { method: "DELETE" });
+    const r = await apiRequest(`/api/servicos/${service.id}`, { method: "DELETE" }, "Não consegui excluir. Tente de novo.");
+    if (!r.ok) throw new Error(r.error);
     router.refresh();
   }
 

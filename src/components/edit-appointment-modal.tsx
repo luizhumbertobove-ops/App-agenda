@@ -11,6 +11,7 @@ import { ClientCombobox } from "@/components/client-combobox";
 import { PartnerToggle } from "@/components/partner-toggle";
 import { MAX_SESSION_HOURS, SessionHoursPicker, sessionMinutes } from "@/components/session-hours-picker";
 import { dateKeyBR, formatTimeBR } from "@/lib/date";
+import { apiRequest } from "@/lib/api-client";
 import type { ClientOption, ServiceOption, SlotOption } from "@/lib/types";
 
 
@@ -89,10 +90,9 @@ export function EditAppointmentModal({
     setSaving(true);
     setError("");
     try {
-      const res = await fetch(`/api/appointments/${appointmentId}`, {
+      const r = await apiRequest(`/api/appointments/${appointmentId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: {
           ...(isPartner
             ? { isPartner: true, partnerName: partnerName.trim() }
             : {
@@ -103,17 +103,14 @@ export function EditAppointmentModal({
           startTime: slot.start,
           endTime: slot.end,
           notes: notes.trim() || null,
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(typeof data.error === "string" ? data.error : "Não foi possível salvar.");
+        },
+      }, "Não foi possível salvar.");
+      if (!r.ok) {
+        setError(r.error);
         return;
       }
       onClose();
       router.refresh();
-    } catch {
-      setError("Erro de conexão ao salvar.");
     } finally {
       setSaving(false);
     }

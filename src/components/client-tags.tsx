@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { X, Plus } from "lucide-react";
+import { apiRequest } from "@/lib/api-client";
 
 const PRESET_TAGS = ["VIP", "Novo", "Inativo", "Pacote", "Indicação"];
 
@@ -28,22 +29,31 @@ export function ClientTags({
   const [tags, setTags] = useState<string[]>(initialTags);
   const [adding, setAdding] = useState(false);
   const [custom, setCustom] = useState("");
+  const [error, setError] = useState("");
   const router = useRouter();
 
-  async function updateTags(next: string[]) {
+  async function updateTags(next: string[]): Promise<boolean> {
+    const anterior = tags;
     setTags(next);
-    await fetch(`/api/clients/${clientId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tags: next }),
-    });
+    setError("");
+    const r = await apiRequest(
+      `/api/clients/${clientId}`,
+      { method: "PATCH", body: { tags: next } },
+      "Não consegui salvar. Tente de novo.",
+    );
+    if (!r.ok) {
+      setTags(anterior);
+      setError(r.error);
+      return false;
+    }
     router.refresh();
+    return true;
   }
 
   async function addTag(tag: string) {
     const t = tag.trim();
     if (!t || tags.includes(t)) return;
-    await updateTags([...tags, t]);
+    if (!(await updateTags([...tags, t]))) return;
     setCustom("");
     setAdding(false);
   }
@@ -102,6 +112,11 @@ export function ClientTags({
           <Plus size={10} />
           Tag
         </button>
+      )}
+      {error && (
+        <p role="alert" className="w-full text-sm text-red-600">
+          {error}
+        </p>
       )}
     </div>
   );

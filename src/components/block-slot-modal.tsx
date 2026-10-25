@@ -8,6 +8,7 @@ import { Modal } from "@/components/modal";
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import { dateKeyBR } from "@/lib/date";
+import { apiRequest } from "@/lib/api-client";
 
 type BlockedSlot = { id: string; startTime: string; endTime: string; reason?: string | null };
 
@@ -42,28 +43,33 @@ export function BlockSlotModal({
         setError("Horário de fim deve ser após o início.");
         return;
       }
-      const res = await fetch("/api/blocked-slots", {
+      const r = await apiRequest("/api/blocked-slots", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: {
           startTime: start.toISOString(),
           endTime: end.toISOString(),
           reason: reason.trim() || undefined,
-        }),
-      });
-      if (!res.ok) throw new Error();
+        },
+      }, "Erro ao bloquear horário.");
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
       router.refresh();
       setOpen(false);
       setReason("");
-    } catch {
-      setError("Erro ao bloquear horário.");
     } finally {
       setLoading(false);
     }
   }
 
   async function handleDelete(id: string) {
-    await fetch(`/api/blocked-slots/${id}`, { method: "DELETE" });
+    setError("");
+    const r = await apiRequest(`/api/blocked-slots/${id}`, { method: "DELETE" }, "Não consegui excluir. Tente de novo.");
+    if (!r.ok) {
+      setError(r.error);
+      return;
+    }
     router.refresh();
   }
 

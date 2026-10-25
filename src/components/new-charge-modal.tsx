@@ -8,6 +8,7 @@ import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import { ClientCombobox } from "@/components/client-combobox";
 import { useClientList } from "@/hooks/use-client-list";
+import { apiRequest } from "@/lib/api-client";
 
 export function NewChargeModal() {
   const router = useRouter();
@@ -28,20 +29,16 @@ export function NewChargeModal() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/payments/send", {
+      const r = await apiRequest("/api/payments/send", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientId, amount: Number(amount), description: description || undefined }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        setError(typeof data.error === "string" ? data.error : "Erro ao gerar cobrança");
+        body: { clientId, amount: Number(amount), description: description || undefined },
+      }, "Erro ao gerar cobrança");
+      if (!r.ok) {
+        setError(r.error);
         return;
       }
       handleClose();
       router.refresh();
-    } catch {
-      setError("Erro ao gerar cobrança");
     } finally {
       setLoading(false);
     }
