@@ -28,7 +28,8 @@ export async function apiRequest<T = unknown>(
   }
 
   // Corpo vazio ou não-JSON (ex.: HTML de erro do servidor) vira null.
-  const text = await res.text();
+  // A conexão também pode cair no meio da leitura do corpo.
+  const text = await res.text().catch(() => "");
   let data: unknown = null;
   try {
     data = text ? JSON.parse(text) : null;
