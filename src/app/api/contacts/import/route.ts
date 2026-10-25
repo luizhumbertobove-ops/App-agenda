@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 import { z } from "zod";
+import { normalizePhone, phoneVariants } from "@/lib/domain/phone";
 
 const importSchema = z.object({
   contacts: z.array(
@@ -29,7 +30,9 @@ export async function POST(req: NextRequest) {
   let skipped = 0;
 
   for (const contact of body.data.contacts) {
-    const exists = await prisma.client.findUnique({ where: { phone: contact.phone } });
+    // Mesmo número que o cadastro (com ou sem 55, com máscara) não entra duas vezes.
+    const phone = normalizePhone(contact.phone);
+    const exists = await prisma.client.findFirst({ where: { phone: { in: phoneVariants(contact.phone) } } });
     if (exists) {
       skipped++;
       continue;
@@ -37,7 +40,7 @@ export async function POST(req: NextRequest) {
     await prisma.client.create({
       data: {
         name: contact.name,
-        phone: contact.phone,
+        phone,
         email: contact.email,
       },
     });

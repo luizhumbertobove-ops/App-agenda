@@ -5,6 +5,7 @@ import { z } from "zod";
 import { deleteCalendarEvent } from "@/lib/google-calendar";
 import { pickSuccessor } from "@/lib/plan-access";
 import { OPEN_PAYMENT_STATUSES } from "@/lib/domain/constants";
+import { normalizePhone, phoneVariants } from "@/lib/domain/phone";
 
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -35,8 +36,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const body = updateSchema.safeParse(await req.json());
   if (!body.success) return NextResponse.json({ error: body.error.flatten() }, { status: 400 });
 
+  // Telefone gravado normalizado; outro cliente com o mesmo número (com ou sem 55) bloqueia a troca.
+  const data = { ...body.data };
+  if (body.data.phone !== undefined) {
+    const raw = body.data.phone;
+    data.phone = normalizePhone(raw);
+    const other = await prisma.client.findFirst({
+      where: { phone: { in: phoneVariants(raw) }, id: { not: id } },
+    });
+    if (other) {
+      return NextResponse.json(
+        { error: { fieldErrors: { phone: ["Telefone já cadastrado para outro cliente"] } } },
+        { status: 409 }
+      );
+    }
+  }
+
   try {
-    const client = await prisma.client.update({ where: { id }, data: body.data });
+    const client = await prisma.client.update({ where: { id }, data });
     return NextResponse.json(client);
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {

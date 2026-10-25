@@ -2,6 +2,7 @@ import { NextRequest, NextResponse, after } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { findConflict, withScheduleLock } from "@/lib/domain/schedule";
+import { normalizePhone, phoneVariants } from "@/lib/domain/phone";
 import { createCalendarEvent } from "@/lib/google-calendar";
 import { sendText } from "@/lib/evolution";
 import { getVitrineContent } from "@/lib/vitrine-content";
@@ -29,11 +30,6 @@ const MAX_PER_PHONE_PER_DAY = 2;
 const MAX_PER_HOUR = 10;
 const SITE_NOTE = "Agendado pelo site";
 
-function normalizePhone(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  return digits.startsWith("55") && digits.length > 11 ? digits.slice(2) : digits;
-}
-
 export async function POST(req: NextRequest) {
   const body = bookingSchema.safeParse(await req.json().catch(() => null));
   if (!body.success || body.data.website) {
@@ -41,7 +37,8 @@ export async function POST(req: NextRequest) {
   }
   const { name, serviceId, startTime, notes } = body.data;
   const phone = normalizePhone(body.data.phone);
-  if (phone.length < 10) {
+  // Normalizado já tem o 55: número válido tem 12 ou 13 dígitos.
+  if (phone.length < 12) {
     return NextResponse.json({ error: "Telefone inválido" }, { status: 400 });
   }
 
@@ -75,7 +72,7 @@ export async function POST(req: NextRequest) {
         notes: { startsWith: SITE_NOTE },
         status: { not: "CANCELLED" },
         createdAt: { gte: new Date(now - 24 * 60 * 60 * 1000) },
-        client: { phone: { in: [`55${phone}`, phone] } },
+        client: { phone: { in: phoneVariants(body.data.phone) } },
       },
     }),
     prisma.appointment.count({
@@ -102,8 +99,8 @@ export async function POST(req: NextRequest) {
       // O cliente é reconhecido pelo WhatsApp, com ou sem o 55 (a base guarda com 55).
       // Cliente que já existe mantém o nome cadastrado pelo Beto, mesmo se digitar outro.
       const client =
-        (await tx.client.findFirst({ where: { phone: { in: [`55${phone}`, phone] } } })) ??
-        (await tx.client.create({ data: { name, phone: `55${phone}` } }));
+        (await tx.client.findFirst({ where: { phone: { in: phoneVariants(body.data.phone) } } })) ??
+        (await tx.client.create({ data: { name, phone } }));
 
       const appointment = await tx.appointment.create({
         data: {

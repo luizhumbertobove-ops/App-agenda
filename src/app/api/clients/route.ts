@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { z } from "zod";
 import { OPEN_PAYMENT_STATUSES } from "@/lib/domain/constants";
+import { normalizePhone, phoneVariants } from "@/lib/domain/phone";
 
 export async function GET(req: NextRequest) {
   // ?simple=1: só id, nome e telefone (para busca de cliente nos formulários).
@@ -35,11 +36,11 @@ export async function POST(req: NextRequest) {
   const body = createSchema.safeParse(await req.json());
   if (!body.success) return NextResponse.json({ error: body.error.flatten() }, { status: 400 });
 
-  // Telefone no padrão da base: só dígitos, com o 55 do país. Confere com e sem 55.
-  const digits = body.data.phone.replace(/\D/g, "");
-  const local = digits.startsWith("55") && digits.length > 11 ? digits.slice(2) : digits;
-  const phone = `55${local}`;
-  const existing = await prisma.client.findFirst({ where: { phone: { in: [phone, local] } } });
+  // Telefone no padrão da base: só dígitos, com o 55 do país. Confere também a forma sem 55 de cadastros antigos.
+  const phone = normalizePhone(body.data.phone);
+  const existing = await prisma.client.findFirst({
+    where: { phone: { in: phoneVariants(body.data.phone) } },
+  });
   if (existing) {
     return NextResponse.json(
       { error: { fieldErrors: { phone: [`Telefone já cadastrado para ${existing.name}`] } } },
