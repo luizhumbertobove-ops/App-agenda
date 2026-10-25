@@ -10,22 +10,11 @@ import { Input, Textarea } from "@/components/input";
 import { ClientCombobox } from "@/components/client-combobox";
 import { PartnerToggle } from "@/components/partner-toggle";
 import { MAX_SESSION_HOURS, SessionHoursPicker, sessionMinutes } from "@/components/session-hours-picker";
+import { dateKeyBR, formatTimeBR } from "@/lib/date";
 
 type Service = { id: string; name: string; durationMins: number; price: number };
 type Slot = { start: string; end: string; available: boolean };
 type Client = { id: string; name: string; phone: string };
-
-function dataBR(iso: string) {
-  return new Date(iso).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
-}
-
-function horaBR(iso: string) {
-  return new Date(iso).toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "America/Sao_Paulo",
-  });
-}
 
 /** Folha para mudar serviço, data, horário e observações de um atendimento já marcado. */
 export function EditAppointmentModal({
@@ -57,7 +46,7 @@ export function EditAppointmentModal({
   const [isPartner, setIsPartner] = useState(initialPartner);
   const [partnerName, setPartnerName] = useState(clientName);
   const [serviceName, setServiceName] = useState(serviceType);
-  const [date, setDate] = useState(dataBR(startTime));
+  const [date, setDate] = useState(dateKeyBR(new Date(startTime)));
   const [selected, setSelected] = useState<Slot | null>(null);
   const [notes, setNotes] = useState(initialNotes ?? "");
   // Tempo atual: até 1 h conta como sessão normal; acima disso, horas inteiras (2 h, 3 h).
@@ -92,7 +81,10 @@ export function EditAppointmentModal({
 
   // Sem escolha nova, fica o horário atual (se ainda existir na lista desse dia).
   const slot =
-    selected ?? slots.find((s) => horaBR(s.start) === horaBR(startTime) && date === dataBR(startTime)) ?? null;
+    selected ??
+    slots.find(
+      (s) => formatTimeBR(new Date(s.start)) === formatTimeBR(new Date(startTime)) && date === dateKeyBR(new Date(startTime))
+    ) ?? null;
 
   async function handleSave() {
     if (!slot) return;
@@ -251,7 +243,7 @@ export function EditAppointmentModal({
                             : "border-gray-200 text-gray-700 hover:border-violet-300 hover:bg-violet-50"
                       }`}
                     >
-                      {horaBR(s.start)}
+                      {formatTimeBR(new Date(s.start))}
                     </button>
                   );
                 })}

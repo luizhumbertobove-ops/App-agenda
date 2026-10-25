@@ -1,4 +1,5 @@
 import { google } from "googleapis";
+import { TZ_BR } from "./date";
 
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
@@ -62,8 +63,8 @@ export async function createCalendarEvent({
     requestBody: {
       summary: title,
       description,
-      start: { dateTime: startTime.toISOString(), timeZone: "America/Sao_Paulo" },
-      end: { dateTime: endTime.toISOString(), timeZone: "America/Sao_Paulo" },
+      start: { dateTime: startTime.toISOString(), timeZone: TZ_BR },
+      end: { dateTime: endTime.toISOString(), timeZone: TZ_BR },
     },
   });
   return res.data.id!;
@@ -89,8 +90,8 @@ export async function updateCalendarEvent(
     requestBody: {
       summary: title,
       description,
-      start: { dateTime: startTime.toISOString(), timeZone: "America/Sao_Paulo" },
-      end: { dateTime: endTime.toISOString(), timeZone: "America/Sao_Paulo" },
+      start: { dateTime: startTime.toISOString(), timeZone: TZ_BR },
+      end: { dateTime: endTime.toISOString(), timeZone: TZ_BR },
     },
   });
 }

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { sendText, isWhatsappOnline, buildConfirmationMessage } from "@/lib/evolution";
 import { startOfTodayBR } from "@/lib/date";
 import { getSettings } from "@/lib/settings";
+import { hasWhatsapp } from "@/lib/domain/constants";
 
 export type MessageTarget = {
   clientId: string;
@@ -32,7 +33,7 @@ export async function listConfirmationTargets(): Promise<MessageTarget[]> {
   });
 
   return appointments
-    .filter((a) => a.client?.phone && a.client.phone !== "00000000000")
+    .filter((a) => hasWhatsapp(a.client?.phone))
     .map((a) => ({
       clientId: a.client!.id,
       clientName: a.client!.name,

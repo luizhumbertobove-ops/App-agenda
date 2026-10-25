@@ -7,6 +7,7 @@ import { Modal } from "@/components/modal";
 import { StatusBadge } from "@/components/status-badge";
 import { AppointmentActions } from "@/components/appointment-actions";
 import { APPOINTMENT_STATUS } from "@/lib/status-labels";
+import { formatTimeBR, formatLongDateBR } from "@/lib/date";
 
 type Status = "SCHEDULED" | "CONFIRMED" | "DONE" | "CANCELLED";
 
@@ -23,23 +24,6 @@ const STATUS_DOT: Record<string, string> = {
   CONFIRMED: "bg-green-500",
   DONE: "bg-amber-400",
 };
-
-function horaBR(iso: string) {
-  return new Date(iso).toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "America/Sao_Paulo",
-  });
-}
-
-function diaBR(iso: string) {
-  return new Date(iso).toLocaleDateString("pt-BR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    timeZone: "America/Sao_Paulo",
-  });
-}
 
 /**
  * Cartão compacto da grade semanal. Tocar abre uma folha com os dados do atendimento
@@ -73,7 +57,7 @@ export function WeekAppointmentCard({
   isPartner?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const onTheHour = horaBR(startTime).endsWith(":00");
+  const onTheHour = formatTimeBR(new Date(startTime)).endsWith(":00");
 
   return (
     <>
@@ -93,7 +77,7 @@ export function WeekAppointmentCard({
           }`}
         >
           <span aria-hidden className={`size-1.5 shrink-0 rounded-full ${STATUS_DOT[status] ?? "bg-gray-400"}`} />
-          {horaBR(startTime)}
+          {formatTimeBR(new Date(startTime))}
         </span>
         <span className="flex min-w-0 items-start gap-1">
           <span className="line-clamp-2 break-words hyphens-auto text-[10px] font-medium leading-tight text-gray-900 md:line-clamp-1 md:text-xs">
@@ -101,7 +85,7 @@ export function WeekAppointmentCard({
           </span>
         </span>
         <span className="sr-only">
-          {horaBR(startTime)} · {APPOINTMENT_STATUS[status]?.label}
+          {formatTimeBR(new Date(startTime))} · {APPOINTMENT_STATUS[status]?.label}
         </span>
         {isPartner && <span className="truncate text-[9px] font-medium text-amber-700 md:text-[10px]">Parceria</span>}
       </button>
@@ -111,9 +95,9 @@ export function WeekAppointmentCard({
           <div className="space-y-4 px-6 pt-4 pb-6">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-xs capitalize text-gray-500">{diaBR(startTime)}</p>
+                <p className="text-xs capitalize text-gray-500">{formatLongDateBR(new Date(startTime))}</p>
                 <h3 className="font-display text-2xl text-gray-900">
-                  {horaBR(startTime)}–{horaBR(endTime)}
+                  {formatTimeBR(new Date(startTime))}–{formatTimeBR(new Date(endTime))}
                 </h3>
               </div>
               <button

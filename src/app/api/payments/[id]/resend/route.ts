@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { createPixCharge } from "@/lib/mercadopago";
 import { sendText, buildPaymentMessage } from "@/lib/evolution";
 import { getSettings } from "@/lib/settings";
+import { hasWhatsapp } from "@/lib/domain/constants";
 
 // O Pix do Mercado Pago vence em cerca de 24h; abaixo disso reaproveita o mesmo código.
 const PIX_REUSE_MS = 20 * 60 * 60 * 1000;
@@ -31,7 +32,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   if (!client) {
     return NextResponse.json({ error: "Cobrança sem cliente" }, { status: 422 });
   }
-  if (!client.phone || client.phone === "00000000000") {
+  if (!hasWhatsapp(client.phone)) {
     return NextResponse.json({ error: "Cliente sem WhatsApp cadastrado" }, { status: 422 });
   }
 

@@ -4,6 +4,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { z } from "zod";
 import { deleteCalendarEvent } from "@/lib/google-calendar";
 import { pickSuccessor } from "@/lib/plan-access";
+import { OPEN_PAYMENT_STATUSES } from "@/lib/domain/constants";
 
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -83,7 +84,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     ]),
     // Cobranças em aberto deixam de valer (senão ficariam no "A receber" para sempre).
     prisma.payment.updateMany({
-      where: { clientId: id, status: { in: ["PENDING", "SENT", "OVERDUE"] } },
+      where: { clientId: id, status: { in: [...OPEN_PAYMENT_STATUSES] } },
       data: { status: "CANCELLED" },
     }),
     prisma.payment.updateMany({ where: { clientId: id }, data: { clientId: null, appointmentId: null } }),

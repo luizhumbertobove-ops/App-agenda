@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { Modal } from "@/components/modal";
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
+import { dateKeyBR } from "@/lib/date";
 
 type BlockedSlot = { id: string; startTime: string; endTime: string; reason?: string | null };
 
@@ -28,7 +29,7 @@ export function BlockSlotModal({
   const router = useRouter();
 
   const daySlots = blockedSlots.filter(
-    (s) => new Date(s.startTime).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" }) === date
+    (s) => dateKeyBR(new Date(s.startTime)) === date
   );
 
   async function handleBlock() {

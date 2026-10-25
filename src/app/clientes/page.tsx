@@ -8,6 +8,7 @@ import { Suspense } from "react";
 import { ClientSearch } from "@/components/client-search";
 import { EmptyState } from "@/components/empty-state";
 import { mergePlans } from "@/lib/plan-access";
+import { hasWhatsapp, OPEN_PAYMENT_STATUSES } from "@/lib/domain/constants";
 
 const PAGE_SIZE = 60;
 
@@ -57,7 +58,7 @@ export default async function ClientesPage({
     where,
     include: {
       appointments: { orderBy: { startTime: "desc" }, take: 1 },
-      payments: { where: { status: { in: ["PENDING", "SENT", "OVERDUE"] } } },
+      payments: { where: { status: { in: [...OPEN_PAYMENT_STATUSES] } } },
       planSubscriptions: { where: { active: true }, include: { plan: true } },
       planMemberships: {
         where: { subscription: { active: true } },
@@ -147,7 +148,9 @@ export default async function ClientesPage({
                   const lastAppt = client.appointments[0];
                   const pendingCount = client.payments.length;
                   const activePlan = mergePlans(client.planSubscriptions, client.planMemberships)[0];
-                  const temTelefone = client.phone !== "00000000000";
+                  const temTelefone = hasWhatsapp(client.phone);
+                  const activePlan = client.planSubscriptions[0];
+                  const temTelefone = hasWhatsapp(client.phone);
 
                   return (
                     <li key={client.id}>

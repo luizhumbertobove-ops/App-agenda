@@ -1,5 +1,8 @@
 const BR_OFFSET_MS = 3 * 60 * 60 * 1000;
 
+/** Fuso horário de Brasília. */
+export const TZ_BR = "America/Sao_Paulo";
+
 /** Início do dia atual (00:00 horário de Brasília), retornado como Date UTC equivalente. */
 export function startOfTodayBR(): Date {
   const brNow = new Date(Date.now() - BR_OFFSET_MS);
@@ -25,7 +28,7 @@ export function formatLongDateBR(date: Date = new Date()): string {
     weekday: "long",
     day: "numeric",
     month: "long",
-    timeZone: "America/Sao_Paulo",
+    timeZone: TZ_BR,
   }).format(date);
 }
 
@@ -34,7 +37,7 @@ export function formatTimeBR(date: Date): string {
   return date.toLocaleTimeString("pt-BR", {
     hour: "2-digit",
     minute: "2-digit",
-    timeZone: "America/Sao_Paulo",
+    timeZone: TZ_BR,
   });
 }
 
@@ -44,8 +47,13 @@ export function formatDateBR(date: Date): string {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
-    timeZone: "America/Sao_Paulo",
+    timeZone: TZ_BR,
   });
+}
+
+/** Retorna "YYYY-MM-DD" no fuso de Brasília. */
+export function dateKeyBR(date: Date): string {
+  return date.toLocaleDateString("sv-SE", { timeZone: TZ_BR });
 }
 
 /** Início/fim de um intervalo de horário comercial (horário de Brasília) para uma data "YYYY-MM-DD". */

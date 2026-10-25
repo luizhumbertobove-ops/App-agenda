@@ -12,6 +12,8 @@ import { StatusBadge } from "@/components/status-badge";
 import { APPOINTMENT_STATUS } from "@/lib/status-labels";
 import { whatsappLink } from "@/lib/vitrine";
 import { WhatsappStatus } from "@/components/whatsapp-status";
+import { OPEN_PAYMENT_STATUSES } from "@/lib/domain/constants";
+import { TZ_BR } from "@/lib/date";
 
 async function getDashboardData() {
   const today = startOfTodayBR();
@@ -29,7 +31,7 @@ async function getDashboardData() {
         orderBy: { startTime: "asc" },
       }),
       prisma.payment.findMany({
-        where: { status: { in: ["PENDING", "SENT", "OVERDUE"] } },
+        where: { status: { in: [...OPEN_PAYMENT_STATUSES] } },
         include: { client: true, appointment: true },
         orderBy: { createdAt: "desc" },
         take: 10,
@@ -40,7 +42,7 @@ async function getDashboardData() {
       }),
       // A lista acima mostra só as 10 mais recentes; o total "A receber" precisa de todas.
       prisma.payment.aggregate({
-        where: { status: { in: ["PENDING", "SENT", "OVERDUE"] } },
+        where: { status: { in: [...OPEN_PAYMENT_STATUSES] } },
         _sum: { amount: true },
         _count: true,
       }),
@@ -60,7 +62,7 @@ async function getDashboardData() {
 
   const monthName = new Intl.DateTimeFormat("pt-BR", {
     month: "long",
-    timeZone: "America/Sao_Paulo",
+    timeZone: TZ_BR,
   }).format(new Date());
 
   return {

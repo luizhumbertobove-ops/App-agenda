@@ -12,17 +12,10 @@ import { ClientCombobox } from "@/components/client-combobox";
 import { useClientList } from "@/hooks/use-client-list";
 import { PartnerToggle } from "@/components/partner-toggle";
 import { SessionHoursPicker, sessionMinutes } from "@/components/session-hours-picker";
+import { dateKeyBR, formatTimeBR } from "@/lib/date";
 
 type Service = { id: string; name: string; durationMins: number; price: number };
 type Slot = { start: string; end: string; available: boolean };
-
-function horaBR(iso: string) {
-  return new Date(iso).toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "America/Sao_Paulo",
-  });
-}
 
 /** `preset`: aberto a partir de um horário "Livre" da Agenda, já com data e hora escolhidas. */
 export function NewAppointmentModal({
@@ -100,7 +93,7 @@ export function NewAppointmentModal({
   const slot =
     selectedSlot ??
     (preset && date === preset.date
-      ? slots.find((s) => s.available && horaBR(s.start).slice(0, 2) === preset.time.slice(0, 2)) ?? null
+      ? slots.find((s) => s.available && formatTimeBR(new Date(s.start)).slice(0, 2) === preset.time.slice(0, 2)) ?? null
       : null);
 
   // Fechar tira o ?novo= da URL, senão o formulário reabriria ao atualizar a página.
@@ -146,7 +139,7 @@ export function NewAppointmentModal({
   }
 
   // "Hoje" em Brasília (em UTC, depois das 21h já seria amanhã).
-  const today = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+  const today = dateKeyBR(new Date());
 
   if (!open) {
     return (
@@ -237,7 +230,7 @@ export function NewAppointmentModal({
             ) : (
               <div className="grid grid-cols-4 gap-2">
                 {slots.map((s) => {
-                  const time = horaBR(s.start);
+                  const time = formatTimeBR(new Date(s.start));
                   const isSelected = slot?.start === s.start;
                   return (
                     <button

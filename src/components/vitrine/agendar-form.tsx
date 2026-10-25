@@ -12,6 +12,10 @@ import { Input } from "@/components/vitrine/ds/Input";
 import { Textarea } from "@/components/vitrine/ds/Textarea";
 import { dur, ease, spring } from "@/components/vitrine/motion/tokens";
 import { useVitrineMotion } from "@/components/vitrine/motion/provider";
+import { TimeSlot } from "@/components/vitrine/ds/TimeSlot";
+import { Button } from "@/components/vitrine/ds/Button";
+import { Icon } from "@/components/vitrine/ds/Icon";
+import { dateKeyBR, formatTimeBR, TZ_BR } from "@/lib/date";
 
 /** Nome e WhatsApp lembrados neste aparelho depois da primeira reserva. */
 const CLIENTE_KEY = "bove-cliente";
@@ -25,15 +29,12 @@ function clienteSalvo(): { name: string; phone: string } | null {
     return null;
   }
 }
-import { TimeSlot } from "@/components/vitrine/ds/TimeSlot";
-import { Button } from "@/components/vitrine/ds/Button";
-import { Icon } from "@/components/vitrine/ds/Icon";
 
 type Service = { id: string; name: string; durationMins: number; price: number };
 type Slot = { start: string; end: string };
 
 function todayBR(): string {
-  return new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+  return dateKeyBR(new Date());
 }
 
 export function AgendarForm({
@@ -152,7 +153,7 @@ export function AgendarForm({
           month: "short",
           hour: "2-digit",
           minute: "2-digit",
-          timeZone: "America/Sao_Paulo",
+          timeZone: TZ_BR,
         }),
         serviceName: data.serviceName,
         isFirstSession: primeiraVez,
@@ -350,11 +351,7 @@ export function AgendarForm({
                     ) : (
                       <div className="grid grid-cols-3 gap-2">
                         {slots.map((slot, i) => {
-                          const time = new Date(slot.start).toLocaleTimeString("pt-BR", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            timeZone: "America/Sao_Paulo",
-                          });
+                          const time = formatTimeBR(new Date(slot.start));
                           const selecionado = selectedSlot?.start === slot.start;
                           return (
                             <motion.div

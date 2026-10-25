@@ -6,11 +6,7 @@ import { Lock, X } from "lucide-react";
 import { Modal } from "@/components/modal";
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
-
-const TZ = "America/Sao_Paulo";
-const dataBR = (iso: string) => new Date(iso).toLocaleDateString("sv-SE", { timeZone: TZ });
-const horaBR = (iso: string) =>
-  new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: TZ });
+import { dateKeyBR, formatTimeBR } from "@/lib/date";
 
 /**
  * Bloqueio na agenda: mostra o motivo e, ao tocar, abre a edição (dia, início, fim, motivo)
@@ -31,18 +27,18 @@ export function BlockedSlotChip({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [date, setDate] = useState(dataBR(startTime));
-  const [start, setStart] = useState(horaBR(startTime));
-  const [end, setEnd] = useState(horaBR(endTime));
+  const [date, setDate] = useState(dateKeyBR(new Date(startTime)));
+  const [start, setStart] = useState(formatTimeBR(new Date(startTime)));
+  const [end, setEnd] = useState(formatTimeBR(new Date(endTime)));
   const [motivo, setMotivo] = useState(reason ?? "");
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState("");
 
   function abrir() {
-    setDate(dataBR(startTime));
-    setStart(horaBR(startTime));
-    setEnd(horaBR(endTime));
+    setDate(dateKeyBR(new Date(startTime)));
+    setStart(formatTimeBR(new Date(startTime)));
+    setEnd(formatTimeBR(new Date(endTime)));
     setMotivo(reason ?? "");
     setConfirmDelete(false);
     setError("");
@@ -96,7 +92,7 @@ export function BlockedSlotChip({
         <button
           type="button"
           onClick={abrir}
-          title={`${label} · ${horaBR(startTime)}–${horaBR(endTime)}`}
+          title={`${label} · ${formatTimeBR(new Date(startTime))}–${formatTimeBR(new Date(endTime))}`}
           className="flex min-h-11 w-full min-w-0 flex-1 items-start gap-1 rounded-md bg-gray-100 px-[3px] py-1 text-left text-gray-600 hover:bg-gray-200 md:rounded-lg md:px-2"
         >
           <Lock size={11} strokeWidth={1.75} className="mt-0.5 shrink-0" aria-hidden="true" />
@@ -110,7 +106,7 @@ export function BlockedSlotChip({
         >
           <Lock size={16} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />
           <span className="min-w-0 flex-1">
-            Bloqueado {horaBR(startTime)}–{horaBR(endTime)}
+            Bloqueado {formatTimeBR(new Date(startTime))}–{formatTimeBR(new Date(endTime))}
             {reason ? ` · ${reason}` : ""}
           </span>
           <span className="shrink-0 text-xs text-gray-400">Editar</span>

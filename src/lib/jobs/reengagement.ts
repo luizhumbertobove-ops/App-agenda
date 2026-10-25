@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { sendText, isWhatsappOnline, buildReengagementMessage } from "@/lib/evolution";
 import { getSettings } from "@/lib/settings";
 import type { MessageTarget } from "@/lib/jobs/confirmations";
+import { NO_PHONE } from "@/lib/domain/constants";
 
 /** Clientes sem atendimento há mais de N dias e fora do intervalo entre lembretes. */
 export async function listReengagementTargets(): Promise<MessageTarget[]> {
@@ -17,7 +18,7 @@ export async function listReengagementTargets(): Promise<MessageTarget[]> {
   // Clientes cujo último atendimento foi há mais de `inactivityDays`
   const clients = await prisma.client.findMany({
     where: {
-      phone: { not: "00000000000" },
+      phone: { not: NO_PHONE },
       AND: [
         {
           appointments: {

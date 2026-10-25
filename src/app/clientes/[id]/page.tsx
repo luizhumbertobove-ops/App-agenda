@@ -18,6 +18,7 @@ import { formatCurrencyBR } from "@/lib/format";
 import { StatusBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { APPOINTMENT_STATUS, PAYMENT_STATUS, MESSAGE_TYPE } from "@/lib/status-labels";
+import { hasWhatsapp } from "@/lib/domain/constants";
 
 /** Iniciais das duas primeiras palavras que começam com letra; ignora emoji. */
 function iniciais(nome: string): string {
@@ -88,7 +89,7 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
   }
 
   const pendingPayments = client.payments.filter((p) => p.status === "PENDING");
-  const temTelefone = client.phone !== "00000000000";
+  const temTelefone = hasWhatsapp(client.phone);
 
   return (
     <div className="mx-auto max-w-4xl px-4 pb-24 pt-6 md:px-6 md:pt-8">

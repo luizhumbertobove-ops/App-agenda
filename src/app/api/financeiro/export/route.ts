@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { formatDateBR } from "@/lib/date";
+import { dateKeyBR } from "@/lib/date";
 
 export async function GET() {
   const payments = await prisma.payment.findMany({
@@ -33,7 +34,7 @@ export async function GET() {
   return new NextResponse(bom + rows, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="financeiro-${new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" })}.csv"`,
+      "Content-Disposition": `attachment; filename="financeiro-${dateKeyBR(new Date())}.csv"`,
     },
   });
 }
