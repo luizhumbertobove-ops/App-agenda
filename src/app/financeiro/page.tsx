@@ -35,7 +35,7 @@ export default async function FinanceiroPage({
     status === "pendentes" || status === "pagas" ? status : "todas";
   // Página inválida (0, negativa, texto) cai na primeira.
   const n = Number(pagina);
-  const page = Number.isInteger(n) && n >= 1 ? n : 1;
+  const page = Number.isSafeInteger(n) && n >= 1 && n <= 100_000 ? n : 1;
 
   const today = nowBR();
   // Limites de mês em horário de Brasília (00:00 BRT = 03:00 UTC); fim exclusivo.

@@ -31,7 +31,7 @@ export async function listPayments(
     FROM "Payment" p
     LEFT JOIN "Appointment" a ON a.id = p."appointmentId"
     WHERE ${condition}
-    ORDER BY COALESCE(a."startTime", p."createdAt") DESC, p.id DESC
+    ORDER BY COALESCE(a."startTime", p."createdAt") DESC, p."createdAt" DESC, p.id DESC
     LIMIT ${FINANCE_PAGE_SIZE + 1} OFFSET ${offset}`;
 
   const hasMore = rows.length > FINANCE_PAGE_SIZE;
@@ -67,7 +67,13 @@ export async function financeTotals(): Promise<{
       COUNT(*) FILTER (WHERE p.status::text <> 'CANCELLED')::int AS "allCount",
       COUNT(*) FILTER (WHERE p.status::text = 'PAID')::int AS "paidCount"
     FROM "Payment" p`;
-  return row;
+  // Number(): se a coluna virar Decimal, a soma não pode voltar como texto e concatenar na tela.
+  return {
+    openSum: Number(row.openSum),
+    openCount: Number(row.openCount),
+    allCount: Number(row.allCount),
+    paidCount: Number(row.paidCount),
+  };
 }
 
 /**
