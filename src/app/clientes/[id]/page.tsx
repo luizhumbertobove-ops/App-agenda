@@ -11,6 +11,8 @@ import { PaymentRowActions } from "@/components/payment-row-actions";
 import { SendWhatsappModal } from "@/components/send-whatsapp-modal";
 import { ClientTags } from "@/components/client-tags";
 import { SellPlanModal } from "@/components/sell-plan-modal";
+import { PlanMembersModal } from "@/components/plan-members-modal";
+import { clientPlansWhere } from "@/lib/plan-access";
 import { formatTimeBR, formatDateBR } from "@/lib/date";
 import { formatCurrencyBR } from "@/lib/format";
 import { StatusBadge } from "@/components/status-badge";
@@ -34,13 +36,12 @@ function iniciais(nome: string): string {
 export default async function ClientePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const [client, stats] = await Promise.all([
+  const [client, stats, planos, clientesSeletor] = await Promise.all([
     prisma.client.findUnique({
       where: { id },
       include: {
         appointments: { orderBy: { startTime: "desc" } },
         payments: { where: { status: { not: "CANCELLED" } }, orderBy: { createdAt: "desc" } },
-        planSubscriptions: { include: { plan: true }, orderBy: { purchasedAt: "desc" } },
         whatsappLogs: { orderBy: { sentAt: "desc" }, take: 10 },
       },
     }),
@@ -52,12 +53,40 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
       prisma.appointment.count({ where: { clientId: id, status: "DONE" } }),
       prisma.appointment.count({ where: { clientId: id, status: "CANCELLED" } }),
     ]),
+    // Pacotes do cliente: os que comprou (titular) e os de que é membro.
+    prisma.planSubscription.findMany({
+      where: clientPlansWhere(id),
+      include: {
+        plan: true,
+        client: { select: { id: true, name: true } },
+        members: { include: { client: { select: { id: true, name: true } } }, orderBy: { createdAt: "asc" } },
+      },
+      orderBy: { purchasedAt: "desc" },
+    }),
+    prisma.client.findMany({ select: { id: true, name: true, phone: true }, orderBy: { name: "asc" } }),
   ]);
 
   if (!client) notFound();
 
   const [lifetimeAgg, sessoesDone, sessoesCanceladas] = stats;
   const lifetimeValue = lifetimeAgg._sum.amount ?? 0;
+
+  // Usos concluídos de cada pacote, numa consulta só.
+  const idsPlanos = planos.map((p) => p.id);
+  const usos = idsPlanos.length
+    ? await prisma.appointment.findMany({
+        where: { status: "DONE", planSubscriptionId: { in: idsPlanos } },
+        select: { id: true, planSubscriptionId: true, startTime: true, client: { select: { name: true } } },
+        orderBy: { startTime: "desc" },
+      })
+    : [];
+  const usosPorPlano = new Map<string, { id: string; nome: string; data: Date }[]>();
+  for (const u of usos) {
+    if (!u.planSubscriptionId) continue;
+    const lista = usosPorPlano.get(u.planSubscriptionId) ?? [];
+    lista.push({ id: u.id, nome: u.client?.name ?? "Sem nome", data: u.startTime });
+    usosPorPlano.set(u.planSubscriptionId, lista);
+  }
 
   const pendingPayments = client.payments.filter((p) => p.status === "PENDING");
   const temTelefone = client.phone !== "00000000000";
@@ -140,19 +169,30 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
       <section aria-label="Pacotes" className="mt-6 rounded-xl border border-gray-200 bg-white p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-semibold text-gray-900">Pacotes</h2>
-          <SellPlanModal clientId={client.id} clientName={client.name} />
+          <SellPlanModal clientId={client.id} clientName={client.name} clients={clientesSeletor} />
         </div>
-        {client.planSubscriptions.length === 0 ? (
+        {planos.length === 0 ? (
           <p className="mt-2 text-sm text-gray-500">Nenhum pacote. Use para sessões pagas de uma vez.</p>
         ) : (
           <ul className="mt-3 space-y-2">
-            {client.planSubscriptions.map((sub) => {
+            {planos.map((sub) => {
               const restantes = Math.max(0, sub.plan.sessions - sub.sessionsUsed);
+              const ehTitular = sub.clientId === client.id;
+              // Os outros que usam o pacote (a ficha atual não entra na linha).
+              const outros = sub.members.filter((m) => m.clientId !== client.id);
+              const usosDoPlano = usosPorPlano.get(sub.id) ?? [];
               return (
                 <li key={sub.id} className="rounded-lg bg-gray-50 px-3 py-2.5">
                   <div className="flex items-center justify-between gap-2 text-sm">
-                    <span className="font-medium text-gray-900">{sub.plan.name}</span>
-                    <span className={restantes > 0 ? "text-violet-700" : "text-gray-500"}>
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate font-medium text-gray-900">{sub.plan.name}</span>
+                      {sub.members.length > 0 && (
+                        <span className="shrink-0 rounded-full bg-amber-50 px-2 text-xs font-medium text-amber-700">
+                          Familiar
+                        </span>
+                      )}
+                    </span>
+                    <span className={`shrink-0 ${restantes > 0 ? "text-violet-700" : "text-gray-500"}`}>
                       {restantes > 0 ? `${restantes} de ${sub.plan.sessions} restantes` : "Concluído"}
                     </span>
                   </div>
@@ -165,6 +205,50 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
                   <p className="mt-1.5 text-xs text-gray-500">
                     {formatCurrencyBR(sub.plan.price)} · comprado em {formatDateBR(sub.purchasedAt)}
                   </p>
+
+                  {!ehTitular && (
+                    <p className="mt-1.5 text-xs text-gray-500">
+                      Titular:{" "}
+                      <Link
+                        href={`/clientes/${sub.client.id}`}
+                        className="font-medium text-violet-700 hover:underline"
+                      >
+                        {sub.client.name}
+                      </Link>
+                    </p>
+                  )}
+
+                  {ehTitular && (
+                    <div className="mt-2">
+                      <PlanMembersModal
+                        subscriptionId={sub.id}
+                        ownerId={client.id}
+                        members={sub.members.map((m) => ({ clientId: m.clientId, name: m.client.name }))}
+                        clients={clientesSeletor}
+                      />
+                    </div>
+                  )}
+
+                  {outros.length > 0 && (
+                    <p className="mt-1.5 text-xs text-gray-500">
+                      Também usam: {outros.map((m) => m.client.name).join(", ")}
+                    </p>
+                  )}
+
+                  {usosDoPlano.length > 0 && (
+                    <details className="mt-1.5 text-xs">
+                      <summary className="flex min-h-11 cursor-pointer items-center text-violet-700">
+                        Usos ({usosDoPlano.length})
+                      </summary>
+                      <ul className="space-y-1 pb-1 text-gray-600">
+                        {usosDoPlano.map((u) => (
+                          <li key={u.id} className="min-w-0 truncate">
+                            {u.nome} · {formatDateBR(u.data)}
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
                 </li>
               );
             })}
