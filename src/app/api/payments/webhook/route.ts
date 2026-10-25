@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getPixPayment } from "@/lib/mercadopago";
+import { isPaidAmountValid } from "@/lib/domain/payments";
 
 function extractPaymentId(req: NextRequest, body: unknown): string | null {
   const { searchParams } = new URL(req.url);
@@ -44,9 +45,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true, ignored: "payment not found locally" });
     }
 
-    // Valor pago diferente do cobrado: não marca como pago (fica para o Beto conferir).
-    const paidAmount = Number((mpPayment as { transaction_amount?: number }).transaction_amount);
-    const amountOk = !Number.isFinite(paidAmount) || Math.abs(paidAmount - payment.amount) < 0.01;
+    // Valor pago diferente do cobrado OU ausente não marca como pago (fica para o Beto conferir).
+    const amountOk = isPaidAmountValid(
+      (mpPayment as { transaction_amount?: unknown }).transaction_amount,
+      payment.amount,
+    );
 
     if (mpPayment.status === "approved" && amountOk) {
       await prisma.payment.update({

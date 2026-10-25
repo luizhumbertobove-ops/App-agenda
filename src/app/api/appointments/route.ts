@@ -1,6 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createCalendarEvent } from "@/lib/google-calendar";
+import { createAppointments } from "@/lib/domain/appointments";
+import { DomainError } from "@/lib/domain/errors";
 import { z } from "zod";
 
 const createSchema = z.object({
@@ -40,88 +42,44 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: body.error.flatten() }, { status: 400 });
   }
 
-  const { serviceType, startTime, endTime, notes, amount, repeatWeeks, isPartner, partnerName } = body.data;
-  const clientId = isPartner ? undefined : body.data.clientId;
-  if (isPartner ? !partnerName : !clientId) {
-    return NextResponse.json(
-      { error: isPartner ? "Informe o nome do cliente" : "Escolha o cliente" },
-      { status: 400 }
-    );
-  }
-  const start = new Date(startTime);
-  const end = new Date(endTime);
+  const { serviceType, startTime, endTime, notes, amount, repeatWeeks, isPartner, partnerName, clientId } = body.data;
 
-  if (end <= start) {
-    return NextResponse.json({ error: "Horário de fim deve ser após o início" }, { status: 400 });
+  let created: Awaited<ReturnType<typeof createAppointments>>;
+  try {
+    created = await createAppointments({
+      clientId: clientId ?? null,
+      isPartner: !!isPartner,
+      partnerName,
+      serviceType,
+      start: new Date(startTime),
+      end: new Date(endTime),
+      notes,
+      amount,
+      repeatWeeks,
+    });
+  } catch (e) {
+    if (e instanceof DomainError) {
+      return NextResponse.json({ error: e.message }, { status: e.status });
+    }
+    throw e;
   }
 
-  // Verificar conflito de horário em todas as ocorrências (recorrência semanal incluída).
-  const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-  const occurrences = repeatWeeks ? repeatWeeks : 1;
-  const conflict = await prisma.appointment.findFirst({
-    where: {
-      status: { not: "CANCELLED" },
-      OR: Array.from({ length: occurrences }, (_, i) => ({
-        startTime: { lt: new Date(end.getTime() + i * WEEK_MS) },
-        endTime: { gt: new Date(start.getTime() + i * WEEK_MS) },
-      })),
-    },
+  // Google Agenda depois da resposta: 52 semanas de recorrência não podem segurar a tela.
+  // Falha no Google não desfaz o agendamento (o sync exporta o que ficar sem evento).
+  after(async () => {
+    for (const appt of created) {
+      try {
+        const googleEventId = await createCalendarEvent({
+          title: appt.title,
+          startTime: appt.startTime,
+          endTime: appt.endTime,
+        });
+        await prisma.appointment.update({ where: { id: appt.id }, data: { googleEventId } });
+      } catch {
+        /* best-effort */
+      }
+    }
   });
 
-  if (conflict) {
-    const quando = conflict.startTime.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
-    return NextResponse.json(
-      { error: `Conflito de horário com outro agendamento em ${quando}` },
-      { status: 409 }
-    );
-  }
-
-  const client = clientId ? await prisma.client.findUnique({ where: { id: clientId } }) : null;
-  if (clientId && !client) {
-    return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 });
-  }
-
-  const title = `${client?.name ?? partnerName} - ${serviceType}`;
-
-  const durationMs = end.getTime() - start.getTime();
-  const recurrenceId = repeatWeeks ? crypto.randomUUID() : undefined;
-
-  // Salvar no banco — inclui ocorrências recorrentes se repeatWeeks > 0
-  const totalOccurrences = repeatWeeks ? repeatWeeks : 1;
-  const createdAppointments = await Promise.all(
-    Array.from({ length: totalOccurrences }, async (_, i) => {
-      const occStart = new Date(start.getTime() + i * 7 * 24 * 60 * 60 * 1000);
-      const occEnd = new Date(occStart.getTime() + durationMs);
-      const appt = await prisma.appointment.create({
-        data: {
-          clientId: clientId ?? null,
-          serviceType,
-          title,
-          startTime: occStart,
-          endTime: occEnd,
-          notes,
-          recurrenceId,
-          isPartner: !!isPartner,
-        },
-        include: { client: true },
-      });
-      // Cobrança só da primeira sessão (as próximas são cobradas ao concluir, se for o caso).
-      if (amount && i === 0) {
-        await prisma.payment.create({
-          data: { clientId: clientId ?? null, appointmentId: appt.id, amount, status: "PENDING" },
-        });
-      }
-      if (i === 0) {
-        try {
-          const googleEventId = await createCalendarEvent({ title, startTime: occStart, endTime: occEnd });
-          await prisma.appointment.update({ where: { id: appt.id }, data: { googleEventId } });
-        } catch { /* best-effort */ }
-      }
-      return appt;
-    })
-  );
-
-  const appointment = createdAppointments[0];
-
-  return NextResponse.json(appointment, { status: 201 });
+  return NextResponse.json(created[0], { status: 201 });
 }
