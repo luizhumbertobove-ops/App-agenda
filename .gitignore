@@ -48,3 +48,7 @@ next-env.d.ts
 *.tmp.*
 .render-svc*
 *.zip
+
+# Rascunhos do brainstorming e saídas do cartão de visita
+.superpowers/
+impressos/cartao/saida/
