@@ -13,14 +13,20 @@
   --marrom:#855e3e; --creme:#fbf4e8; --creme-claro:#fffbf5; --texto:#33281f; --texto-suave:#7a6957;
   --dourado-arco:#f0d59a; --dourado-ponto:#c9973f; --dourado-texto:#835e22; --hairline:#ebdcc6;
 }
-@page{size:94mm 54mm;margin:0}
+/* Página um pouco maior que 94 x 54 mm (o Chrome arredonda o tamanho pedido para baixo);
+   build.py recorta exatamente 94 x 54 mm a partir do canto superior esquerdo. */
+@page{size:357px 206px;margin:0}
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 html.frente{background:var(--marrom)}
 html.verso{background:var(--creme)}
 html.verniz{background:#fff}
 .pagina{width:1110px;height:638px;position:relative;overflow:hidden}
-@media print{.pagina{transform:scale(.32);transform-origin:0 0}}
+@media print{
+  html,body{width:357px;height:206px;overflow:hidden}
+  /* .3202 e não .32: o desenho (355,4 x 204,3 px) cobre todo o recorte de 94 x 54 mm (355,3 x 204,1 px) */
+  .pagina{transform:scale(.3202);transform-origin:0 0}
+}
 
 /* ---------- Frente ---------- */
 .frente .pagina{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--creme-claro);text-align:center}
