@@ -3,6 +3,7 @@
 Sai com código 1 e lista os problemas se algo estiver fora do especificado.
 """
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -57,17 +58,36 @@ def conferir_cmyk_e_fontes(pdf: Path) -> None:
             if "/DeviceRGB" in repr(obj) or "/CalRGB" in repr(obj):
                 falha(f"{pdf.name}: ainda tem espaço de cor RGB")
                 break
-        page = doc.pages[0]
-        conteudo = b"".join(c.read_bytes() for c in page.get_contents()) if hasattr(page, "get_contents") else page.Contents.read_bytes()
-        if OPERADORES_RGB.search(conteudo):
-            falha(f"{pdf.name}: conteúdo usa cor RGB (operador rg/RG)")
-        fontes = page.Resources.get("/Font", {})
-        for nome, fonte in fontes.items():
-            if fonte.get("/Subtype") == "/Type3":
-                continue
-            desc = fonte.get("/FontDescriptor") or fonte.get("/DescendantFonts", [{}])[0].get("/FontDescriptor")
-            if not desc or not any(k in desc for k in ("/FontFile", "/FontFile2", "/FontFile3")):
-                falha(f"{pdf.name}: fonte {nome} não embutida")
+        # O Ghostscript põe a arte dentro de Form XObjects: percorre todos, não só a página.
+        for conteudo, recursos in _blocos(doc.pages[0].obj):
+            if OPERADORES_RGB.search(conteudo):
+                falha(f"{pdf.name}: conteúdo usa cor RGB (operador rg/RG)")
+            for nome, fonte in recursos.get("/Font", {}).items():
+                if fonte.get("/Subtype") == "/Type3":
+                    continue  # glifos desenhados como vetor dentro do PDF: não dependem de fonte
+                desc = fonte.get("/FontDescriptor") or fonte.get("/DescendantFonts", [{}])[0].get("/FontDescriptor")
+                if not desc or not any(k in desc for k in ("/FontFile", "/FontFile2", "/FontFile3")):
+                    falha(f"{pdf.name}: fonte {nome} não embutida")
+
+
+def _blocos(obj, vistos=None):
+    """Conteúdo e recursos da página e de cada Form XObject dentro dela, recursivamente."""
+    vistos = set() if vistos is None else vistos
+    if obj.objgen in vistos and obj.objgen != (0, 0):
+        return
+    vistos.add(obj.objgen)
+    contents = obj.get("/Contents")
+    if isinstance(obj, pikepdf.Stream):
+        dados = obj.read_bytes()
+    elif isinstance(contents, pikepdf.Array):
+        dados = b"".join(c.read_bytes() for c in contents)
+    else:
+        dados = contents.read_bytes() if contents is not None else b""
+    recursos = obj.get("/Resources", pikepdf.Dictionary())
+    yield dados, recursos
+    for xo in recursos.get("/XObject", {}).values():
+        if xo.get("/Subtype") == "/Form":
+            yield from _blocos(xo, vistos)
 
 
 def conferir_bordas(pdf: Path) -> None:
@@ -95,6 +115,23 @@ def conferir_cores(pdf: Path, face: str) -> None:
         cor = im.getpixel((int(im.width * fx), int(im.height * fy)))
         if max(abs(c - e) for c, e in zip(cor, esperado)) > TOLERANCIA_COR:
             falha(f"{pdf.name}: cor {cor} em ({fx}, {fy}), esperado perto de {esperado}")
+
+
+def conferir_preto_puro(pdf: Path) -> None:
+    """O que sai quase preto (módulos do QR) tem de ser só K, sem C, M e Y por baixo."""
+    import build
+    tif = pdf.with_suffix(".cmyk.tif")
+    subprocess.run([build.ghostscript(), "-q", "-dNOPAUSE", "-dBATCH", "-sDEVICE=tiff32nc", "-r300",
+                    f"-sOutputFile={tif}", str(pdf)], check=True)
+    with Image.open(tif) as im:
+        pretos = [px for px in im.getdata() if px[3] > 230]
+    tif.unlink()
+    if not pretos:
+        falha(f"{pdf.name}: nenhum preto encontrado (o QR sumiu?)")
+        return
+    sujos = sum(1 for c, m, y, _ in pretos if max(c, m, y) > 25)
+    if sujos > len(pretos) * 0.02:
+        falha(f"{pdf.name}: {sujos} de {len(pretos)} pixels pretos têm C/M/Y por baixo (preto de 4 cores)")
 
 
 def conferir_mascara(pdf: Path) -> None:
@@ -132,6 +169,7 @@ def main() -> int:
             conferir_cores(pdf, nome)
     if (PASTA / "verso.pdf").exists():
         conferir_qr(PASTA / "verso.pdf")
+        conferir_preto_puro(PASTA / "verso.pdf")
     for nome in MASCARAS:
         pdf = PASTA / f"{nome}.pdf"
         if conferir_pagina(pdf):

@@ -108,8 +108,12 @@ if(p.get('verniz')==='1')document.documentElement.classList.add('verniz');
 document.getElementById('pagina').appendChild(document.getElementById('t-'+face).content.cloneNode(true));
 // build.py confere este atributo antes de aceitar o PDF: sem Montserrat o desenho muda.
 document.fonts.ready.then(function(){
-  var usadas=face==='frente'?[['300 40px Montserrat','Humberto Bove'],['400 20px Montserrat','MASSOTERAPEUTA']]:[['400 20px "DM Sans"','Massagem']];
-  document.documentElement.dataset.fontes=usadas.every(function(u){return document.fonts.check(u[0],u[1])})?'ok':'erro';
+  // fonts.check() responde true quando a fonte nem foi declarada; por isso procura as faces baixadas.
+  var usadas=face==='frente'?[['Montserrat','300'],['Montserrat','400']]:[['DM Sans','400']];
+  var baixadas=Array.from(document.fonts).filter(function(f){return f.status==='loaded'});
+  document.documentElement.dataset.fontes=usadas.every(function(u){
+    return baixadas.some(function(f){return f.family.replace(/"/g,'')===u[0]&&String(f.weight)===u[1]});
+  })?'ok':'erro';
 });
 </script>
 </body></html>

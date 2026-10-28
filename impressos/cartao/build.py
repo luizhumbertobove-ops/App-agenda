@@ -10,6 +10,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+import pikepdf
 import pypdfium2 as pdfium
 from PIL import Image
 
@@ -75,6 +76,43 @@ def converter(gs: str, origem: Path, destino: Path, mascara: bool) -> None:
         sys.exit(f"Ghostscript falhou em {destino.name}:\n{r.stderr[-800:]}")
 
 
+def preto_puro(pdf: Path) -> None:
+    """Troca o preto de 4 cores (o #000 do QR convertido) por 100% K.
+
+    Preto em C+M+Y+K borra se o registro da impressão desviar; nos módulos de 0,4 mm do QR isso
+    atrapalha a leitura. Só mexe em cores com K > 0,85 e C, M, Y > 0,5 — o texto marrom-escuro fica.
+    """
+    with pikepdf.open(pdf, allow_overwriting_input=True) as doc:
+        for alvo in _com_conteudo(doc.pages[0].obj):
+            ops = pikepdf.parse_content_stream(alvo)
+            mudou = False
+            for i, (operandos, op) in enumerate(ops):
+                if str(op) in ("k", "K") and len(operandos) == 4:
+                    c, m, y, k = (float(v) for v in operandos)
+                    if k > 0.85 and min(c, m, y) > 0.5:
+                        ops[i] = pikepdf.ContentStreamInstruction([0, 0, 0, 1], op)
+                        mudou = True
+            if mudou:
+                dados = pikepdf.unparse_content_stream(ops)
+                if isinstance(alvo, pikepdf.Stream):
+                    alvo.write(dados)
+                else:
+                    alvo.Contents = doc.make_stream(dados)
+        doc.save(pdf)
+
+
+def _com_conteudo(obj, vistos=None):
+    """A página e cada Form XObject dentro dela (o Ghostscript põe a arte nesses blocos)."""
+    vistos = set() if vistos is None else vistos
+    if obj.objgen in vistos:
+        return
+    vistos.add(obj.objgen)
+    yield obj
+    for xo in obj.get("/Resources", {}).get("/XObject", {}).values():
+        if xo.get("/Subtype") == "/Form":
+            yield from _com_conteudo(xo, vistos)
+
+
 def previa(perfil: Path, params: str, destino: Path) -> None:
     bruto = destino.with_suffix(".bruto.png")
     chrome(perfil, f"--window-size={PAGINA_PX[0]},{PAGINA_PX[1]}", f"--screenshot={bruto}", f"{HTML}?{params}")
@@ -104,6 +142,8 @@ def main() -> None:
                 sys.exit(f"Chrome não gerou {rgb.name}")
             recortar_pagina(rgb)
             converter(gs, rgb, SAIDA / f"{nome}.pdf", mascara)
+            if not mascara:
+                preto_puro(SAIDA / f"{nome}.pdf")
             print(f"{nome}.pdf")
         for face in ("frente", "verso"):
             previa(perfil, f"face={face}", SAIDA / f"previa-{face}.png")
