@@ -83,7 +83,8 @@ export default async function AgendaPage({
   // é o ponto de partida do relógio do AppointmentActions no navegador.
   // eslint-disable-next-line react-hooks/purity
   const renderedAt = Date.now();
-  const view = viewParam === "week" ? "week" : "day";
+  // A agenda abre na semana; o dia só quando pedido (?view=day) ou num link de dia (?date= sem view=week).
+  const view = viewParam === "day" || (dateParam && viewParam !== "week") ? "day" : "week";
 
   const currentDate = dateParam ? parseISO(dateParam) : today;
   const prevDate = format(subDays(currentDate, 1), "yyyy-MM-dd");
@@ -231,7 +232,7 @@ export default async function AgendaPage({
             anchor={currentDate}
             subtitle={`${format(currentDate, "EEEE, d 'de' MMMM", { locale: ptBR })}${isToday ? " · hoje" : ""}`}
             showToday={!isToday}
-            todayHref="/agenda"
+            todayHref="/agenda?view=day"
             prevHref={`/agenda?date=${prevDate}`}
             nextHref={`/agenda?date=${nextDate}`}
             preset={
@@ -666,7 +667,7 @@ function AgendaHeader({
           className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white p-1"
         >
           <Link
-            href="/agenda"
+            href="/agenda?view=day"
             aria-current={view === "day" ? "page" : undefined}
             className={tab(view === "day")}
           >
