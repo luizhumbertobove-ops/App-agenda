@@ -80,3 +80,10 @@ Comece por `Button`, `Card`, `Tabs`, `ServiceCard` e pelos dois kits: **SiteKit*
 Nomes, preços, depoimentos e o endereço "Pinheiros" nos kits são **placeholders plausíveis**. Os dados reais do consultório estão no **Cartão de visita**: Rua Barão do Rio Branco, 964 — Serrana, SP · (16) 99135-8579 · @spalhum · segunda a sexta, 7h às 19h. Atendimentos: massagem relaxante, massagem modeladora, drenagem linfática, massagem terapêutica, quiropraxia, acupuntura, auriculoterapia, ventosaterapia e pedras quentes.
 
 **Impressos para todas as idades.** Muitos clientes são idosos: em cartões e folhetos, nada de texto essencial abaixo de 15px impresso no tamanho real, lista de serviços em sentence case (não caixa alta) e contraste alto — `text-body` sobre creme, `linen-0` sobre o marrom.
+
+**QR de agendamento.** Um QR só, para todos os impressos: aponta para `https://appbeto-puce.vercel.app/vitrine/agendar` (o agendamento da vitrine, não a página inicial). Arquivo vetorial em `impressos/cartao/qr-agendamento.svg`, gerado por `impressos/cartao/gerar_qr.py` (segno, correção de erro M, borda de 2 módulos) — se a URL mudar, troque no script e gere de novo; nunca edite o SVG à mão nem use QR de gerador online.
+
+- **Cor.** Sempre preto sobre branco, nunca marrom, dourado ou creme nos módulos. Na impressão o preto é **100% K** (preto de 4 cores borra nos módulos de 0,4 mm); o `build.py` do cartão já faz essa troca e o `verificar.py` confere.
+- **Caixa.** O QR fica numa caixa clara com `radius` 8px e respiro interno, sobre a faixa marrom, com a chamada "Agende pelo celular" logo abaixo. No cartão (88 × 48 mm) a caixa tem 184px a 300 dpi (≈ 15,6 mm).
+- **Acabamento.** Nada de verniz sobre o QR: a máscara de verniz deixa a caixa limpa com 1,5 mm de folga em volta — o brilho atrapalha a câmera.
+- **Antes de mandar à gráfica,** leia o QR no arquivo final (PDF CMYK) com a câmera de um celular.
